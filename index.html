@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
   <meta name="description" content="RF bench calculator: convert VNA source power in dBm to VOPP (peak-to-peak voltage) for single-ended and differential drive.">
-  <title>VOPP · RF Calc</title>
+  <title>VOPP · rf_lab</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,7 @@
 
   <div class="shell">
     <header class="top">
-      <a class="wordmark" href="./">RF<span>/</span>CALC</a>
+      <a class="wordmark" href="./">RF<span>/</span>LAB</a>
       <nav aria-label="Calculators">
         <a class="is-active" href="./">VOPP</a>
         <a href="match.html">Match</a>
@@ -31,7 +31,7 @@
     <section class="lede">
       <p class="kicker">VNA bench</p>
       <h1>dBm ↔ VOPP</h1>
-      <p>Type dBm or VOPP — the other updates. ZVNA and ZDUT are independent for both directions.</p>
+      <p>Type dBm or VOPP — the other updates. VNA port is 50 Ω; set Z<sub>DUT</sub> for the device at the plane.</p>
     </section>
 
     <section class="board" id="calc">
@@ -47,20 +47,10 @@
       </div>
 
       <div class="z-pair">
-        <div class="z-block">
-          <label class="z-field">
-            <span>Z<sub>VNA</sub></span>
-            <input id="zvna" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="VNA port impedance">
-            <span>Ω</span>
-          </label>
-          <div class="chips" data-target="zvna" role="group" aria-label="VNA impedance presets">
-            <button type="button" class="chip" data-z="33">33</button>
-            <button type="button" class="chip" data-z="40">40</button>
-            <button type="button" class="chip" data-z="45">45</button>
-            <button type="button" class="chip is-active" data-z="50">50</button>
-            <button type="button" class="chip" data-z="75">75</button>
-            <button type="button" class="chip" data-z="100">100</button>
-          </div>
+        <div class="z-block z-fixed">
+          <span class="z-fixed-label">Z<sub>VNA</sub></span>
+          <strong>50 Ω</strong>
+          <span class="z-fixed-note">port, fixed</span>
         </div>
         <div class="z-block">
           <label class="z-field">
@@ -241,7 +231,7 @@
       <section class="panel">
         <h2>Assumptions</h2>
         <ul>
-          <li><strong>Z<sub>VNA</sub></strong> is the analyzer port impedance. <strong>Z<sub>DUT</sub></strong> is the DUT impedance at that plane (per side if differential).</li>
+          <li><strong>Z<sub>VNA</sub></strong> is fixed at 50 Ω (analyzer port). <strong>Z<sub>DUT</sub></strong> is the DUT impedance at that plane (per side if differential).</li>
           <li><strong>VNA → DUT:</strong> dBm is <em>available</em> source power. VOPP is the loaded voltage at the DUT. Type VOPP to get the VNA source setting.</li>
           <li><strong>DUT → VNA:</strong> dBm is <em>delivered</em> receiver power. VOPP is the voltage at the VNA port (same node as the DUT output if connected directly). Type VOPP to get the receiver reading.</li>
           <li>Real impedances. V<sub>load</sub> = 2√(P<sub>avs</sub> Z<sub>S</sub>) · Z<sub>L</sub> / (Z<sub>S</sub> + Z<sub>L</sub>).</li>
@@ -285,6 +275,6 @@
 
   <div class="toast" id="toast" role="status"></div>
   <script src="js/rf.js?v=3"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

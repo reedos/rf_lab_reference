@@ -242,6 +242,28 @@ h1 {
   padding: 10px 12px;
 }
 
+.z-fixed {
+  gap: 10px;
+}
+
+.z-fixed-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.z-fixed strong {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.z-fixed-note {
+  color: var(--dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .node-z {
   display: block;
   margin-top: 6px;

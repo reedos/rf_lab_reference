@@ -1,6 +1,6 @@
 {
-  "name": "RF Calc — VOPP",
-  "short_name": "RF VOPP",
+  "name": "rf_lab",
+  "short_name": "rf_lab",
   "description": "VNA dBm to peak-to-peak voltage, single-ended and differential.",
   "start_url": "./",
   "display": "standalone",
