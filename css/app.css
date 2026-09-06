@@ -1045,6 +1045,44 @@ noscript {
   margin: 4px 0 12px;
 }
 
+.chart-wrap {
+  margin-top: 16px;
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 12px 8px;
+}
+
+.chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.chart-cap {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chart-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: crosshair;
+}
+
+.chart-wrap svg text {
+  fill: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .step:active,
   .chip:active,
