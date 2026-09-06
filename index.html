@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c0f">
+  <meta name="description" content="RF bench calculator: convert VNA source power in dBm to VOPP (peak-to-peak voltage) for single-ended and differential drive.">
+  <title>VOPP · RF Calc</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Oxanium:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body data-drive="se">
+  <a class="skip" href="#calc">Skip to calculator</a>
+  <noscript>This calculator needs JavaScript. Open this page in a browser with JS enabled.</noscript>
+
+  <div class="shell">
+    <header class="top">
+      <a class="wordmark" href="./">RF<span>/</span>CALC</a>
+      <nav aria-label="Calculators">
+        <a class="is-active" href="./">VOPP</a>
+      </nav>
+    </header>
+
+    <section class="lede">
+      <p class="kicker">VNA bench</p>
+      <h1>dBm ↔ VOPP</h1>
+      <p>Peak-to-peak voltage from source power, and the reverse. CW sine into a matched load. Single-ended or complementary differential drive.</p>
+    </section>
+
+    <div class="layout">
+      <section class="instrument" id="calc">
+        <div class="instrument-bar" aria-hidden="true"></div>
+        <div class="instrument-body">
+          <div class="drive" role="tablist" aria-label="Drive mode">
+            <button type="button" class="drive-btn is-active" id="btn-se" role="tab" aria-selected="true" data-drive="se">
+              <svg viewBox="0 0 160 36" fill="none" aria-hidden="true">
+                <path d="M8 18 H36" stroke="currentColor" stroke-width="1.5"/>
+                <circle cx="40" cy="18" r="4" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M44 18 C56 18 56 8 68 8 S80 28 92 28 S104 18 116 18 H152" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+              <strong>Single-ended</strong>
+              <small>One port into Z<sub>0</sub></small>
+            </button>
+            <button type="button" class="drive-btn" id="btn-diff" role="tab" aria-selected="false" data-drive="diff">
+              <svg viewBox="0 0 160 36" fill="none" aria-hidden="true">
+                <path d="M8 11 H28 M8 25 H28" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M32 11 C48 11 48 4 64 4 S80 18 96 18 S112 11 128 11 H152" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M32 25 C48 25 48 32 64 32 S80 18 96 18 S112 25 128 25 H152" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <strong>Differential</strong>
+              <small>Two ports, 180°</small>
+            </button>
+          </div>
+
+          <div class="fields">
+            <div class="field" id="field-dbm">
+              <div class="field-label">
+                <span id="dbm-label">Source power</span>
+                <span id="dbm-scope">per port</span>
+              </div>
+              <div class="field-row">
+                <button type="button" class="step" id="dbm-dec" aria-label="Decrease 1 dB">−</button>
+                <input id="dbm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Source power in dBm" value="0">
+                <span class="unit">dBm</span>
+                <button type="button" class="step" id="dbm-inc" aria-label="Increase 1 dB">+</button>
+              </div>
+            </div>
+
+            <div class="field" id="field-vopp">
+              <div class="field-label">
+                <span id="vopp-label">VOPP (SE pk-pk)</span>
+                <span>sine</span>
+              </div>
+              <div class="field-row">
+                <input id="vopp" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Peak-to-peak voltage">
+                <select id="vopp-unit" class="unit-select" aria-label="Voltage unit">
+                  <option value="V">V</option>
+                  <option value="mV" selected>mV</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="z-row">
+            <label class="z-field">
+              <span>Z<sub>0</sub></span>
+              <input id="z0" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="Port impedance in ohms">
+              <span>Ω</span>
+            </label>
+            <div class="chips" role="group" aria-label="Impedance presets">
+              <button type="button" class="chip is-active" data-z="50">50</button>
+              <button type="button" class="chip" data-z="75">75</button>
+              <button type="button" class="chip" data-z="100">100</button>
+            </div>
+          </div>
+
+          <dl class="metrics" id="metrics" aria-live="polite"></dl>
+
+          <div class="toolbar">
+            <button type="button" class="copy" id="copy-result">Copy result</button>
+            <button type="button" class="ghost" id="copy-link">Copy link</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <section class="panel">
+          <h2>Assumptions</h2>
+          <ul>
+            <li>Continuous-wave sinusoid, no DC offset.</li>
+            <li>Matched real load. Default Z<sub>0</sub> = 50 Ω.</li>
+            <li>dBm is <em>available power per VNA port</em> — the source-power setting.</li>
+            <li>Differential: equal amplitude, 180° ports. VOPP is V<sub>+</sub> − V<sub>−</sub>, peak-to-peak.</li>
+            <li>If you drive a pair through a balun from one port, subtract the balun / hybrid loss separately.</li>
+          </ul>
+        </section>
+        <section class="panel">
+          <h2>Formulas</h2>
+          <div class="formula">
+            P<sub>W</sub> = 10<sup>(dBm/10)</sup> / 1000<br>
+            V<sub>rms</sub> = √(P<sub>W</sub> · Z<sub>0</sub>)<br>
+            VOPP<sub>SE</sub> = <span class="sym">2√2</span> · V<sub>rms</sub><br>
+            VOPP<sub>diff</sub> = <span class="sym">2</span> · VOPP<sub>SE</sub><br>
+            Z<sub>diff</sub> = 2 · Z<sub>0</sub> &nbsp;·&nbsp; P<sub>total</sub> = 2 · P<sub>port</sub>
+          </div>
+          <p>Arrow up/down on the dBm field steps 1 dB. Hold Shift for 0.1 dB.</p>
+        </section>
+      </aside>
+
+      <section class="ref">
+        <div class="ref-head">
+          <h2>Quick reference</h2>
+          <p id="ref-caption">50 Ω, CW sine</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>dBm / port</th>
+              <th>SE VOPP</th>
+              <th>Diff VOPP</th>
+              <th>P / port</th>
+            </tr>
+          </thead>
+          <tbody id="ref-body"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <p class="foot">Static page. Works offline once loaded. Built for GitHub Pages.</p>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="js/rf.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

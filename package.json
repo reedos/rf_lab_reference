@@ -1,0 +1,8 @@
+{
+  "name": "rf-calculator",
+  "private": true,
+  "description": "Static RF bench calculators: dBm ↔ VOPP for single-ended and differential VNA drive.",
+  "scripts": {
+    "test": "node tests/rf.test.js"
+  }
+}
