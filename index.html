@@ -22,6 +22,9 @@
       <a class="wordmark" href="./">RF<span>/</span>CALC</a>
       <nav aria-label="Calculators">
         <a class="is-active" href="./">VOPP</a>
+        <a href="match.html">Match</a>
+        <a href="large-signal.html">Large-signal</a>
+        <a href="delay.html">Delay</a>
       </nav>
     </header>
 
@@ -95,7 +98,7 @@
             <div class="blk-foot dut-foot">
               <div class="node-readout">
                 <span>VOPP</span>
-                <strong id="se-node-vopp">632.5 mV</strong>
+                <strong id="se-node-vopp">0.632 V</strong>
               </div>
               <svg class="gnd" viewBox="0 0 24 12" aria-hidden="true">
                 <path d="M4 2 H20 M7 6 H17 M10 10 H14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
@@ -190,8 +193,8 @@
           <div class="field-row">
             <input id="vopp" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Peak-to-peak voltage">
             <select id="vopp-unit" class="unit-select" aria-label="Voltage unit">
-              <option value="V">V</option>
-              <option value="mV" selected>mV</option>
+              <option value="V" selected>V</option>
+              <option value="mV">mV</option>
             </select>
           </div>
         </div>

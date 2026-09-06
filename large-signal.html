@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090b10">
+  <meta name="description" content="VNA large-signal tools: two-tone envelope voltage, IMD3/IP3, P1dB, and THD.">
+  <title>Large-signal · RF Calc</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body data-drive="se">
+  <a class="skip" href="#calc">Skip to calculator</a>
+  <div class="shell">
+    <header class="top">
+      <a class="wordmark" href="./">RF<span>/</span>CALC</a>
+      <nav aria-label="Calculators">
+        <a href="./">VOPP</a>
+        <a href="match.html">Match</a>
+        <a class="is-active" href="large-signal.html">Large-signal</a>
+        <a href="delay.html">Delay</a>
+      </nav>
+    </header>
+
+    <section class="lede">
+      <p class="kicker">VNA / SA bench</p>
+      <h1>Large-signal</h1>
+      <p>Two-tone envelope, IMD3 / IP3, P1dB, and THD. Power is per tone at the DUT plane unless noted.</p>
+    </section>
+
+    <section class="board" id="calc">
+      <div class="board-toolbar">
+        <div class="seg" role="tablist" aria-label="Large-signal tool">
+          <button type="button" class="seg-btn is-active" data-panel="twotone">Two-tone</button>
+          <button type="button" class="seg-btn" data-panel="imd3">IMD3</button>
+          <button type="button" class="seg-btn" data-panel="p1db">P1dB</button>
+          <button type="button" class="seg-btn" data-panel="thd">THD</button>
+        </div>
+      </div>
+
+      <div class="ls-panel" id="panel-twotone">
+        <div class="board-toolbar">
+          <div class="seg" role="tablist" aria-label="Drive mode">
+            <button type="button" class="seg-btn is-active" id="btn-se" data-drive="se">Single-ended</button>
+            <button type="button" class="seg-btn" id="btn-diff" data-drive="diff">Differential</button>
+          </div>
+          <div class="z-ctrl">
+            <label class="z-field">
+              <span>Z<sub>0</sub></span>
+              <input id="z0" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="Port impedance">
+              <span>Ω</span>
+            </label>
+            <div class="chips" role="group" aria-label="Impedance presets">
+              <button type="button" class="chip is-active" data-z="50">50</button>
+              <button type="button" class="chip" data-z="75">75</button>
+              <button type="button" class="chip" data-z="100">100</button>
+            </div>
+          </div>
+        </div>
+        <div class="fields">
+          <div class="field compact">
+            <div class="field-label"><span>Per-tone power</span><span id="tone-scope">per port</span></div>
+            <div class="field-row">
+              <button type="button" class="step" id="tone-dec">−</button>
+              <input id="tone-dbm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Per-tone power in dBm">
+              <span class="unit">dBm</span>
+              <button type="button" class="step" id="tone-inc">+</button>
+            </div>
+          </div>
+        </div>
+        <dl class="metrics" id="tt-metrics"></dl>
+        <p class="hint">Two equal CW tones add in voltage at envelope peaks. Peak envelope power is <strong>+6.02 dB</strong> vs one tone — the DUT sees twice the CW VOPP you would calculate from a single tone at that dBm. That is why a two-tone IMD sweep compresses sooner than a CW P1dB sweep at the same per-tone power.</p>
+      </div>
+
+      <div class="ls-panel" id="panel-imd3" hidden>
+        <svg class="spec-svg" viewBox="0 0 640 88" aria-hidden="true">
+          <text x="86" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">2f1−f2</text>
+          <text x="220" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">f1</text>
+          <text x="390" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">f2</text>
+          <text x="524" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">2f2−f1</text>
+          <rect x="78" y="52" width="10" height="22" fill="#7aa2ff"/>
+          <rect x="218" y="22" width="12" height="52" fill="#f3b63a"/>
+          <rect x="388" y="22" width="12" height="52" fill="#f3b63a"/>
+          <rect x="528" y="52" width="10" height="22" fill="#7aa2ff"/>
+          <path d="M20 76 H620" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
+        </svg>
+        <div class="fields">
+          <div class="field compact">
+            <div class="field-label"><span>Each tone</span><span>at DUT</span></div>
+            <div class="field-row">
+              <input id="imd-tone" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Per-tone power">
+              <span class="unit">dBm</span>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>IM3</span>
+              <select id="imd-unit" class="unit-select" aria-label="IM3 unit">
+                <option value="dbc" selected>dBc</option>
+                <option value="dbm">dBm</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <input id="imd-im3" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-40" aria-label="IM3 level">
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>Gain</span><span>optional</span></div>
+            <div class="field-row">
+              <input id="imd-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
+              <span class="unit">dB</span>
+            </div>
+          </div>
+        </div>
+        <dl class="metrics" id="imd-metrics"></dl>
+        <p class="hint">IIP3 = P<sub>tone</sub> + Δ/2, where Δ is the gap from each tone to IM3. OIP3 = IIP3 + G. Rule of thumb for a cubic nonlinearity: OP1dB ≈ OIP3 − 10 dB. +1 dB on both tones → +3 dB on IM3.</p>
+      </div>
+
+      <div class="ls-panel" id="panel-p1db" hidden>
+        <div class="fields">
+          <div class="field compact">
+            <div class="field-label"><span>Small-signal gain</span><span>G<sub>0</sub></span></div>
+            <div class="field-row">
+              <input id="p1-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
+              <span class="unit">dB</span>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>Input P1dB</span></div>
+            <div class="field-row">
+              <input id="p1-pin" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Input-referred P1dB">
+              <span class="unit">dBm</span>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>Output P1dB</span></div>
+            <div class="field-row">
+              <input id="p1-pout" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Output-referred P1dB">
+              <span class="unit">dBm</span>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>Measured P<sub>out</sub></span><span>optional</span></div>
+            <div class="field-row">
+              <input id="p1-meas" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Measured output power">
+              <span class="unit">dBm</span>
+            </div>
+          </div>
+        </div>
+        <dl class="metrics" id="p1-metrics"></dl>
+        <p class="hint">OP1dB = IP1dB + G<sub>0</sub> − 1 dB. If you enter a measured P<sub>out</sub> at the same P<sub>in</sub>, compression is (P<sub>in</sub> + G<sub>0</sub>) − P<sub>out</sub>. On a VNA, G<sub>0</sub> is small-signal |S<sub>21</sub>| after power cal at the DUT plane.</p>
+      </div>
+
+      <div class="ls-panel" id="panel-thd" hidden>
+        <div class="fields">
+          <div class="field compact">
+            <div class="field-label"><span>Fundamental</span></div>
+            <div class="field-row">
+              <input id="thd-fund" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="0" aria-label="Fundamental power">
+              <span class="unit">dBm</span>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>H2</span><span>dBc</span></div>
+            <div class="field-row">
+              <input id="thd-h2" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-40" aria-label="Second harmonic dBc">
+              <span class="unit">dBc</span>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>H3</span><span>dBc</span></div>
+            <div class="field-row">
+              <input id="thd-h3" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-50" aria-label="Third harmonic dBc">
+              <span class="unit">dBc</span>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>H4 / H5</span><span>optional</span></div>
+            <div class="field-row">
+              <input id="thd-h4" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="H4" aria-label="Fourth harmonic dBc">
+              <input id="thd-h5" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="H5" aria-label="Fifth harmonic dBc">
+              <span class="unit">dBc</span>
+            </div>
+          </div>
+        </div>
+        <dl class="metrics" id="thd-metrics"></dl>
+        <p class="hint">THD = √(Σ 10<sup>H<sub>n</sub>/10</sup>) with H<sub>n</sub> in dBc. A single −40 dBc harmonic is 1% THD. Harmonic dBm = P<sub>fund</sub> + dBc. Receiver harmonics on a VNA can fake DUT THD — check with a notch or a spectrum analyzer when it matters.</p>
+      </div>
+
+      <div class="toolbar">
+        <button type="button" class="copy" id="copy-result">Copy result</button>
+        <button type="button" class="ghost" id="copy-link">Copy link</button>
+      </div>
+    </section>
+
+    <section class="ref">
+      <div class="ref-head">
+        <h2>Rules of thumb</h2>
+        <p>Order-of-magnitude only</p>
+      </div>
+      <table class="thumbs">
+        <thead>
+          <tr><th>Item</th><th>Thumb</th><th>Why it bites you</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Two equal tones</td>
+            <td class="num">PEP = P<sub>tone</sub> + 6 dB</td>
+            <td>Envelope Vpp is 2× the CW VOPP at that per-tone dBm</td>
+          </tr>
+          <tr>
+            <td>IMD3 vs P1dB</td>
+            <td class="num">OIP3 ≈ OP1dB + 10 dB</td>
+            <td>Cubic class-A estimate; real parts wander several dB</td>
+          </tr>
+          <tr>
+            <td>Tone step</td>
+            <td class="num">+1 dB tones → +3 dB IM3</td>
+            <td>3rd-order: ΔIM3 = 3 ΔPin. If it is not ~3:1, you are not in the cubic region</td>
+          </tr>
+          <tr>
+            <td>Diff two-port</td>
+            <td class="num">VOPP<sub>diff</sub> = 2 × SE</td>
+            <td>Same per-port dBm, twice the swing across the pair</td>
+          </tr>
+          <tr>
+            <td>THD vs H2</td>
+            <td class="num">−40 dBc ≈ 1%</td>
+            <td>THD is RSS of all harmonics, not just H2</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <p class="foot">Static page. Works offline once loaded.</p>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="js/rf.js"></script>
+  <script src="js/large-signal.js"></script>
+</body>
+</html>

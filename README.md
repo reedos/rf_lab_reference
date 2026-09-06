@@ -5,62 +5,54 @@ Static bench calculators for RF lab work. Hosted as GitHub Pages so they are a t
 - Repo: https://github.com/reedos/RF_Calculator
 - Live: https://reedos.github.io/RF_Calculator/
 
-No build step. Open `index.html` over HTTP (GitHub Pages, or any static server). Classic scripts, no bundler.
+No build step. Open the HTML over HTTP (GitHub Pages, or any static server). Classic scripts, no bundler.
+
+## Calculators
+
+| Page | Use at the bench |
+| --- | --- |
+| [VOPP](https://reedos.github.io/RF_Calculator/) | CW dBm ↔ peak-to-peak voltage, single-ended and true differential |
+| [Match](https://reedos.github.io/RF_Calculator/match.html) | Return loss ↔ VSWR ↔ \|Γ\| ↔ mismatch loss |
+| [Large-signal](https://reedos.github.io/RF_Calculator/large-signal.html) | Two-tone envelope, IMD3 / IP3, P1dB, THD |
+| [Delay](https://reedos.github.io/RF_Calculator/delay.html) | Wavelength, time delay, electrical degrees |
 
 ## VOPP — dBm ↔ peak-to-peak
 
-Converts VNA source power to output voltage peak-to-peak (VOPP) and back.
+VNA source power to voltage at the DUT, and back. Default unit is **volts**.
 
 - **Single-ended:** one port into Z₀.
-- **Differential:** two complementary ports (true differential / balanced drive). VOPP is V₊ − V₋, peak-to-peak.
+- **Differential:** two complementary ports. VOPP is V₊ − V₋, peak-to-peak.
 - dBm is **available power per port** — the VNA source-power setting.
-- Default Z₀ = 50 Ω. Presets for 75 Ω and 100 Ω.
-
-Type in either field; the other updates. `+` / `−` steps the source 1 dB. Arrow keys on the dBm field do the same (Shift for 0.1 dB).
-
-### Formulas (CW sine, matched real load)
 
 ```
 P_W        = 10^(dBm/10) / 1000
 V_rms      = √(P_W · Z0)
 VOPP_SE    = 2√2 · V_rms
 VOPP_diff  = 2 · VOPP_SE
-Z_diff     = 2 · Z0
-P_total    = 2 · P_port          (+3.01 dB)
 ```
-
-Checks at 50 Ω:
 
 | dBm / port | SE VOPP | Diff VOPP |
 | ---------- | ------- | --------- |
-| −10        | 200 mV  | 400 mV    |
-| 0          | 632 mV  | 1.265 V   |
+| −10        | 0.200 V | 0.400 V   |
+| 0          | 0.632 V | 1.265 V   |
 | +10        | 2.00 V  | 4.00 V    |
 
-If you drive a differential pair through a balun from **one** port, this page does not include the hybrid / balun loss — subtract that separately.
+## Large-signal
 
-## GitHub Pages
+- **Two-tone:** two equal CW tones. Envelope VOPP is **2×** the CW VOPP at that per-tone dBm. PEP is **+6.02 dB** vs one tone. This is why IMD compresses sooner than a CW P1dB sweep at the same per-tone setting.
+- **IMD3:** IIP3 = P_tone + Δ/2. OIP3 = IIP3 + G. Thumb: OP1dB ≈ OIP3 − 10 dB.
+- **P1dB:** OP1dB = IP1dB + G₀ − 1 dB. Optional measured P_out → compression depth.
+- **THD:** RSS of harmonics in dBc. −40 dBc on one harmonic is 1% THD.
 
-1. Push this repo (public).
-2. **Settings → Pages → Build and deployment**
-   - Source: **Deploy from a branch**
-   - Branch: `main` / `/ (root)`
-3. Site URL: `https://<user>.github.io/RF_Calculator/`
-
-`.nojekyll` is present so GitHub does not run Jekyll on the tree.
+If you drive a differential pair through a balun from **one** port, subtract hybrid / balun loss separately.
 
 ## Local
 
 ```bash
 npm test
-```
-
-Any static server from the repo root works, for example:
-
-```bash
 python -m http.server 8080
 ```
 
-## Adding another calculator
+## GitHub Pages
 
-Keep the same `css/app.css` chrome. Put a new page next to `index.html`, add a nav link in the header, and share helpers from `js/rf.js` if they apply.
+Source: **Deploy from a branch**, `main` / `/ (root)`. `.nojekyll` is present so Jekyll does not process the tree.

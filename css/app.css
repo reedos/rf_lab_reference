@@ -91,6 +91,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 12px 4px 18px;
   margin-bottom: 18px;
@@ -112,7 +113,9 @@ a:hover {
 
 nav {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
   font-size: 0.75rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -182,6 +185,7 @@ h1 {
 
 .seg {
   display: inline-flex;
+  flex-wrap: wrap;
   padding: 4px;
   background: var(--bg-inset);
   border: 1px solid var(--line);
@@ -968,6 +972,38 @@ noscript {
   .board {
     padding: 14px;
   }
+}
+
+.field.compact input[type="text"] {
+  font-size: 1.45rem;
+}
+
+.ls-panel[hidden] {
+  display: none;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 12px 0 0;
+}
+
+.board + .board {
+  margin-top: 16px;
+}
+
+.thumbs td {
+  color: var(--muted);
+}
+
+.thumbs td.num {
+  color: var(--text);
+}
+
+.spec-svg {
+  width: 100%;
+  height: 88px;
+  margin: 4px 0 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -44,7 +44,7 @@
     dbm: 0,
     vopp: 0,
     z0: 50,
-    unit: "mV",
+    unit: "V",
     result: null
   };
 

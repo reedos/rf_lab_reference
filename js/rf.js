@@ -16,6 +16,9 @@
 (function (root) {
   const SQRT2 = Math.SQRT2;
   const TWO_SQRT2 = 2 * Math.SQRT2;
+  const C_LIGHT = 299792458;
+  const DB_3 = 10 * Math.log10(2);
+  const DB_6 = 10 * Math.log10(4);
 
   function dbmToWatts(dbm) {
     return Math.pow(10, dbm / 10) / 1000;
@@ -196,9 +199,192 @@
     return value;
   }
 
+  function gammaFromRl(rl) {
+    if (!Number.isFinite(rl)) return NaN;
+    return Math.pow(10, -rl / 20);
+  }
+
+  function rlFromGamma(gamma) {
+    if (!(gamma > 0) || !Number.isFinite(gamma)) {
+      return gamma === 0 ? Infinity : NaN;
+    }
+    return -20 * Math.log10(gamma);
+  }
+
+  function vswrFromGamma(gamma) {
+    if (!Number.isFinite(gamma) || gamma < 0) return NaN;
+    if (gamma >= 1) return Infinity;
+    return (1 + gamma) / (1 - gamma);
+  }
+
+  function gammaFromVswr(vswr) {
+    if (!Number.isFinite(vswr) || vswr < 1) return NaN;
+    return (vswr - 1) / (vswr + 1);
+  }
+
+  function mismatchLossFromGamma(gamma) {
+    if (!Number.isFinite(gamma) || gamma < 0) return NaN;
+    if (gamma >= 1) return Infinity;
+    return -10 * Math.log10(1 - gamma * gamma);
+  }
+
+  function gammaFromMismatchLoss(mloss) {
+    if (!Number.isFinite(mloss) || mloss < 0) return NaN;
+    const delivered = Math.pow(10, -mloss / 10);
+    if (delivered > 1) return NaN;
+    return Math.sqrt(1 - delivered);
+  }
+
+  function matchFromGamma(gamma) {
+    return {
+      gamma,
+      rl: rlFromGamma(gamma),
+      vswr: vswrFromGamma(gamma),
+      mloss: mismatchLossFromGamma(gamma),
+      delivered: gamma < 1 ? 1 - gamma * gamma : 0
+    };
+  }
+
+  function ip3FromDbc(pToneDbm, im3Dbc, gainDb) {
+    if (!Number.isFinite(pToneDbm) || !Number.isFinite(im3Dbc)) {
+      return null;
+    }
+    const delta = -im3Dbc;
+    const iip3 = pToneDbm + delta / 2;
+    const g = Number.isFinite(gainDb) ? gainDb : NaN;
+    const oip3 = Number.isFinite(g) ? iip3 + g : NaN;
+    return {
+      pToneDbm,
+      im3Dbc,
+      im3Dbm: pToneDbm + im3Dbc,
+      delta,
+      iip3,
+      oip3,
+      gainDb: g,
+      p1dbThumb: Number.isFinite(oip3) ? oip3 - 10 : NaN
+    };
+  }
+
+  function ip3FromAbs(pToneDbm, im3Dbm, gainDb) {
+    if (!Number.isFinite(pToneDbm) || !Number.isFinite(im3Dbm)) return null;
+    return ip3FromDbc(pToneDbm, im3Dbm - pToneDbm, gainDb);
+  }
+
+  function p1dbFromInput(gainDb, pin1dB) {
+    if (!Number.isFinite(gainDb) || !Number.isFinite(pin1dB)) return null;
+    return {
+      gainDb,
+      pin1dB,
+      pout1dB: pin1dB + gainDb - 1,
+      poutLinear: pin1dB + gainDb
+    };
+  }
+
+  function p1dbFromOutput(gainDb, pout1dB) {
+    if (!Number.isFinite(gainDb) || !Number.isFinite(pout1dB)) return null;
+    return p1dbFromInput(gainDb, pout1dB - gainDb + 1);
+  }
+
+  function compressionAt(gainDb, pin, poutMeas) {
+    if (!Number.isFinite(gainDb) || !Number.isFinite(pin) || !Number.isFinite(poutMeas)) {
+      return null;
+    }
+    const poutLinear = pin + gainDb;
+    return {
+      gainDb,
+      pin,
+      poutMeas,
+      poutLinear,
+      gainMeas: poutMeas - pin,
+      compression: poutLinear - poutMeas
+    };
+  }
+
+  function thdFromDbc(harmonicsDbc) {
+    const terms = (harmonicsDbc || []).filter(Number.isFinite);
+    const sum = terms.reduce(function (acc, dbc) {
+      return acc + Math.pow(10, dbc / 10);
+    }, 0);
+    const ratio = Math.sqrt(sum);
+    return {
+      ratio,
+      percent: 100 * ratio,
+      db: ratio > 0 ? 20 * Math.log10(ratio) : -Infinity,
+      count: terms.length
+    };
+  }
+
+  function twoToneFromToneDbm(dbmTone, z0, drive) {
+    const one = fromDbm(dbmTone, z0, drive || "se");
+    const vppOne = voppOf(one);
+    const vpkOne = one.drive === "diff" ? one.vpkDiff : one.vpk;
+    const ports = one.drive === "diff" ? 2 : 1;
+    return {
+      drive: one.drive,
+      z0,
+      dbmTone,
+      dbmPortAvg: dbmTone + DB_3,
+      dbmPortPep: dbmTone + DB_6,
+      dbmTotalAvg: dbmTone + DB_3 + 10 * Math.log10(ports),
+      dbmTotalPep: dbmTone + DB_6 + 10 * Math.log10(ports),
+      vppOne,
+      vpkOne,
+      vpkEnv: 2 * vpkOne,
+      vppEnv: 2 * vppOne,
+      paprVsToneDb: DB_6,
+      paprVsAvgDb: DB_3
+    };
+  }
+
+  function guidedWavelength(freqHz, er) {
+    if (!(freqHz > 0) || !(er > 0)) return NaN;
+    return C_LIGHT / freqHz / Math.sqrt(er);
+  }
+
+  function delayFromLength(lengthM, er) {
+    if (!(lengthM >= 0) || !(er > 0)) return NaN;
+    return (lengthM * Math.sqrt(er)) / C_LIGHT;
+  }
+
+  function lengthFromDelay(delayS, er) {
+    if (!(delayS >= 0) || !(er > 0)) return NaN;
+    return (delayS * C_LIGHT) / Math.sqrt(er);
+  }
+
+  function degreesFromLength(lengthM, freqHz, er) {
+    const lambda = guidedWavelength(freqHz, er);
+    if (!(lambda > 0) || !Number.isFinite(lengthM)) return NaN;
+    return (360 * lengthM) / lambda;
+  }
+
+  function lengthFromDegrees(deg, freqHz, er) {
+    const lambda = guidedWavelength(freqHz, er);
+    if (!(lambda > 0) || !Number.isFinite(deg)) return NaN;
+    return (deg / 360) * lambda;
+  }
+
+  function vfFromEr(er) {
+    if (!(er > 0)) return NaN;
+    return 1 / Math.sqrt(er);
+  }
+
+  function erFromVf(vf) {
+    if (!(vf > 0)) return NaN;
+    return 1 / (vf * vf);
+  }
+
+  function formatVswr(vswr) {
+    if (!Number.isFinite(vswr)) return "∞";
+    if (vswr >= 100) return vswr.toFixed(1);
+    return vswr.toFixed(3);
+  }
+
   const RF = {
     SQRT2,
     TWO_SQRT2,
+    C_LIGHT,
+    DB_3,
+    DB_6,
     dbmToWatts,
     wattsToDbm,
     wattsToVrms,
@@ -222,7 +408,29 @@
     formatPowerWatts,
     formatCurrent,
     voltsToUnit,
-    unitToVolts
+    unitToVolts,
+    gammaFromRl,
+    rlFromGamma,
+    vswrFromGamma,
+    gammaFromVswr,
+    mismatchLossFromGamma,
+    gammaFromMismatchLoss,
+    matchFromGamma,
+    ip3FromDbc,
+    ip3FromAbs,
+    p1dbFromInput,
+    p1dbFromOutput,
+    compressionAt,
+    thdFromDbc,
+    twoToneFromToneDbm,
+    guidedWavelength,
+    delayFromLength,
+    lengthFromDelay,
+    degreesFromLength,
+    lengthFromDegrees,
+    vfFromEr,
+    erFromVf,
+    formatVswr
   };
 
   if (typeof module === "object" && module.exports) {

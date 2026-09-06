@@ -99,6 +99,53 @@ eq(RF.parseNumber("0,2"), 0.2, "parse comma decimal");
 eq(Number.isNaN(RF.parseNumber("")), true, "parse empty");
 eq(Number.isNaN(RF.parseNumber("-")), true, "parse lone minus");
 
+// Match / VSWR
+const m20 = RF.matchFromGamma(RF.gammaFromRl(20));
+approx(m20.gamma, 0.1, 1e-12, "RL 20 dB → |Γ| = 0.1");
+approx(m20.vswr, 1.222222222222222, 1e-12, "RL 20 dB → VSWR");
+approx(m20.mloss, -10 * Math.log10(0.99), 1e-12, "RL 20 dB mismatch loss");
+approx(RF.gammaFromVswr(1.5), 0.2, 1e-12, "VSWR 1.5 → |Γ| = 0.2");
+approx(RF.rlFromGamma(RF.gammaFromVswr(RF.vswrFromGamma(0.1))), 20, 1e-12, "match round-trip RL");
+
+// IMD3 / IP3
+const ip3 = RF.ip3FromDbc(-10, -40, 20);
+approx(ip3.iip3, 10, 1e-12, "IIP3 = Pin + Δ/2");
+approx(ip3.oip3, 30, 1e-12, "OIP3 = IIP3 + G");
+approx(ip3.im3Dbm, -50, 1e-12, "IM3 absolute");
+approx(ip3.p1dbThumb, 20, 1e-12, "OP1dB ≈ OIP3 − 10 dB");
+approx(RF.ip3FromAbs(-10, -50, 20).iip3, 10, 1e-12, "IP3 from absolute IM3");
+
+// P1dB
+const p1 = RF.p1dbFromInput(20, -10);
+approx(p1.pout1dB, 9, 1e-12, "OP1dB = Pin + G − 1");
+approx(RF.p1dbFromOutput(20, 9).pin1dB, -10, 1e-12, "IP1dB from OP1dB");
+const cmp = RF.compressionAt(20, -10, 8.5);
+approx(cmp.poutLinear, 10, 1e-12, "linear Pout");
+approx(cmp.compression, 1.5, 1e-12, "compression depth");
+
+// THD
+const thd = RF.thdFromDbc([-40]);
+approx(thd.percent, 1, 1e-12, "−40 dBc → 1% THD");
+approx(thd.db, -40, 1e-12, "single harmonic THD dB");
+const thd2 = RF.thdFromDbc([-40, -40]);
+approx(thd2.ratio, Math.SQRT2 / 100, 1e-12, "two equal harmonics");
+
+// Two-tone envelope
+const tt = RF.twoToneFromToneDbm(0, 50, "se");
+approx(tt.dbmPortPep, RF.DB_6, 1e-12, "PEP = Ptone + 6.02 dB");
+approx(tt.dbmPortAvg, RF.DB_3, 1e-12, "avg = Ptone + 3.01 dB");
+approx(tt.vppEnv, 2 * tt.vppOne, 1e-12, "envelope Vpp = 2 × one-tone Vpp");
+const ttd = RF.twoToneFromToneDbm(0, 50, "diff");
+approx(ttd.vppEnv, 2 * ttd.vppOne, 1e-12, "diff envelope VOPP scales 2×");
+approx(ttd.dbmTotalAvg, RF.DB_3 + RF.DB_3, 1e-12, "diff two-tone total avg +6 dB");
+
+// Delay / wavelength
+approx(RF.vfFromEr(4), 0.5, 1e-12, "εr 4 → vf 0.5");
+approx(RF.erFromVf(0.7), 1 / 0.49, 1e-12, "vf → εr");
+approx(RF.guidedWavelength(1e9, 1), RF.C_LIGHT / 1e9, 1e-9, "1 GHz free-space λ");
+approx(RF.delayFromLength(RF.C_LIGHT * 1e-9, 1), 1e-9, 1e-18, "1 ns of air line");
+approx(RF.degreesFromLength(RF.guidedWavelength(2e9, 1) / 4, 2e9, 1), 90, 1e-9, "λ/4 = 90°");
+
 if (failed) {
   console.error(`\n${failed} failed, ${passed} passed`);
   process.exit(1);
