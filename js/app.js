@@ -24,6 +24,30 @@
     toast: document.getElementById("toast"),
     dbmDec: document.getElementById("dbm-dec"),
     dbmInc: document.getElementById("dbm-inc"),
+    btnSrc: document.getElementById("btn-src"),
+    btnRx: document.getElementById("btn-rx"),
+    seCap: document.getElementById("se-cap"),
+    seSrcKicker: document.getElementById("se-src-kicker"),
+    seSrcTitle: document.getElementById("se-src-title"),
+    seSrcSub: document.getElementById("se-src-sub"),
+    seLoadKicker: document.getElementById("se-load-kicker"),
+    seLoadTitle: document.getElementById("se-load-title"),
+    seLoadSub: document.getElementById("se-load-sub"),
+    seSrcPort: document.getElementById("se-src-port"),
+    seLoadPort: document.getElementById("se-load-port"),
+    sePowerKicker: document.getElementById("se-power-kicker"),
+    diffCap: document.getElementById("diff-cap"),
+    diffSrcKicker: document.getElementById("diff-src-kicker"),
+    diffSrcTitle: document.getElementById("diff-src-title"),
+    diffSrcSub: document.getElementById("diff-src-sub"),
+    diffLoadKicker: document.getElementById("diff-load-kicker"),
+    diffLoadTitle: document.getElementById("diff-load-title"),
+    diffLoadSub: document.getElementById("diff-load-sub"),
+    diffSrcP1: document.getElementById("diff-src-p1"),
+    diffSrcP2: document.getElementById("diff-src-p2"),
+    diffLoadP1: document.getElementById("diff-load-p1"),
+    diffLoadP2: document.getElementById("diff-load-p2"),
+    voppHint: document.querySelector("#field-vopp .field-label span:last-child"),
     schematicSe: document.getElementById("schematic-se"),
     schematicDiff: document.getElementById("schematic-diff"),
     seLineDbm: document.getElementById("se-line-dbm"),
@@ -38,8 +62,68 @@
     diffNodeZ: document.getElementById("diff-node-z")
   };
 
+  const PATH_COPY = {
+    src: {
+      seCap: "VNA drives DUT · matched to port Z₀",
+      seSrcKicker: "Source",
+      seSrcTitle: "VNA",
+      seSrcSub: "stimulus",
+      seLoadKicker: "Load",
+      seLoadTitle: "DUT",
+      seLoadSub: "SE input",
+      seSrcPort: "Port 1",
+      seLoadPort: "RF in",
+      sePowerKicker: "Available",
+      seLineNote: "matched DUT",
+      diffCap: "VNA drives DUT · complementary 180°",
+      diffSrcKicker: "Source",
+      diffSrcTitle: "VNA",
+      diffSrcSub: "balanced stimulus",
+      diffLoadKicker: "Load",
+      diffLoadTitle: "DUT",
+      diffLoadSub: "diff input",
+      diffSrcP1: "Port 1 <em>+</em>",
+      diffSrcP2: "Port 2 <em>−</em>",
+      diffLoadP1: "RF+",
+      diffLoadP2: "RF−",
+      dbmLabel: "Source power",
+      dbmScopeSe: "available",
+      dbmScopeDiff: "per port, available",
+      voppHint: "at DUT if matched"
+    },
+    rx: {
+      seCap: "DUT drives VNA · voltage at the receiver port",
+      seSrcKicker: "Source",
+      seSrcTitle: "DUT",
+      seSrcSub: "SE output",
+      seLoadKicker: "Load",
+      seLoadTitle: "VNA",
+      seLoadSub: "receiver",
+      seSrcPort: "RF out",
+      seLoadPort: "Port 1",
+      sePowerKicker: "Delivered",
+      seLineNote: "VNA load",
+      diffCap: "DUT drives VNA · complementary 180°",
+      diffSrcKicker: "Source",
+      diffSrcTitle: "DUT",
+      diffSrcSub: "diff output",
+      diffLoadKicker: "Load",
+      diffLoadTitle: "VNA",
+      diffLoadSub: "receivers",
+      diffSrcP1: "RF+",
+      diffSrcP2: "RF−",
+      diffLoadP1: "Port 1 <em>+</em>",
+      diffLoadP2: "Port 2 <em>−</em>",
+      dbmLabel: "Receiver power",
+      dbmScopeSe: "delivered",
+      dbmScopeDiff: "per port, delivered",
+      voppHint: "at VNA port"
+    }
+  };
+
   const state = {
     drive: "se",
+    path: "src",
     source: "dbm",
     dbm: 0,
     vopp: 0,
@@ -54,6 +138,8 @@
     const q = new URLSearchParams(window.location.search);
     const drive = q.get("m");
     if (drive === "diff" || drive === "se") state.drive = drive;
+    const path = q.get("dir");
+    if (path === "rx" || path === "src") state.path = path;
     const z = RF.parseNumber(q.get("z"));
     if (z > 0) state.z0 = z;
     const unit = q.get("u");
@@ -73,6 +159,7 @@
   function writeQuery() {
     const q = new URLSearchParams();
     q.set("m", state.drive);
+    q.set("dir", state.path);
     q.set("z", String(state.z0));
     q.set("from", state.source);
     q.set("u", state.unit);
@@ -126,19 +213,49 @@
 
   function render(ok) {
     els.body.setAttribute("data-drive", state.drive);
+    els.body.setAttribute("data-path", state.path);
     els.btnSe.classList.toggle("is-active", state.drive === "se");
     els.btnDiff.classList.toggle("is-active", state.drive === "diff");
     els.btnSe.setAttribute("aria-selected", state.drive === "se" ? "true" : "false");
     els.btnDiff.setAttribute("aria-selected", state.drive === "diff" ? "true" : "false");
+    els.btnSrc.classList.toggle("is-active", state.path === "src");
+    els.btnRx.classList.toggle("is-active", state.path === "rx");
+    els.btnSrc.setAttribute("aria-selected", state.path === "src" ? "true" : "false");
+    els.btnRx.setAttribute("aria-selected", state.path === "rx" ? "true" : "false");
 
     const isDiff = state.drive === "diff";
+    const copy = PATH_COPY[state.path];
     els.schematicSe.hidden = isDiff;
     els.schematicDiff.hidden = !isDiff;
     els.schematicSe.classList.toggle("is-off", isDiff);
     els.schematicDiff.classList.toggle("is-off", !isDiff);
 
-    els.dbmScope.textContent = isDiff ? "per port" : "into Z₀";
+    els.seCap.textContent = copy.seCap;
+    els.seSrcKicker.textContent = copy.seSrcKicker;
+    els.seSrcTitle.textContent = copy.seSrcTitle;
+    els.seSrcSub.textContent = copy.seSrcSub;
+    els.seLoadKicker.textContent = copy.seLoadKicker;
+    els.seLoadTitle.textContent = copy.seLoadTitle;
+    els.seLoadSub.textContent = copy.seLoadSub;
+    els.seSrcPort.textContent = copy.seSrcPort;
+    els.seLoadPort.textContent = copy.seLoadPort;
+    els.sePowerKicker.textContent = copy.sePowerKicker;
+    els.diffCap.textContent = copy.diffCap;
+    els.diffSrcKicker.textContent = copy.diffSrcKicker;
+    els.diffSrcTitle.textContent = copy.diffSrcTitle;
+    els.diffSrcSub.textContent = copy.diffSrcSub;
+    els.diffLoadKicker.textContent = copy.diffLoadKicker;
+    els.diffLoadTitle.textContent = copy.diffLoadTitle;
+    els.diffLoadSub.textContent = copy.diffLoadSub;
+    els.diffSrcP1.innerHTML = copy.diffSrcP1;
+    els.diffSrcP2.innerHTML = copy.diffSrcP2;
+    els.diffLoadP1.innerHTML = copy.diffLoadP1;
+    els.diffLoadP2.innerHTML = copy.diffLoadP2;
+
+    els.dbmLabel.textContent = copy.dbmLabel;
+    els.dbmScope.textContent = isDiff ? copy.dbmScopeDiff : copy.dbmScopeSe;
     els.voppLabel.textContent = isDiff ? "VOPP (diff pk-pk)" : "VOPP (SE pk-pk)";
+    if (els.voppHint) els.voppHint.textContent = copy.voppHint;
 
     els.voppUnit.value = state.unit;
     els.z0.value = Number.isFinite(state.z0) ? String(state.z0) : els.z0.value;
@@ -173,7 +290,7 @@
         metric("Power", RF.formatPowerWatts(r.watts))
       ].join("");
       els.seLineDbm.textContent = `${RF.formatDbm(r.dbm)} dBm`;
-      els.seLineZ.textContent = `Z₀ ${RF.trimFixed(r.z0, 4)} Ω · matched`;
+      els.seLineZ.textContent = `Port Z₀ ${RF.trimFixed(r.z0, 4)} Ω · ${copy.seLineNote}`;
       els.seNodeVopp.textContent = RF.formatVoltage(r.vpp);
       els.seNodePower.textContent = RF.formatPowerWatts(r.watts);
     } else {
@@ -188,7 +305,7 @@
         metric("V<sub>pk</sub> diff", RF.formatVoltage(r.vpkDiff))
       ].join("");
       const port = `${RF.formatDbm(r.dbmPort)} dBm`;
-      const zLine = `Z₀ ${RF.trimFixed(r.z0, 4)} Ω`;
+      const zLine = `Port Z₀ ${RF.trimFixed(r.z0, 4)} Ω`;
       els.diffP1Dbm.textContent = port;
       els.diffP2Dbm.textContent = port;
       els.diffP1Z.textContent = zLine;
@@ -240,10 +357,11 @@
   function resultLine() {
     const r = state.result;
     if (!r) return "";
+    const dir = state.path === "rx" ? "DUT→VNA" : "VNA→DUT";
     if (r.drive === "se") {
-      return `SE | ${RF.formatDbm(r.dbm)} dBm | ${r.z0} Ω | ${RF.formatVoltage(r.vpp)} pk-pk`;
+      return `${dir} SE | ${RF.formatDbm(r.dbm)} dBm | port ${r.z0} Ω | ${RF.formatVoltage(r.vpp)} pk-pk`;
     }
-    return `DIFF | ${RF.formatDbm(r.dbmPort)} dBm/port | Z0 ${r.z0} Ω | ${RF.formatVoltage(r.vppDiff)} VOPP | ${RF.formatVoltage(r.vppSe)} / line`;
+    return `${dir} DIFF | ${RF.formatDbm(r.dbmPort)} dBm/port | port ${r.z0} Ω | ${RF.formatVoltage(r.vppDiff)} VOPP`;
   }
 
   function copyText(text, okMessage) {
@@ -275,6 +393,8 @@
 
   els.btnSe.addEventListener("click", function () { setDrive("se"); });
   els.btnDiff.addEventListener("click", function () { setDrive("diff"); });
+  els.btnSrc.addEventListener("click", function () { state.path = "src"; compute(); });
+  els.btnRx.addEventListener("click", function () { state.path = "rx"; compute(); });
 
   els.dbm.addEventListener("input", function () {
     state.source = "dbm";

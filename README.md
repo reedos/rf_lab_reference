@@ -18,11 +18,12 @@ No build step. Open the HTML over HTTP (GitHub Pages, or any static server). Cla
 
 ## VOPP — dBm ↔ peak-to-peak
 
-VNA source power to voltage at the DUT, and back. Default unit is **volts**.
+dBm ↔ voltage at the reference plane. Default unit is **volts**.
 
-- **Single-ended:** one port into Z₀.
+- **Port Z₀** is the VNA / system reference impedance, not the DUT’s Z<sub>in</sub> or Z<sub>out</sub>.
+- **VNA → DUT:** dBm is *available* source power. VOPP is at the DUT only if the DUT is matched to port Z₀.
+- **DUT → VNA:** dBm is *delivered* receiver power. VOPP is at the VNA port. DUT Z<sub>out</sub> does not change that conversion.
 - **Differential:** two complementary ports. VOPP is V₊ − V₋, peak-to-peak.
-- dBm is **available power per port** — the VNA source-power setting.
 
 ```
 P_W        = 10^(dBm/10) / 1000

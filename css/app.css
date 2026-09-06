@@ -183,6 +183,10 @@ h1 {
   margin-bottom: 16px;
 }
 
+.board-toolbar + .board-toolbar {
+  margin-top: -8px;
+}
+
 .seg {
   display: inline-flex;
   flex-wrap: wrap;
