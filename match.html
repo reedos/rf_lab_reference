@@ -29,7 +29,7 @@
     <section class="lede">
       <p class="kicker">Small-signal</p>
       <h1>Return loss ↔ VSWR</h1>
-      <p>Type return loss, VSWR, |Γ|, or a real impedance versus Z<sub>0</sub>. The chart is mismatch of a real Z against the reference — default 50 Ω.</p>
+      <p>S<sub>11</sub> in dB the way a VNA shows it (negative). Type S<sub>11</sub>, VSWR, |Γ|, or a real Z versus Z<sub>0</sub>.</p>
     </section>
 
     <section class="board" id="calc">
@@ -68,9 +68,9 @@
 
       <div class="fields">
         <div class="field compact" id="field-rl">
-          <div class="field-label"><span>Return loss</span><span>|S<sub>11</sub>|</span></div>
+          <div class="field-label"><span>S<sub>11</sub></span><span>return loss</span></div>
           <div class="field-row">
-            <input id="rl" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Return loss in dB">
+            <input id="rl" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-20" aria-label="S11 in dB">
             <span class="unit">dB</span>
           </div>
         </div>
@@ -100,7 +100,7 @@
       <div class="chart-wrap">
         <div class="chart-toolbar">
           <div class="seg" role="tablist" aria-label="Chart quantity">
-            <button type="button" class="seg-btn is-active" data-chart="rl">Return loss</button>
+            <button type="button" class="seg-btn is-active" data-chart="rl">S11</button>
             <button type="button" class="seg-btn" data-chart="vswr">VSWR</button>
             <button type="button" class="seg-btn" data-chart="ml">Mismatch loss</button>
           </div>
@@ -121,7 +121,7 @@
         <h2>Formulas</h2>
         <div class="formula">
           Γ = (Z − Z<sub>0</sub>) / (Z + Z<sub>0</sub>) &nbsp;(real Z)<br>
-          |Γ| = 10<sup>(−RL/20)</sup><br>
+          S<sub>11</sub>(dB) = 20 log<sub>10</sub>|Γ| &nbsp;(negative)<br>
           VSWR = (1+|Γ|) / (1−|Γ|)<br>
           Z<sub>high</sub> = Z<sub>0</sub>·VSWR &nbsp;·&nbsp; Z<sub>low</sub> = Z<sub>0</sub>/VSWR<br>
           ML = −10 log<sub>10</sub>(1 − |Γ|²)
@@ -131,8 +131,8 @@
       <section class="panel">
         <h2>Bench notes</h2>
         <ul>
-          <li>20 dB RL ≈ VSWR 1.22. Fine for most small-signal S-params.</li>
-          <li>10 dB RL ≈ VSWR 1.92. Mismatch loss ~0.46 dB — already shows up in power accuracy.</li>
+          <li>−20 dB S<sub>11</sub> ≈ VSWR 1.22. Fine for most small-signal S-params.</li>
+          <li>−10 dB S<sub>11</sub> ≈ VSWR 1.92. Mismatch loss ~0.46 dB — already shows up in power accuracy.</li>
           <li>A 6 dB pad on a badly matched DUT both protects the VNA and improves apparent match.</li>
           <li>Source match and load match both eat into the uncertainty of a power measurement.</li>
         </ul>
@@ -146,14 +146,14 @@
       </div>
       <table class="thumbs">
         <thead>
-          <tr><th>RL (dB)</th><th>VSWR</th><th>|Γ|</th><th>ML (dB)</th></tr>
+          <tr><th>S<sub>11</sub> (dB)</th><th>VSWR</th><th>|Γ|</th><th>ML (dB)</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">6</td><td class="num">3.01</td><td class="num">0.501</td><td class="num">1.256</td></tr>
-          <tr><td class="num">10</td><td class="num">1.925</td><td class="num">0.316</td><td class="num">0.458</td></tr>
-          <tr><td class="num">15</td><td class="num">1.433</td><td class="num">0.178</td><td class="num">0.140</td></tr>
-          <tr><td class="num">20</td><td class="num">1.222</td><td class="num">0.100</td><td class="num">0.044</td></tr>
-          <tr><td class="num">30</td><td class="num">1.065</td><td class="num">0.032</td><td class="num">0.004</td></tr>
+          <tr><td class="num">−6</td><td class="num">3.01</td><td class="num">0.501</td><td class="num">1.256</td></tr>
+          <tr><td class="num">−10</td><td class="num">1.925</td><td class="num">0.316</td><td class="num">0.458</td></tr>
+          <tr><td class="num">−15</td><td class="num">1.433</td><td class="num">0.178</td><td class="num">0.140</td></tr>
+          <tr><td class="num">−20</td><td class="num">1.222</td><td class="num">0.100</td><td class="num">0.044</td></tr>
+          <tr><td class="num">−30</td><td class="num">1.065</td><td class="num">0.032</td><td class="num">0.004</td></tr>
         </tbody>
       </table>
     </section>
@@ -161,6 +161,6 @@
   </div>
   <div class="toast" id="toast" role="status"></div>
   <script src="js/rf.js?v=4"></script>
-  <script src="js/match.js?v=4"></script>
+  <script src="js/match.js?v=5"></script>
 </body>
 </html>

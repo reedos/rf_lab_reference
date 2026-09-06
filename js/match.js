@@ -62,7 +62,7 @@
     else if (state.source === "vswr") q.set("vswr", String(state.vswr));
     else if (state.source === "gamma") q.set("g", String(state.gamma));
     else if (state.source === "mloss") q.set("ml", String(state.mloss));
-    else q.set("rl", String(state.rl));
+    else q.set("rl", String(-Math.abs(state.rl)));
     window.history.replaceState(null, "", `${window.location.pathname}?${q}`);
   }
 
@@ -78,13 +78,13 @@
   function yValue(m) {
     if (state.chart === "vswr") return m.vswr;
     if (state.chart === "ml") return m.mloss;
-    return m.rl;
+    return Number.isFinite(m.rl) ? -m.rl : -Infinity;
   }
 
   function yRange() {
     if (state.chart === "vswr") return { min: 1, max: 10, log: false, nice: [1, 2, 3, 5, 10] };
     if (state.chart === "ml") return { min: 0, max: 3, log: false, nice: [0, 0.5, 1, 2, 3] };
-    return { min: 0, max: 40, log: false, nice: [0, 10, 20, 30, 40] };
+    return { min: -40, max: 0, log: false, nice: [0, -10, -20, -30, -40] };
   }
 
   function xToSvg(z, zMin, zMax) {
@@ -112,13 +112,19 @@
     const grid = "rgba(255,255,255,0.08)";
     const muted = "#8b929e";
     const n = 96;
-    const pts = [];
+    const zs = [];
     for (let i = 0; i < n; i++) {
-      const z = Math.exp(Math.log(zMin) + (Math.log(zMax) - Math.log(zMin)) * i / (n - 1));
+      zs.push(Math.exp(Math.log(zMin) + (Math.log(zMax) - Math.log(zMin)) * i / (n - 1)));
+    }
+    zs.push(z0);
+    zs.sort(function (a, b) { return a - b; });
+    const pts = [];
+    for (let i = 0; i < zs.length; i++) {
+      const z = zs[i];
       const g = Math.abs(RF.reflection(z, z0));
       const m = RF.matchFromGamma(g);
-      const yv = yValue(m);
-      if (!Number.isFinite(yv)) continue;
+      let yv = yValue(m);
+      if (!Number.isFinite(yv)) yv = range.min;
       pts.push([xToSvg(z, zMin, zMax), yToSvg(yv, range)]);
     }
     const d = pts.map(function (p, i) {
@@ -152,7 +158,7 @@
         <circle cx="${xm}" cy="${ym}" r="5" fill="${accent}"/>`;
     }
 
-    const yTitle = state.chart === "vswr" ? "VSWR" : state.chart === "ml" ? "ML dB" : "RL dB";
+    const yTitle = state.chart === "vswr" ? "VSWR" : state.chart === "ml" ? "ML dB" : "S11 dB";
     els.chart.innerHTML = `
       <rect x="${PLOT.left}" y="${PLOT.top}" width="${PLOT.width}" height="${PLOT.height}" fill="none" stroke="${grid}"/>
       ${gridXml}
@@ -172,7 +178,7 @@
       const z = RF.parseNumber(els.z.value);
       state.z = z;
       if (z > 0 && z0 > 0) gamma = Math.abs(RF.reflection(z, z0));
-    } else if (state.source === "rl") gamma = RF.gammaFromRl(state.rl);
+    } else if (state.source === "rl") gamma = RF.gammaFromRl(Math.abs(state.rl));
     else if (state.source === "vswr") gamma = RF.gammaFromVswr(state.vswr);
     else if (state.source === "gamma") gamma = state.gamma;
     else gamma = RF.gammaFromMismatchLoss(state.mloss);
@@ -190,7 +196,7 @@
 
     if (!(z0 > 0) || !Number.isFinite(gamma) || gamma < 0) {
       state.result = null;
-      els.metrics.innerHTML = metric("Status", "Enter Z, RL, VSWR, |Γ|, or mismatch loss");
+      els.metrics.innerHTML = metric("Status", "Enter Z, S11, VSWR, |Γ|, or mismatch loss");
       drawChart(z0 > 0 ? z0 : 50, NaN, NaN);
       return;
     }
@@ -211,7 +217,7 @@
     }
 
     if (document.activeElement !== els.rl) {
-      els.rl.value = Number.isFinite(m.rl) ? RF.trimFixed(m.rl, 2) : "∞";
+      els.rl.value = Number.isFinite(m.rl) ? RF.trimFixed(-m.rl, 2) : "-∞";
     }
     if (document.activeElement !== els.vswr) {
       els.vswr.value = Number.isFinite(m.vswr) ? RF.trimFixed(m.vswr, 3) : "∞";
@@ -308,7 +314,7 @@
     const m = state.result;
     if (!m) return;
     copyText(
-      `Z ${RF.trimFixed(state.z, 3)} Ω vs Z0 ${RF.trimFixed(state.z0, 3)} Ω | RL ${Number.isFinite(m.rl) ? m.rl.toFixed(2) : "∞"} dB | VSWR ${RF.formatVswr(m.vswr)} | Γ ${RF.trimFixed(m.gamma, 4)}`,
+      `Z ${RF.trimFixed(state.z, 3)} Ω vs Z0 ${RF.trimFixed(state.z0, 3)} Ω | S11 ${Number.isFinite(m.rl) ? (-m.rl).toFixed(2) : "-∞"} dB | VSWR ${RF.formatVswr(m.vswr)} | Γ ${RF.trimFixed(m.gamma, 4)}`,
       "Result copied"
     );
   });
