@@ -23,7 +23,19 @@
     copyLink: document.getElementById("copy-link"),
     toast: document.getElementById("toast"),
     dbmDec: document.getElementById("dbm-dec"),
-    dbmInc: document.getElementById("dbm-inc")
+    dbmInc: document.getElementById("dbm-inc"),
+    schematicSe: document.getElementById("schematic-se"),
+    schematicDiff: document.getElementById("schematic-diff"),
+    seLineDbm: document.getElementById("se-line-dbm"),
+    seLineZ: document.getElementById("se-line-z"),
+    seNodeVopp: document.getElementById("se-node-vopp"),
+    seNodePower: document.getElementById("se-node-power"),
+    diffP1Dbm: document.getElementById("diff-p1-dbm"),
+    diffP2Dbm: document.getElementById("diff-p2-dbm"),
+    diffP1Z: document.getElementById("diff-p1-z"),
+    diffP2Z: document.getElementById("diff-p2-z"),
+    diffNodeVopp: document.getElementById("diff-node-vopp"),
+    diffNodeZ: document.getElementById("diff-node-z")
   };
 
   const state = {
@@ -119,8 +131,14 @@
     els.btnSe.setAttribute("aria-selected", state.drive === "se" ? "true" : "false");
     els.btnDiff.setAttribute("aria-selected", state.drive === "diff" ? "true" : "false");
 
-    els.dbmScope.textContent = state.drive === "diff" ? "per port" : "into Z₀";
-    els.voppLabel.textContent = state.drive === "diff" ? "VOPP (diff pk-pk)" : "VOPP (SE pk-pk)";
+    const isDiff = state.drive === "diff";
+    els.schematicSe.hidden = isDiff;
+    els.schematicDiff.hidden = !isDiff;
+    els.schematicSe.classList.toggle("is-off", isDiff);
+    els.schematicDiff.classList.toggle("is-off", !isDiff);
+
+    els.dbmScope.textContent = isDiff ? "per port" : "into Z₀";
+    els.voppLabel.textContent = isDiff ? "VOPP (diff pk-pk)" : "VOPP (SE pk-pk)";
 
     els.voppUnit.value = state.unit;
     els.z0.value = Number.isFinite(state.z0) ? String(state.z0) : els.z0.value;
@@ -154,6 +172,10 @@
         metric("I<sub>rms</sub>", RF.formatCurrent(r.irms)),
         metric("Power", RF.formatPowerWatts(r.watts))
       ].join("");
+      els.seLineDbm.textContent = `${RF.formatDbm(r.dbm)} dBm`;
+      els.seLineZ.textContent = `Z₀ ${RF.trimFixed(r.z0, 4)} Ω · matched`;
+      els.seNodeVopp.textContent = RF.formatVoltage(r.vpp);
+      els.seNodePower.textContent = RF.formatPowerWatts(r.watts);
     } else {
       els.metrics.innerHTML = [
         metric("VOPP / line", RF.formatVoltage(r.vppSe)),
@@ -165,6 +187,14 @@
         metric("Z<sub>diff</sub>", `${RF.trimFixed(r.zDiff, 4)} Ω`),
         metric("V<sub>pk</sub> diff", RF.formatVoltage(r.vpkDiff))
       ].join("");
+      const port = `${RF.formatDbm(r.dbmPort)} dBm`;
+      const zLine = `Z₀ ${RF.trimFixed(r.z0, 4)} Ω`;
+      els.diffP1Dbm.textContent = port;
+      els.diffP2Dbm.textContent = port;
+      els.diffP1Z.textContent = zLine;
+      els.diffP2Z.textContent = zLine;
+      els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
+      els.diffNodeZ.innerHTML = `Z<sub>diff</sub> ${RF.trimFixed(r.zDiff, 4)} Ω`;
     }
     renderTable();
   }
