@@ -332,7 +332,7 @@
         metric("V<sub>oc</sub> pk-pk", RF.formatVoltage(r.vocVpp))
       ].join("");
       els.seLineDbm.textContent = `${RF.formatDbm(r.dbm)} dBm`;
-      els.seLineZ.textContent = `ZS ${RF.trimFixed(r.zS, 4)} Ω → ZL ${RF.trimFixed(r.zL, 4)} Ω`;
+      els.seLineZ.innerHTML = `Z<sub>S</sub> ${RF.trimFixed(r.zS, 4)} Ω → Z<sub>L</sub> ${RF.trimFixed(r.zL, 4)} Ω`;
       els.seNodeVopp.textContent = RF.formatVoltage(voppShow);
       els.seNodePower.textContent = RF.formatPowerWatts(state.path === "rx" ? r.wattsDelivered : r.wattsAvailable);
     } else {
@@ -347,8 +347,8 @@
       const port = `${RF.formatDbm(r.dbm)} dBm`;
       els.diffP1Dbm.textContent = port;
       els.diffP2Dbm.textContent = port;
-      els.diffP1Z.textContent = `Z<sub>S</sub> ${RF.trimFixed(r.zS, 4)} Ω`;
-      els.diffP2Z.textContent = `Z<sub>L</sub> ${RF.trimFixed(r.zL, 4)} Ω`;
+      els.diffP1Z.innerHTML = `Z<sub>S</sub> ${RF.trimFixed(r.zS, 4)} Ω`;
+      els.diffP2Z.innerHTML = `Z<sub>L</sub> ${RF.trimFixed(r.zL, 4)} Ω`;
       els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
       els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.trimFixed(r.zDiffDut, 4)} Ω`;
     }
