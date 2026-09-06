@@ -277,12 +277,13 @@ h1 {
 
 .chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .chip {
-  min-width: 42px;
-  padding: 7px 10px;
+  min-width: 36px;
+  padding: 7px 8px;
   background: var(--bg-well);
   border: 1px solid var(--line);
   color: var(--muted);
