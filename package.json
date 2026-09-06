@@ -1,5 +1,5 @@
 {
-  "name": "rf_lab",
+  "name": "rf_lab_reference",
   "private": true,
   "description": "Quick RF lab reference: dBm ↔ VOPP, match, large-signal, delay.",
   "scripts": {

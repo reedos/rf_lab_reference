@@ -1,9 +1,9 @@
-# rf_lab
+# RF Lab Reference
 
 Quick RF lab reference. Static pages for a phone or tablet next to a VNA.
 
-- Repo: https://github.com/reedos/rf_lab
-- Live: https://reedos.github.io/rf_lab/
+- Repo: https://github.com/reedos/rf_lab_reference
+- Live: https://reedos.github.io/rf_lab_reference/
 
 No build step. Classic scripts, no bundler.
 
@@ -11,10 +11,10 @@ No build step. Classic scripts, no bundler.
 
 | Page | Use at the bench |
 | --- | --- |
-| [VOPP](https://reedos.github.io/rf_lab/) | CW dBm ↔ peak-to-peak voltage, single-ended and true differential |
-| [Match](https://reedos.github.io/rf_lab/match.html) | Return loss ↔ VSWR ↔ \|Γ\| ↔ mismatch loss vs real Z |
-| [Large-signal](https://reedos.github.io/rf_lab/large-signal.html) | Two-tone envelope, IMD3 / IP3, P1dB, THD |
-| [Delay](https://reedos.github.io/rf_lab/delay.html) | Wavelength, time delay, electrical degrees |
+| [VOPP](https://reedos.github.io/rf_lab_reference/) | CW dBm ↔ peak-to-peak voltage, single-ended and true differential |
+| [Match](https://reedos.github.io/rf_lab_reference/match.html) | Return loss ↔ VSWR ↔ \|Γ\| ↔ mismatch loss vs real Z |
+| [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, IMD3 / IP3, P1dB, THD |
+| [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, time delay, electrical degrees |
 
 ## VOPP — dBm ↔ peak-to-peak
 

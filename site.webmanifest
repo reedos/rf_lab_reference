@@ -1,5 +1,5 @@
 {
-  "name": "rf_lab",
+  "name": "RF Lab Reference",
   "short_name": "rf_lab",
   "description": "VNA dBm to peak-to-peak voltage, single-ended and differential.",
   "start_url": "./",
