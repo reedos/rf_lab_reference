@@ -99,6 +99,34 @@ eq(RF.parseNumber("0,2"), 0.2, "parse comma decimal");
 eq(Number.isNaN(RF.parseNumber("")), true, "parse empty");
 eq(Number.isNaN(RF.parseNumber("-")), true, "parse lone minus");
 
+// Unmatched ZVNA / ZDUT
+const m50 = RF.fromDbmPlane(0, 50, 50, "se", "src");
+approx(m50.vppSe, 0.6324555320336759, 1e-12, "matched src Vpp");
+approx(m50.dbmAvailable, 0, 1e-12, "matched available");
+approx(m50.dbmDelivered, 0, 1e-12, "matched delivered");
+approx(m50.gamma, 0, 1e-12, "matched Γ");
+
+const m100 = RF.fromDbmPlane(0, 50, 100, "se", "src");
+approx(m100.gamma, 1 / 3, 1e-12, "50→100 Γ");
+approx(m100.vrmsSe, Math.sqrt(0.05) * (4 / 3), 1e-12, "50→100 Vrms");
+approx(m100.dbmDelivered, 10 * Math.log10(8 / 9), 1e-12, "50→100 delivered");
+
+const back = RF.fromVoppPlane(m100.vppSe, 50, 100, "se", "src");
+approx(back.dbmAvailable, 0, 1e-12, "VOPP → available dBm unmatched");
+
+const rx = RF.fromDbmPlane(0, 50, 100, "se", "rx");
+approx(rx.vppSe, 0.6324555320336759, 1e-12, "rx delivered into 50 Ω Vpp");
+approx(rx.dbmDelivered, 0, 1e-12, "rx primary is delivered");
+approx(rx.gamma, (50 - 100) / 150, 1e-12, "rx Γ at VNA load");
+
+const rxV = RF.fromVoppPlane(0.6324555320336759, 50, 100, "se", "rx");
+approx(rxV.dbmDelivered, 0, 1e-12, "VOPP → delivered dBm into VNA");
+
+const dsrc = RF.fromDbmPlane(0, 50, 50, "diff", "src");
+approx(dsrc.vppDiff, 2 * 0.6324555320336759, 1e-12, "diff matched VOPP");
+const dback = RF.fromVoppPlane(dsrc.vppDiff, 50, 50, "diff", "src");
+approx(dback.dbmPort, 0, 1e-12, "diff VOPP → dBm");
+
 // Match / VSWR
 const m20 = RF.matchFromGamma(RF.gammaFromRl(20));
 approx(m20.gamma, 0.1, 1e-12, "RL 20 dB → |Γ| = 0.1");

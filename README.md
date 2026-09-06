@@ -20,10 +20,10 @@ No build step. Open the HTML over HTTP (GitHub Pages, or any static server). Cla
 
 dBm ↔ voltage at the reference plane. Default unit is **volts**.
 
-- **Port Z₀** is the VNA / system reference impedance, not the DUT’s Z<sub>in</sub> or Z<sub>out</sub>.
-- **VNA → DUT:** dBm is *available* source power. VOPP is at the DUT only if the DUT is matched to port Z₀.
-- **DUT → VNA:** dBm is *delivered* receiver power. VOPP is at the VNA port. DUT Z<sub>out</sub> does not change that conversion.
-- **Differential:** two complementary ports. VOPP is V₊ − V₋, peak-to-peak.
+- **Z<sub>VNA</sub>** and **Z<sub>DUT</sub>** are independent (per side if differential).
+- Type **dBm or VOPP** — the other field updates.
+- **VNA → DUT:** dBm is *available* source power. VOPP is the loaded voltage at the DUT.
+- **DUT → VNA:** dBm is *delivered* receiver power. VOPP is at the VNA port.
 
 ```
 P_W        = 10^(dBm/10) / 1000

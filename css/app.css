@@ -207,6 +207,9 @@ h1 {
   padding: 8px 14px;
   border-radius: 999px;
   cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .seg-btn.is-active {
@@ -219,6 +222,38 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+
+.z-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.z-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.node-z {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .z-pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 .z-field {

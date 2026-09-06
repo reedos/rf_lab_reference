@@ -118,7 +118,8 @@
   }
 
   function voppOf(result) {
-    return result.drive === "diff" ? result.vppDiff : result.vpp;
+    if (result.drive === "diff") return result.vppDiff;
+    return result.vpp != null ? result.vpp : result.vppSe;
   }
 
   function parseNumber(raw) {
@@ -197,6 +198,89 @@
     if (unit === "mV") return value / 1000;
     if (unit === "µV" || unit === "uV") return value / 1e6;
     return value;
+  }
+
+  function reflection(zL, zS) {
+    if (!(zL > 0) || !(zS > 0)) return NaN;
+    return (zL - zS) / (zL + zS);
+  }
+
+  function vrmsAtLoadFromAvailable(pavs, zS, zL) {
+    if (!(pavs >= 0) || !(zS > 0) || !(zL > 0)) return NaN;
+    const voc = 2 * Math.sqrt(pavs * zS);
+    return (voc * zL) / (zS + zL);
+  }
+
+  function availableFromVrmsAtLoad(vrms, zS, zL) {
+    if (!(zS > 0) || !(zL > 0) || !Number.isFinite(vrms)) return NaN;
+    const voc = (vrms * (zS + zL)) / zL;
+    return (voc * voc) / (4 * zS);
+  }
+
+  function zsZl(path, zvna, zdut) {
+    if (path === "rx") return { zS: zdut, zL: zvna };
+    return { zS: zvna, zL: zdut };
+  }
+
+  function packInterface(vrmsSe, zvna, zdut, path, drive) {
+    const zz = zsZl(path, zvna, zdut);
+    const gamma = reflection(zz.zL, zz.zS);
+    const pDel = vrmsToWatts(vrmsSe, zz.zL);
+    const pAvs = availableFromVrmsAtLoad(vrmsSe, zz.zS, zz.zL);
+    const vppSe = vrmsToVpp(vrmsSe);
+    const vpkSe = vrmsToVpk(vrmsSe);
+    const vocRms = vrmsSe * (zz.zS + zz.zL) / zz.zL;
+    const primaryWatts = path === "rx" ? pDel : pAvs;
+    const base = {
+      path,
+      drive,
+      zvna,
+      zdut,
+      zS: zz.zS,
+      zL: zz.zL,
+      gamma,
+      wattsAvailable: pAvs,
+      wattsDelivered: pDel,
+      dbmAvailable: wattsToDbm(pAvs),
+      dbmDelivered: wattsToDbm(pDel),
+      dbm: wattsToDbm(primaryWatts),
+      vrmsSe,
+      vpkSe,
+      vppSe,
+      vocRms,
+      vocVpp: vrmsToVpp(vocRms),
+      irms: vrmsSe / zz.zL
+    };
+    if (drive === "diff") {
+      return Object.assign(base, {
+        dbmPort: base.dbm,
+        dbmTotalAvailable: wattsToDbm(2 * pAvs),
+        dbmTotalDelivered: wattsToDbm(2 * pDel),
+        vrmsDiff: 2 * vrmsSe,
+        vpkDiff: 2 * vpkSe,
+        vppDiff: 2 * vppSe,
+        zDiffDut: 2 * zdut,
+        zDiffVna: 2 * zvna
+      });
+    }
+    return base;
+  }
+
+  function fromDbmPlane(dbm, zvna, zdut, drive, path) {
+    if (!(zvna > 0) || !(zdut > 0) || !Number.isFinite(dbm)) return null;
+    const zz = zsZl(path, zvna, zdut);
+    const watts = dbmToWatts(dbm);
+    const vrmsSe = path === "rx"
+      ? wattsToVrms(watts, zz.zL)
+      : vrmsAtLoadFromAvailable(watts, zz.zS, zz.zL);
+    return packInterface(vrmsSe, zvna, zdut, path, drive === "diff" ? "diff" : "se");
+  }
+
+  function fromVoppPlane(vopp, zvna, zdut, drive, path) {
+    if (!(zvna > 0) || !(zdut > 0) || !(vopp >= 0)) return null;
+    const vppSe = drive === "diff" ? vopp / 2 : vopp;
+    const vrmsSe = vppToVrms(vppSe);
+    return packInterface(vrmsSe, zvna, zdut, path, drive === "diff" ? "diff" : "se");
   }
 
   function gammaFromRl(rl) {
@@ -409,6 +493,11 @@
     formatCurrent,
     voltsToUnit,
     unitToVolts,
+    reflection,
+    vrmsAtLoadFromAvailable,
+    availableFromVrmsAtLoad,
+    fromDbmPlane,
+    fromVoppPlane,
     gammaFromRl,
     rlFromGamma,
     vswrFromGamma,

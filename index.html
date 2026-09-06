@@ -31,22 +31,41 @@
     <section class="lede">
       <p class="kicker">VNA bench</p>
       <h1>dBm ↔ VOPP</h1>
-      <p>dBm ↔ peak-to-peak voltage at the reference plane. Z<sub>0</sub> is the <em>VNA port</em> impedance, not the DUT.</p>
+      <p>Type dBm or VOPP — the other updates. ZVNA and ZDUT are independent for both directions.</p>
     </section>
 
     <section class="board" id="calc">
       <div class="board-toolbar">
         <div class="seg" role="tablist" aria-label="Signal path">
-          <button type="button" class="seg-btn is-active" id="btn-src" aria-selected="true">VNA → DUT</button>
-          <button type="button" class="seg-btn" id="btn-rx" aria-selected="false">DUT → VNA</button>
+          <button type="button" class="seg-btn is-active" id="btn-src" data-path="src" aria-selected="true">VNA → DUT</button>
+          <button type="button" class="seg-btn" id="btn-rx" data-path="rx" aria-selected="false">DUT → VNA</button>
         </div>
-        <div class="z-ctrl">
+        <div class="seg" role="tablist" aria-label="Drive mode">
+          <button type="button" class="seg-btn is-active" id="btn-se" data-drive="se" aria-selected="true">Single-ended</button>
+          <button type="button" class="seg-btn" id="btn-diff" data-drive="diff" aria-selected="false">Differential</button>
+        </div>
+      </div>
+
+      <div class="z-pair">
+        <div class="z-block">
           <label class="z-field">
-            <span>Port Z<sub>0</sub></span>
-            <input id="z0" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="VNA port impedance in ohms">
+            <span>Z<sub>VNA</sub></span>
+            <input id="zvna" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="VNA port impedance">
             <span>Ω</span>
           </label>
-          <div class="chips" role="group" aria-label="Impedance presets">
+          <div class="chips" data-target="zvna" role="group" aria-label="VNA impedance presets">
+            <button type="button" class="chip is-active" data-z="50">50</button>
+            <button type="button" class="chip" data-z="75">75</button>
+            <button type="button" class="chip" data-z="100">100</button>
+          </div>
+        </div>
+        <div class="z-block">
+          <label class="z-field">
+            <span>Z<sub>DUT</sub></span>
+            <input id="zdut" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="DUT impedance">
+            <span>Ω</span>
+          </label>
+          <div class="chips" data-target="zdut" role="group" aria-label="DUT impedance presets">
             <button type="button" class="chip is-active" data-z="50">50</button>
             <button type="button" class="chip" data-z="75">75</button>
             <button type="button" class="chip" data-z="100">100</button>
@@ -54,16 +73,9 @@
         </div>
       </div>
 
-      <div class="board-toolbar">
-        <div class="seg" role="tablist" aria-label="Drive mode">
-          <button type="button" class="seg-btn is-active" id="btn-se" role="tab" aria-selected="true" data-drive="se">Single-ended</button>
-          <button type="button" class="seg-btn" id="btn-diff" role="tab" aria-selected="false" data-drive="diff">Differential</button>
-        </div>
-      </div>
-
       <div class="schematic-stage">
         <figure class="schematic" id="schematic-se" aria-label="Single-ended drive block diagram">
-          <figcaption class="schematic-cap" id="se-cap">VNA drives DUT · matched to port Z₀</figcaption>
+          <figcaption class="schematic-cap" id="se-cap">VNA drives DUT</figcaption>
           <div class="blk blk-se">
             <div class="blk-shell src" aria-hidden="true"></div>
             <div class="blk-shell dut" aria-hidden="true"></div>
@@ -72,11 +84,13 @@
               <span class="node-kicker" id="se-src-kicker">Source</span>
               <strong class="node-title" id="se-src-title">VNA</strong>
               <span class="node-sub" id="se-src-sub">stimulus</span>
+              <span class="node-z" id="se-src-z">Z<sub>VNA</sub> 50 Ω</span>
             </div>
             <div class="blk-head dut-head">
               <span class="node-kicker" id="se-load-kicker">Load</span>
               <strong class="node-title" id="se-load-title">DUT</strong>
               <span class="node-sub" id="se-load-sub">SE input</span>
+              <span class="node-z" id="se-load-z">Z<sub>DUT</sub> 50 Ω</span>
             </div>
 
             <div class="blk-port src-port">
@@ -124,12 +138,14 @@
               <span class="node-kicker" id="diff-src-kicker">Source</span>
               <strong class="node-title" id="diff-src-title">VNA</strong>
               <span class="node-sub" id="diff-src-sub">balanced stimulus</span>
+              <span class="node-z" id="diff-src-z">Z<sub>VNA</sub> 50 Ω</span>
             </div>
             <div class="blk-midcap">180°</div>
             <div class="blk-head dut-head">
               <span class="node-kicker" id="diff-load-kicker">Load</span>
               <strong class="node-title" id="diff-load-title">DUT</strong>
               <span class="node-sub" id="diff-load-sub">diff input</span>
+              <span class="node-z" id="diff-load-z">Z<sub>DUT</sub> 50 Ω</span>
             </div>
 
             <div class="blk-port src-port plus">
@@ -195,7 +211,7 @@
         <div class="field" id="field-vopp">
           <div class="field-label">
             <span id="vopp-label">VOPP (SE pk-pk)</span>
-            <span>at DUT if matched</span>
+            <span id="vopp-hint">type to solve dBm</span>
           </div>
           <div class="field-row">
             <input id="vopp" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Peak-to-peak voltage">
@@ -219,21 +235,22 @@
       <section class="panel">
         <h2>Assumptions</h2>
         <ul>
-          <li><strong>Port Z<sub>0</sub></strong> is the VNA / system reference impedance (almost always 50 Ω). It is not the DUT’s Z<sub>in</sub> or Z<sub>out</sub> unless those happen to equal Z<sub>0</sub>.</li>
-          <li><strong>VNA → DUT:</strong> dBm is <em>available</em> source power. VOPP is the voltage at the DUT only if the DUT is matched to port Z<sub>0</sub>.</li>
-          <li><strong>DUT → VNA:</strong> dBm is <em>delivered</em> power into the VNA receiver. VOPP is the voltage at that port. DUT Z<sub>out</sub> does not change this conversion — the receiver already absorbed P into Z<sub>0</sub>.</li>
-          <li>If the DUT is unmatched on stimulus, V<sub>DUT</sub> = 2 V<sub>inc</sub> Z<sub>L</sub> / (Z<sub>L</sub> + Z<sub>0</sub>). Not computed here.</li>
-          <li>Differential: equal amplitude, 180°. VOPP is V<sub>+</sub> − V<sub>−</sub>, peak-to-peak. Z<sub>diff</sub> = 2 · Z<sub>0</sub>.</li>
+          <li><strong>Z<sub>VNA</sub></strong> is the analyzer port impedance. <strong>Z<sub>DUT</sub></strong> is the DUT impedance at that plane (per side if differential).</li>
+          <li><strong>VNA → DUT:</strong> dBm is <em>available</em> source power. VOPP is the loaded voltage at the DUT. Type VOPP to get the VNA source setting.</li>
+          <li><strong>DUT → VNA:</strong> dBm is <em>delivered</em> receiver power. VOPP is the voltage at the VNA port (same node as the DUT output if connected directly). Type VOPP to get the receiver reading.</li>
+          <li>Real impedances. V<sub>load</sub> = 2√(P<sub>avs</sub> Z<sub>S</sub>) · Z<sub>L</sub> / (Z<sub>S</sub> + Z<sub>L</sub>).</li>
+          <li>Differential: complementary 180°. VOPP is V<sub>+</sub> − V<sub>−</sub>. Z<sub>diff</sub> = 2 · Z (per side).</li>
         </ul>
       </section>
       <section class="panel">
         <h2>Formulas</h2>
         <div class="formula">
-          P<sub>W</sub> = 10<sup>(dBm/10)</sup> / 1000<br>
-          V<sub>rms</sub> = √(P<sub>W</sub> · Z<sub>0,port</sub>)<br>
-          VOPP<sub>SE</sub> = <span class="sym">2√2</span> · V<sub>rms</sub><br>
-          VOPP<sub>diff</sub> = <span class="sym">2</span> · VOPP<sub>SE</sub><br>
-          Z<sub>diff</sub> = 2 · Z<sub>0</sub> &nbsp;·&nbsp; P<sub>total</sub> = 2 · P<sub>port</sub>
+          Γ = (Z<sub>L</sub> − Z<sub>S</sub>) / (Z<sub>L</sub> + Z<sub>S</sub>)<br>
+          V<sub>oc</sub> = 2 √(P<sub>avs</sub> · Z<sub>S</sub>)<br>
+          V<sub>rms</sub> = V<sub>oc</sub> · Z<sub>L</sub> / (Z<sub>S</sub> + Z<sub>L</sub>)<br>
+          VOPP = <span class="sym">2√2</span> · V<sub>rms</sub> &nbsp;(sine)<br>
+          VNA→DUT: Z<sub>S</sub>=Z<sub>VNA</sub>, Z<sub>L</sub>=Z<sub>DUT</sub>, dBm = P<sub>avs</sub><br>
+          DUT→VNA: Z<sub>S</sub>=Z<sub>DUT</sub>, Z<sub>L</sub>=Z<sub>VNA</sub>, dBm = P<sub>del</sub>
         </div>
         <p>Arrow up/down on dBm steps 1 dB. Hold Shift for 0.1 dB.</p>
       </section>
@@ -250,7 +267,7 @@
             <th>dBm / port</th>
             <th>SE VOPP</th>
             <th>Diff VOPP</th>
-            <th>P / port</th>
+            <th>Delivered</th>
           </tr>
         </thead>
         <tbody id="ref-body"></tbody>
@@ -261,7 +278,7 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/rf.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/rf.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

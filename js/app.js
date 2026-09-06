@@ -14,8 +14,8 @@
     voppLabel: document.getElementById("vopp-label"),
     fieldVopp: document.getElementById("field-vopp"),
     voppUnit: document.getElementById("vopp-unit"),
-    z0: document.getElementById("z0"),
-    chips: Array.prototype.slice.call(document.querySelectorAll(".chip")),
+    zvna: document.getElementById("zvna"),
+    zdut: document.getElementById("zdut"),
     metrics: document.getElementById("metrics"),
     refBody: document.getElementById("ref-body"),
     refCaption: document.getElementById("ref-caption"),
@@ -47,7 +47,12 @@
     diffSrcP2: document.getElementById("diff-src-p2"),
     diffLoadP1: document.getElementById("diff-load-p1"),
     diffLoadP2: document.getElementById("diff-load-p2"),
-    voppHint: document.querySelector("#field-vopp .field-label span:last-child"),
+    voppHint: document.getElementById("vopp-hint"),
+    seSrcZ: document.getElementById("se-src-z"),
+    seLoadZ: document.getElementById("se-load-z"),
+    diffSrcZ: document.getElementById("diff-src-z"),
+    diffLoadZ: document.getElementById("diff-load-z"),
+    calc: document.getElementById("calc"),
     schematicSe: document.getElementById("schematic-se"),
     schematicDiff: document.getElementById("schematic-diff"),
     seLineDbm: document.getElementById("se-line-dbm"),
@@ -64,7 +69,7 @@
 
   const PATH_COPY = {
     src: {
-      seCap: "VNA drives DUT · matched to port Z₀",
+      seCap: "VNA drives DUT",
       seSrcKicker: "Source",
       seSrcTitle: "VNA",
       seSrcSub: "stimulus",
@@ -74,7 +79,7 @@
       seSrcPort: "Port 1",
       seLoadPort: "RF in",
       sePowerKicker: "Available",
-      seLineNote: "matched DUT",
+      seLineNote: "into DUT",
       diffCap: "VNA drives DUT · complementary 180°",
       diffSrcKicker: "Source",
       diffSrcTitle: "VNA",
@@ -89,7 +94,7 @@
       dbmLabel: "Source power",
       dbmScopeSe: "available",
       dbmScopeDiff: "per port, available",
-      voppHint: "at DUT if matched"
+      voppHint: "at DUT · type to solve dBm"
     },
     rx: {
       seCap: "DUT drives VNA · voltage at the receiver port",
@@ -102,7 +107,7 @@
       seSrcPort: "RF out",
       seLoadPort: "Port 1",
       sePowerKicker: "Delivered",
-      seLineNote: "VNA load",
+      seLineNote: "into VNA",
       diffCap: "DUT drives VNA · complementary 180°",
       diffSrcKicker: "Source",
       diffSrcTitle: "DUT",
@@ -117,7 +122,7 @@
       dbmLabel: "Receiver power",
       dbmScopeSe: "delivered",
       dbmScopeDiff: "per port, delivered",
-      voppHint: "at VNA port"
+      voppHint: "at VNA port · type to solve dBm"
     }
   };
 
@@ -127,7 +132,8 @@
     source: "dbm",
     dbm: 0,
     vopp: 0,
-    z0: 50,
+    zvna: 50,
+    zdut: 50,
     unit: "V",
     result: null
   };
@@ -140,8 +146,13 @@
     if (drive === "diff" || drive === "se") state.drive = drive;
     const path = q.get("dir");
     if (path === "rx" || path === "src") state.path = path;
+    const zp = RF.parseNumber(q.get("zp"));
+    const zd = RF.parseNumber(q.get("zd"));
     const z = RF.parseNumber(q.get("z"));
-    if (z > 0) state.z0 = z;
+    if (zp > 0) state.zvna = zp;
+    else if (z > 0) state.zvna = z;
+    if (zd > 0) state.zdut = zd;
+    else if (z > 0) state.zdut = z;
     const unit = q.get("u");
     if (unit === "V" || unit === "mV") state.unit = unit;
     const src = q.get("from");
@@ -160,7 +171,8 @@
     const q = new URLSearchParams();
     q.set("m", state.drive);
     q.set("dir", state.path);
-    q.set("z", String(state.z0));
+    q.set("zp", String(state.zvna));
+    q.set("zd", String(state.zdut));
     q.set("from", state.source);
     q.set("u", state.unit);
     if (state.source === "vopp") {
@@ -172,15 +184,19 @@
     window.history.replaceState(null, "", next);
   }
 
-  function currentZ() {
-    const z = RF.parseNumber(els.z0.value);
+  function readZ(el) {
+    const z = RF.parseNumber(el.value);
     return z > 0 ? z : NaN;
   }
 
+  function zLabel(name, ohms) {
+    return name + " " + RF.trimFixed(ohms, 4) + " Ω";
+  }
+
   function compute() {
-    const z0 = currentZ();
-    state.z0 = z0;
-    if (!(z0 > 0)) {
+    state.zvna = readZ(els.zvna);
+    state.zdut = readZ(els.zdut);
+    if (!(state.zvna > 0) || !(state.zdut > 0)) {
       state.result = null;
       render(false);
       return;
@@ -192,7 +208,7 @@
         render(false);
         return;
       }
-      state.result = RF.fromVopp(state.vopp, z0, state.drive);
+      state.result = RF.fromVoppPlane(state.vopp, state.zvna, state.zdut, state.drive, state.path);
       state.dbm = RF.dbmOf(state.result);
     } else {
       if (!Number.isFinite(state.dbm)) {
@@ -200,8 +216,12 @@
         render(false);
         return;
       }
-      state.result = RF.fromDbm(state.dbm, z0, state.drive);
+      state.result = RF.fromDbmPlane(state.dbm, state.zvna, state.zdut, state.drive, state.path);
       state.vopp = RF.voppOf(state.result);
+    }
+    if (!state.result) {
+      render(false);
+      return;
     }
     render(true);
     writeQuery();
@@ -258,11 +278,29 @@
     if (els.voppHint) els.voppHint.textContent = copy.voppHint;
 
     els.voppUnit.value = state.unit;
-    els.z0.value = Number.isFinite(state.z0) ? String(state.z0) : els.z0.value;
+    if (document.activeElement !== els.zvna && Number.isFinite(state.zvna)) {
+      els.zvna.value = String(state.zvna);
+    }
+    if (document.activeElement !== els.zdut && Number.isFinite(state.zdut)) {
+      els.zdut.value = String(state.zdut);
+    }
 
-    els.chips.forEach(function (chip) {
-      chip.classList.toggle("is-active", Number(chip.getAttribute("data-z")) === state.z0);
+    document.querySelectorAll(".chips").forEach(function (group) {
+      const target = group.getAttribute("data-target");
+      const value = target === "zdut" ? state.zdut : state.zvna;
+      group.querySelectorAll(".chip").forEach(function (chip) {
+        chip.classList.toggle("is-active", Number(chip.getAttribute("data-z")) === value);
+      });
     });
+
+    const zpTxt = zLabel("Z<sub>VNA</sub>", state.zvna);
+    const zdTxt = zLabel("Z<sub>DUT</sub>", state.zdut);
+    const leftZ = state.path === "src" ? zpTxt : zdTxt;
+    const rightZ = state.path === "src" ? zdTxt : zpTxt;
+    if (els.seSrcZ) els.seSrcZ.innerHTML = leftZ;
+    if (els.seLoadZ) els.seLoadZ.innerHTML = rightZ;
+    if (els.diffSrcZ) els.diffSrcZ.innerHTML = leftZ;
+    if (els.diffLoadZ) els.diffLoadZ.innerHTML = rightZ;
 
     if (document.activeElement !== els.dbm) {
       els.dbm.value = ok ? RF.formatDbm(state.dbm, 2) : els.dbm.value;
@@ -277,57 +315,59 @@
 
     const r = state.result;
     if (!ok || !r) {
-      els.metrics.innerHTML = metric("Status", "Enter a valid power, voltage, and Z₀");
+      els.metrics.innerHTML = metric("Status", "Enter dBm or VOPP, plus Z<sub>VNA</sub> and Z<sub>DUT</sub>");
       renderTable();
       return;
     }
 
+    const voppShow = RF.voppOf(r);
+    const gammaTxt = Number.isFinite(r.gamma) ? RF.trimFixed(r.gamma, 3) : "—";
     if (r.drive === "se") {
       els.metrics.innerHTML = [
-        metric("V<sub>rms</sub>", RF.formatVoltage(r.vrms)),
-        metric("V<sub>pk</sub>", RF.formatVoltage(r.vpk)),
-        metric("I<sub>rms</sub>", RF.formatCurrent(r.irms)),
-        metric("Power", RF.formatPowerWatts(r.watts))
+        metric("V<sub>rms</sub> at load", RF.formatVoltage(r.vrmsSe)),
+        metric("V<sub>pk</sub> at load", RF.formatVoltage(r.vpkSe)),
+        metric("Available", `${RF.formatDbm(r.dbmAvailable)} dBm`),
+        metric("Delivered", `${RF.formatDbm(r.dbmDelivered)} dBm`),
+        metric("Γ", gammaTxt),
+        metric("V<sub>oc</sub> pk-pk", RF.formatVoltage(r.vocVpp))
       ].join("");
       els.seLineDbm.textContent = `${RF.formatDbm(r.dbm)} dBm`;
-      els.seLineZ.textContent = `Port Z₀ ${RF.trimFixed(r.z0, 4)} Ω · ${copy.seLineNote}`;
-      els.seNodeVopp.textContent = RF.formatVoltage(r.vpp);
-      els.seNodePower.textContent = RF.formatPowerWatts(r.watts);
+      els.seLineZ.textContent = `ZS ${RF.trimFixed(r.zS, 4)} Ω → ZL ${RF.trimFixed(r.zL, 4)} Ω`;
+      els.seNodeVopp.textContent = RF.formatVoltage(voppShow);
+      els.seNodePower.textContent = RF.formatPowerWatts(state.path === "rx" ? r.wattsDelivered : r.wattsAvailable);
     } else {
       els.metrics.innerHTML = [
         metric("VOPP / line", RF.formatVoltage(r.vppSe)),
         metric("V<sub>rms</sub> diff", RF.formatVoltage(r.vrmsDiff)),
-        metric("V<sub>rms</sub> / line", RF.formatVoltage(r.vrmsSe)),
-        metric("I<sub>rms</sub> / line", RF.formatCurrent(r.irmsSe)),
-        metric("P / port", `${RF.formatDbm(r.dbmPort)} dBm · ${RF.formatPowerWatts(r.wattsPort)}`),
-        metric("P total", `${RF.formatDbm(r.dbmTotal)} dBm · ${RF.formatPowerWatts(r.wattsTotal)}`),
-        metric("Z<sub>diff</sub>", `${RF.trimFixed(r.zDiff, 4)} Ω`),
-        metric("V<sub>pk</sub> diff", RF.formatVoltage(r.vpkDiff))
+        metric("Available / port", `${RF.formatDbm(r.dbmAvailable)} dBm`),
+        metric("Delivered / port", `${RF.formatDbm(r.dbmDelivered)} dBm`),
+        metric("Γ (per side)", gammaTxt),
+        metric("Z<sub>diff</sub> DUT", `${RF.trimFixed(r.zDiffDut, 4)} Ω`)
       ].join("");
-      const port = `${RF.formatDbm(r.dbmPort)} dBm`;
-      const zLine = `Port Z₀ ${RF.trimFixed(r.z0, 4)} Ω`;
+      const port = `${RF.formatDbm(r.dbm)} dBm`;
       els.diffP1Dbm.textContent = port;
       els.diffP2Dbm.textContent = port;
-      els.diffP1Z.textContent = zLine;
-      els.diffP2Z.textContent = zLine;
+      els.diffP1Z.textContent = `Z<sub>S</sub> ${RF.trimFixed(r.zS, 4)} Ω`;
+      els.diffP2Z.textContent = `Z<sub>L</sub> ${RF.trimFixed(r.zL, 4)} Ω`;
       els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
-      els.diffNodeZ.innerHTML = `Z<sub>diff</sub> ${RF.trimFixed(r.zDiff, 4)} Ω`;
+      els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.trimFixed(r.zDiffDut, 4)} Ω`;
     }
     renderTable();
   }
 
   function renderTable() {
-    const z0 = state.z0 > 0 ? state.z0 : 50;
-    els.refCaption.textContent = `${z0} Ω, CW sine`;
+    const zp = state.zvna > 0 ? state.zvna : 50;
+    const zd = state.zdut > 0 ? state.zdut : 50;
+    els.refCaption.textContent = `VNA→DUT, ZVNA ${zp} Ω, ZDUT ${zd} Ω`;
     els.refBody.innerHTML = CHEAT_DBM.map(function (dbm) {
-      const se = RF.seFromDbm(dbm, z0);
-      const diff = RF.diffFromPortDbm(dbm, z0);
+      const se = RF.fromDbmPlane(dbm, zp, zd, "se", "src");
+      const diff = RF.fromDbmPlane(dbm, zp, zd, "diff", "src");
       const sign = dbm > 0 ? `+${dbm}` : String(dbm);
       return `<tr>
         <td class="num">${sign}</td>
-        <td class="num">${RF.formatVoltage(se.vpp)}</td>
+        <td class="num">${RF.formatVoltage(se.vppSe)}</td>
         <td class="num">${RF.formatVoltage(diff.vppDiff)}</td>
-        <td class="num">${RF.formatPowerWatts(se.watts)}</td>
+        <td class="num">${RF.formatDbm(se.dbmDelivered)} dBm del</td>
       </tr>`;
     }).join("");
   }
@@ -359,9 +399,9 @@
     if (!r) return "";
     const dir = state.path === "rx" ? "DUT→VNA" : "VNA→DUT";
     if (r.drive === "se") {
-      return `${dir} SE | ${RF.formatDbm(r.dbm)} dBm | port ${r.z0} Ω | ${RF.formatVoltage(r.vpp)} pk-pk`;
+      return `${dir} SE | ${RF.formatDbm(r.dbm)} dBm | ZVNA ${r.zvna} Ω | ZDUT ${r.zdut} Ω | ${RF.formatVoltage(RF.voppOf(r))} pk-pk`;
     }
-    return `${dir} DIFF | ${RF.formatDbm(r.dbmPort)} dBm/port | port ${r.z0} Ω | ${RF.formatVoltage(r.vppDiff)} VOPP`;
+    return `${dir} DIFF | ${RF.formatDbm(r.dbmPort)} dBm/port | ZVNA ${r.zvna} Ω | ZDUT ${r.zdut} Ω | ${RF.formatVoltage(r.vppDiff)} VOPP`;
   }
 
   function copyText(text, okMessage) {
@@ -391,10 +431,20 @@
     document.body.removeChild(area);
   }
 
-  els.btnSe.addEventListener("click", function () { setDrive("se"); });
-  els.btnDiff.addEventListener("click", function () { setDrive("diff"); });
-  els.btnSrc.addEventListener("click", function () { state.path = "src"; compute(); });
-  els.btnRx.addEventListener("click", function () { state.path = "rx"; compute(); });
+  els.calc.addEventListener("click", function (event) {
+    const pathBtn = event.target.closest("[data-path]");
+    if (pathBtn && els.calc.contains(pathBtn)) {
+      event.preventDefault();
+      state.path = pathBtn.getAttribute("data-path");
+      compute();
+      return;
+    }
+    const driveBtn = event.target.closest("[data-drive]");
+    if (driveBtn && (driveBtn.id === "btn-se" || driveBtn.id === "btn-diff")) {
+      event.preventDefault();
+      setDrive(driveBtn.getAttribute("data-drive"));
+    }
+  });
 
   els.dbm.addEventListener("input", function () {
     state.source = "dbm";
@@ -430,16 +480,20 @@
     compute();
   });
 
-  els.z0.addEventListener("input", function () {
-    compute();
-  });
-  els.z0.addEventListener("focus", function (event) { event.target.select(); });
+  els.zvna.addEventListener("input", compute);
+  els.zdut.addEventListener("input", compute);
+  els.zvna.addEventListener("focus", function (event) { event.target.select(); });
+  els.zdut.addEventListener("focus", function (event) { event.target.select(); });
 
-  els.chips.forEach(function (chip) {
-    chip.addEventListener("click", function () {
-      els.z0.value = chip.getAttribute("data-z");
-      compute();
-    });
+  els.calc.addEventListener("click", function (event) {
+    const chip = event.target.closest(".chip[data-z]");
+    if (!chip) return;
+    const group = chip.parentElement;
+    const target = group && group.getAttribute("data-target");
+    const input = target === "zdut" ? els.zdut : target === "zvna" ? els.zvna : null;
+    if (!input) return;
+    input.value = chip.getAttribute("data-z");
+    compute();
   });
 
   els.dbmDec.addEventListener("click", function () { stepDbm(-1); });
@@ -457,7 +511,8 @@
   });
 
   readQuery();
-  els.z0.value = String(state.z0);
+  els.zvna.value = String(state.zvna);
+  els.zdut.value = String(state.zdut);
   els.voppUnit.value = state.unit;
   if (state.source === "dbm") {
     els.dbm.value = RF.formatDbm(state.dbm, 2);
