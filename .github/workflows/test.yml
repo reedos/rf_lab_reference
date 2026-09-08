@@ -20,3 +20,9 @@ jobs:
       - run: npm run test:browser
         env:
           BROWSERS: chromium,firefox
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure
+          path: tmp/screenshots/
+          if-no-files-found: ignore
