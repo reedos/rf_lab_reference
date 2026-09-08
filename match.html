@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
-  <meta name="description" content="Return loss, VSWR, reflection coefficient, and mismatch loss calculator for VNA work.">
-  <title>Match · RF Lab Reference</title>
+  <meta name="description" content="Complex impedance, reflection, and a Smith chart at the measurement reference plane.">
+  <title>Impedance &amp; match · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css"><link rel="stylesheet" href="css/workbench.css">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -23,144 +23,22 @@
         <a class="is-active" href="match.html">Match</a>
         <a href="large-signal.html">Large-signal</a>
         <a href="delay.html">Delay</a>
-      </nav>
+      <a href="chain.html">Power &amp; noise</a></nav>
     </header>
 
-    <section class="lede">
-      <p class="kicker">Small-signal</p>
-      <h1>Return loss ↔ VSWR</h1>
-      <p>S<sub>11</sub> in dB the way a VNA shows it (negative). Type S<sub>11</sub>, VSWR, |Γ|, or a real Z versus Z<sub>0</sub>.</p>
-    </section>
-
-    <section class="board" id="calc">
-      <div class="z-pair">
-        <div class="z-block">
-          <label class="z-field">
-            <span>Z<sub>0</sub></span>
-            <input id="z0" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="Reference impedance">
-            <span>Ω</span>
-          </label>
-          <div class="chips" data-target="z0" role="group" aria-label="Reference impedance presets">
-            <button type="button" class="chip" data-z="33">33</button>
-            <button type="button" class="chip" data-z="40">40</button>
-            <button type="button" class="chip" data-z="45">45</button>
-            <button type="button" class="chip is-active" data-z="50">50</button>
-            <button type="button" class="chip" data-z="75">75</button>
-            <button type="button" class="chip" data-z="100">100</button>
-          </div>
-        </div>
-        <div class="z-block">
-          <label class="z-field">
-            <span>Z real</span>
-            <input id="z" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="50" aria-label="Real load impedance">
-            <span>Ω</span>
-          </label>
-          <div class="chips" data-target="z" role="group" aria-label="Load impedance presets">
-            <button type="button" class="chip" data-z="33">33</button>
-            <button type="button" class="chip" data-z="40">40</button>
-            <button type="button" class="chip" data-z="45">45</button>
-            <button type="button" class="chip is-active" data-z="50">50</button>
-            <button type="button" class="chip" data-z="75">75</button>
-            <button type="button" class="chip" data-z="100">100</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="fields">
-        <div class="field compact" id="field-rl">
-          <div class="field-label"><span>S<sub>11</sub></span><span>return loss</span></div>
-          <div class="field-row">
-            <input id="rl" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-20" aria-label="S11 in dB">
-            <span class="unit">dB</span>
-          </div>
-        </div>
-        <div class="field compact" id="field-vswr">
-          <div class="field-label"><span>VSWR</span><span>:1</span></div>
-          <div class="field-row">
-            <input id="vswr" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="VSWR">
-            <span class="unit">:1</span>
-          </div>
-        </div>
-        <div class="field compact" id="field-gamma">
-          <div class="field-label"><span>|Γ|</span><span>linear</span></div>
-          <div class="field-row">
-            <input id="gamma" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Reflection coefficient magnitude">
-          </div>
-        </div>
-        <div class="field compact" id="field-mloss">
-          <div class="field-label"><span>Mismatch loss</span><span>delivered</span></div>
-          <div class="field-row">
-            <input id="mloss" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Mismatch loss in dB">
-            <span class="unit">dB</span>
-          </div>
-        </div>
-      </div>
-      <dl class="metrics" id="metrics" aria-live="polite"></dl>
-
-      <div class="chart-wrap">
-        <div class="chart-toolbar">
-          <div class="seg" role="tablist" aria-label="Chart quantity">
-            <button type="button" class="seg-btn is-active" data-chart="rl">S11</button>
-            <button type="button" class="seg-btn" data-chart="vswr">VSWR</button>
-            <button type="button" class="seg-btn" data-chart="ml">Mismatch loss</button>
-          </div>
-          <p class="chart-cap" id="chart-cap">vs real Z, Z<sub>0</sub> = 50 Ω</p>
-        </div>
-        <svg id="chart" viewBox="0 0 720 280" role="img" aria-label="Mismatch versus real impedance"></svg>
-        <p class="hint">Click the chart to set Z. A real impedance has two solutions for a given |Γ|: Z<sub>0</sub>·VSWR and Z<sub>0</sub>/VSWR. Reactance is not included.</p>
-      </div>
-
-      <div class="toolbar">
-        <button type="button" class="copy" id="copy-result">Copy result</button>
-        <button type="button" class="ghost" id="copy-link">Copy link</button>
-      </div>
-    </section>
-
-    <div class="layout">
-      <section class="panel">
-        <h2>Formulas</h2>
-        <div class="formula">
-          Γ = (Z − Z<sub>0</sub>) / (Z + Z<sub>0</sub>) &nbsp;(real Z)<br>
-          S<sub>11</sub>(dB) = 20 log<sub>10</sub>|Γ| &nbsp;(negative)<br>
-          VSWR = (1+|Γ|) / (1−|Γ|)<br>
-          Z<sub>high</sub> = Z<sub>0</sub>·VSWR &nbsp;·&nbsp; Z<sub>low</sub> = Z<sub>0</sub>/VSWR<br>
-          ML = −10 log<sub>10</sub>(1 − |Γ|²)
-        </div>
-        <p>For a balanced DUT, use mixed-mode S<sub>dd11</sub> the same way you would use S<sub>11</sub>.</p>
-      </section>
-      <section class="panel">
-        <h2>Bench notes</h2>
-        <ul>
-          <li>−20 dB S<sub>11</sub> ≈ VSWR 1.22. Fine for most small-signal S-params.</li>
-          <li>−10 dB S<sub>11</sub> ≈ VSWR 1.92. Mismatch loss ~0.46 dB — already shows up in power accuracy.</li>
-          <li>A 6 dB pad on a badly matched DUT both protects the VNA and improves apparent match.</li>
-          <li>Source match and load match both eat into the uncertainty of a power measurement.</li>
-        </ul>
-      </section>
-    </div>
-
-    <section class="ref">
-      <div class="ref-head">
-        <h2>Quick reference</h2>
-        <p>Passive one-port</p>
-      </div>
-      <table class="thumbs">
-        <thead>
-          <tr><th>S<sub>11</sub> (dB)</th><th>VSWR</th><th>|Γ|</th><th>ML (dB)</th></tr>
-        </thead>
-        <tbody>
-          <tr><td class="num">−6</td><td class="num">3.01</td><td class="num">0.501</td><td class="num">1.256</td></tr>
-          <tr><td class="num">−10</td><td class="num">1.925</td><td class="num">0.316</td><td class="num">0.458</td></tr>
-          <tr><td class="num">−15</td><td class="num">1.433</td><td class="num">0.178</td><td class="num">0.140</td></tr>
-          <tr><td class="num">−20</td><td class="num">1.222</td><td class="num">0.100</td><td class="num">0.044</td></tr>
-          <tr><td class="num">−30</td><td class="num">1.065</td><td class="num">0.032</td><td class="num">0.004</td></tr>
-        </tbody>
-      </table>
-    </section>
-    <p class="foot">Static page. Works offline once loaded.</p>
-  </div>
-  <div class="toast" id="toast" role="status"></div>
-  <script src="js/rf.js?v=4"></script>
-  <script src="js/match.js?v=5"></script>
-</body>
-</html>
+<section class="lede"><p class="kicker">Small-signal</p><h1>Impedance &amp; match</h1><p>Complex impedance, reflection, and a Smith chart at the measurement reference plane.</p></section>
+<section class="board work-board" id="calc">
+<div class="work-fields"><label>Reference Z₀ (Ω)<input id="z0" value="50" inputmode="decimal" autocomplete="off" aria-label="Reference Z₀ (Ω)"></label><label>Resistance R (Ω)<input id="z" value="50" inputmode="decimal" autocomplete="off" aria-label="Resistance R (Ω)"></label><label>Reactance X (Ω)<input id="x" value="0" inputmode="decimal" autocomplete="off" aria-label="Reactance X (Ω)"></label></div>
+<div class="match-controls" aria-label="Reference presets"><button class="chip" data-reference="33">Z₀ 33 Ω</button><button class="chip" data-reference="40">Z₀ 40 Ω</button><button class="chip" data-reference="45">Z₀ 45 Ω</button><button class="chip" data-reference="50">Z₀ 50 Ω</button><button class="chip" data-reference="75">Z₀ 75 Ω</button><button class="chip" data-reference="100">Z₀ 100 Ω</button></div><div class="match-controls" aria-label="Load presets"><button class="chip" data-load="33">33 Ω</button><button class="chip" data-load="40">40 Ω</button><button class="chip" data-load="45">45 Ω</button><button class="chip" data-load="50">50 Ω</button><button class="chip" data-load="75">75 Ω</button><button class="chip" data-load="100">100 Ω</button><button class="chip" data-special="match">Match to Z₀</button><button class="chip" data-special="short">Short</button><button class="chip" data-special="open">Open</button></div>
+<div class="work-fields"><label>Reflection magnitude |Γ|<input id="gamma" value="0" inputmode="decimal" autocomplete="off" aria-label="Reflection magnitude |Γ|"></label><label>Reflection phase (deg)<input id="phase" value="0" inputmode="decimal" autocomplete="off" aria-label="Reflection phase (deg)"></label><label>S11 (dB)<input id="rl" value="-∞" inputmode="decimal" autocomplete="off" aria-label="S11 (dB)"></label><label>VSWR<input id="vswr" value="1" inputmode="decimal" autocomplete="off" aria-label="VSWR"></label><label>Mismatch loss (dB)<input id="mloss" value="0" inputmode="decimal" autocomplete="off" aria-label="Mismatch loss (dB)"></label></div>
+<p class="hint">Enter R + jX, or |Γ| and phase. Editing S11, VSWR, or mismatch loss keeps the reflection phase. Magnitude alone does not determine complex impedance.</p>
+<p id="match-status" role="status"></p>
+<div class="smith-layout"><div>
+<svg id="smith" viewBox="0 0 440 440" role="img" tabindex="0" aria-label="Interactive Smith chart. Drag to set impedance; arrow keys move the reflection marker."></svg>
+<p class="smith-caption">Drag the marker or click the chart. Arrow keys move Γ; Shift makes a fine adjustment.</p></div>
+<div><h2>At the reference plane</h2><dl id="metrics" class="metrics" aria-live="polite"></dl><p class="hint">Upper half: inductive (+jX). Lower half: capacitive (−jX). Grid values are normalized to Z₀.</p></div></div>
+<details class="reference-details"><summary>Real-resistance reference curve</summary><p class="hint" id="real-solutions"></p>
+<div class="match-controls"><button class="chip is-active" data-chart="rl">S11</button><button class="chip" data-chart="vswr">VSWR</button><button class="chip" data-chart="ml">Mismatch loss</button></div>
+<svg id="chart" viewBox="0 0 720 280" role="img" aria-label="Mismatch against real resistance"></svg><p class="hint">This slice has X = 0. Click it to set a real resistance.</p></details><div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+<section class="panel"><h2>Model and reference</h2><p>Passive impedances (R ≥ 0), real positive Z₀. Γ = (Z − Z₀)/(Z + Z₀). Delivered power fraction is 1 − |Γ|² for a matched source at this plane. This is not a full source/load mismatch uncertainty model.</p><p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js"></script><script src="js/rf.js"></script><script src="js/match.js"></script></body></html>

@@ -217,6 +217,12 @@
       render(false);
       return;
     }
+    if (![state.vopp, state.result.wattsAvailable, state.result.wattsDelivered, state.result.vocVpp].every(Number.isFinite) ||
+        (state.source === 'dbm' && state.result.wattsAvailable === 0)) {
+      state.result = null;
+      render(false);
+      return;
+    }
     render(true);
     writeQuery();
   }
@@ -290,11 +296,11 @@
     if (els.diffLoadZ) els.diffLoadZ.innerHTML = rightZ;
 
     if (document.activeElement !== els.dbm) {
-      els.dbm.value = ok ? RF.formatDbm(state.dbm, 2) : els.dbm.value;
+      els.dbm.value = ok ? (Number.isFinite(state.dbm) ? String(Number(state.dbm.toPrecision(12))) : RF.formatDbm(state.dbm)) : els.dbm.value;
     }
     if (document.activeElement !== els.vopp) {
       const shown = RF.voltsToUnit(state.vopp, state.unit);
-      els.vopp.value = ok ? RF.trimFixed(shown, state.unit === "mV" ? 3 : 5) : els.vopp.value;
+      els.vopp.value = ok ? String(Number(shown.toPrecision(12))) : els.vopp.value;
     }
 
     els.fieldDbm.classList.toggle("invalid", !ok && state.source === "dbm");
@@ -302,8 +308,11 @@
 
     const r = state.result;
     if (!ok || !r) {
-      els.metrics.innerHTML = metric("Status", "Enter dBm or VOPP, plus Z<sub>VNA</sub> and Z<sub>DUT</sub>");
-      renderTable();
+      els.metrics.innerHTML = metric("Status", "Enter finite dBm or nonnegative VOPP, plus a positive DUT impedance.");
+      els.refBody.replaceChildren();
+      els.refCaption.textContent = 'Enter valid inputs to show the reference table.';
+      [els.seLineDbm, els.seNodeVopp, els.seNodePower, els.diffP1Dbm, els.diffP2Dbm, els.diffNodeVopp].forEach(el => el.textContent = '—');
+      Bench.update({ valid: false, lines: ['Correct the power/voltage and impedance inputs before calculating or saving.'] });
       return;
     }
 
@@ -339,6 +348,19 @@
       els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
       els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.trimFixed(r.zDiffDut, 4)} Ω`;
     }
+    Bench.update({ valid: true, lines: [
+      'CW sinusoid; real positive source/load impedances. Differential drive is two equal complementary signals, 180° apart.',
+      `Direction: ${state.path === 'src' ? 'VNA → DUT; dBm is available source power' : 'DUT → VNA; dBm is delivered receiver power'}.`,
+      `Zsource = ${r.zS} Ω; Zload = ${r.zL} Ω (per side for differential).`,
+      `P = 10^(dBm/10)/1000; ${RF.formatDbm(r.dbm)} dBm corresponds to ${state.path === 'src' ? r.wattsAvailable : r.wattsDelivered} W per port.`,
+      state.path === 'src' ? `Voc,rms = 2√(Pavailable × Zsource) = ${RF.formatVoltage(r.vocRms)}; Vrms,load = Voc × ${r.zL}/(${r.zS} + ${r.zL}) = ${RF.formatVoltage(r.vrmsSe)}` :
+        `Vrms,load = √(Pdelivered × ${r.zL}) = ${RF.formatVoltage(r.vrmsSe)}`,
+      `Vpp,line = 2√2 × Vrms,load = ${RF.formatVoltage(r.vppSe)}`,
+      `VOPP${r.drive === 'diff' ? ',diff = 2 × Vpp,line' : ' = Vpp,line'} = ${RF.formatVoltage(RF.voppOf(r))}`,
+      `Pdelivered = Vrms,load²/${r.zL} = ${RF.formatPowerWatts(r.wattsDelivered)} per port`,
+      `Γ = (${r.zL} − ${r.zS})/(${r.zL} + ${r.zS}) = ${RF.trimFixed(r.gamma, 6)}`,
+      r.drive === 'diff' ? 'Total power across both ports is twice per-port power (+3.0103 dB).' : 'The indicated voltage is at the load reference plane.'
+    ] });
     renderTable();
   }
 
@@ -368,7 +390,7 @@
     if (!Number.isFinite(state.dbm)) state.dbm = 0;
     state.source = "dbm";
     state.dbm = Math.round((state.dbm + delta) * 100) / 100;
-    els.dbm.value = RF.formatDbm(state.dbm, 2);
+    els.dbm.value = String(state.dbm);
     compute();
   }
 
@@ -489,6 +511,7 @@
   });
 
   els.copyLink.addEventListener("click", function () {
+    if (!Bench.valid) return;
     writeQuery();
     copyText(window.location.href, "Link copied");
   });
@@ -497,9 +520,9 @@
   els.zdut.value = String(state.zdut);
   els.voppUnit.value = state.unit;
   if (state.source === "dbm") {
-    els.dbm.value = RF.formatDbm(state.dbm, 2);
+    els.dbm.value = String(state.dbm);
   } else {
-    els.vopp.value = RF.trimFixed(RF.voltsToUnit(state.vopp, state.unit), state.unit === "mV" ? 3 : 5);
+    els.vopp.value = String(RF.voltsToUnit(state.vopp, state.unit));
   }
   compute();
 })();

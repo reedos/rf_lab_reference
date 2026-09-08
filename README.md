@@ -12,9 +12,19 @@ No build step. Classic scripts, no bundler.
 | Page | Use at the bench |
 | --- | --- |
 | [VOPP](https://reedos.github.io/rf_lab_reference/) | CW dBm ↔ peak-to-peak voltage, single-ended and true differential |
-| [Match](https://reedos.github.io/rf_lab_reference/match.html) | Return loss ↔ VSWR ↔ \|Γ\| ↔ mismatch loss vs real Z |
+| [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, IMD3 / IP3, P1dB, THD |
-| [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, time delay, electrical degrees |
+| [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, and phase-slope length estimates |
+| [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
+
+Every calculator has **Show calculation**, with substituted numbers, units, and model
+assumptions. **Copy link** preserves the setup, including the input used to solve the
+other fields. **Named setups** stores up to 50 setups per calculator in this browser;
+saving an existing name updates it. Use a copied link to move a setup to another device.
+Storage and clipboard failures are reported without preventing calculation.
+
+Setups stay on the device. There is no account, backend, or measurement upload.
+External font requests are optional; system fonts are used when unavailable.
 
 ## VOPP — dBm ↔ peak-to-peak
 
@@ -43,9 +53,64 @@ VOPP_diff  = 2 · VOPP_SE
 ## Large-signal
 
 - **Two-tone:** two equal CW tones. Envelope VOPP is **2×** the CW VOPP at that per-tone dBm. PEP is **+6.02 dB** vs one tone.
-- **IMD3:** IIP3 = P_tone + Δ/2. OIP3 = IIP3 + G. Thumb: OP1dB ≈ OIP3 − 10 dB.
+- **IMD3:** select whether each tone's dBm is at the DUT input or output.
+  IIP3 = P_input,tone + Δ/2; OIP3 = P_output,tone + Δ/2. OIP3 = IIP3 + G.
+  Absolute IM3 dBm is always at the **DUT output**; dBc is relative to one output
+  tone. Input tone power with absolute output IM3 requires gain. Changing units
+  or reference plane converts the entered value when enough information is present.
+  Thumb: OP1dB ≈ OIP3 − 10 dB, only an approximate cubic-model relationship.
 - **P1dB:** OP1dB = IP1dB + G₀ − 1 dB.
 - **THD:** RSS of harmonics in dBc. −40 dBc on one harmonic is 1%.
+
+## Match and Smith chart
+
+Enter R + jX with a real positive reference Z₀, or enter reflection magnitude and
+phase. S11, VSWR, and mismatch-loss edits preserve the reflection phase. Magnitude
+alone cannot determine complex impedance. Drag or click the Smith chart to set Γ;
+arrow keys move it, and Shift gives finer steps. Open, short, and match presets are
+included. A collapsible real-resistance curve retains the X = 0 reference view.
+
+This model covers passive loads (R ≥ 0, |Γ| ≤ 1), including open/short limits.
+Delivered fraction 1 − |Γ|² assumes a matched source at that reference plane.
+It does not calculate general source/load mismatch uncertainty.
+
+## Delay and phase slope
+
+Use a cable's velocity factor or effective permittivity, not an unqualified bulk
+board dielectric constant. The line model is uniform and nondispersive.
+Unit changes preserve the physical value. Old length-based links still load,
+including older links that incorrectly recorded delay/angle as the input source.
+
+The phase-slope helper uses τ_trace = −Δφ/(360 Δf), with phase in degrees.
+For reflection, physical one-way delay is half the trace delay. The extra-turns
+field supplies phase unwrapping; two points cannot determine it automatically.
+Negative estimates remain visible but cannot be applied as physical cable length.
+The page distinguishes physical port extension from trace electrical delay and
+links to instrument documentation for the control conventions.
+
+## Power and noise chain
+
+Add, remove, or reorder up to 24 passive or amplifier stages. Passive stages take
+positive loss and physical temperature; amplifiers take signed gain and noise
+figure. Name the output connection (DUT input, DUT output, receiver, etc.) and
+optionally enter its CW signal-power limit. Tables show stage output power,
+headroom, noise figure, and output noise. The contribution chart shows added noise
+referred to the chain input, in kelvin and as a fraction of total added noise.
+
+All gains and noise factors in these equations are linear power ratios:
+
+```
+F_total = 1 + Σ (F_i − 1) / G_before_i
+F_passive = 1 + (L − 1) T_physical / 290 K
+T_equivalent = (F_total − 1) × 290 K
+P_noise,out = k × B × (T_source + T_equivalent) × G_total
+```
+
+The model assumes matched ports and gain/noise figure constant across equivalent
+noise bandwidth. Coupler loss refers to the selected branch with other ports
+terminated. It does not model compression, peak envelope power, frequency sweeps,
+or reflections between stages. Noise figure is referenced to 290 K even when the
+source or passive-stage temperature is different.
 
 ## Local
 
@@ -53,6 +118,26 @@ VOPP_diff  = 2 · VOPP_SE
 npm test
 python -m http.server 8080
 ```
+
+For browser verification (development dependencies only):
+
+```bash
+npm ci
+npx playwright install chromium firefox
+npm run test:browser
+```
+
+`BROWSERS=chromium,firefox` runs both engines; the default is Chromium.
+In PowerShell, set `$env:BROWSERS='chromium,firefox'` before running the test.
+`SCREENSHOTS=1` writes screenshots under ignored `tmp/screenshots`.
+The tests start their own local server under a GitHub Pages-style subpath.
+They exercise inputs, reference planes, units, saved links/setups, clipboard and
+storage failures, chart interactions, stage order/limits, and phone/tablet/desktop
+layout. Mathematical tests include known values, inverse conversions, conservation
+checks, thermal equilibrium, and invalid-input boundaries. CI runs both engines.
+
+Shared math is in `js/rf.js`; each page has a separate controller. `js/bench.js`
+provides calculation details, clipboard handling for the new tools, and local setups.
 
 ## GitHub Pages
 

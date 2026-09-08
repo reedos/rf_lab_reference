@@ -1,330 +1,142 @@
 (function () {
-  const RF = window.RF;
-  const els = {
-    rl: document.getElementById("rl"),
-    vswr: document.getElementById("vswr"),
-    gamma: document.getElementById("gamma"),
-    mloss: document.getElementById("mloss"),
-    z0: document.getElementById("z0"),
-    z: document.getElementById("z"),
-    metrics: document.getElementById("metrics"),
-    chart: document.getElementById("chart"),
-    chartCap: document.getElementById("chart-cap"),
-    copyResult: document.getElementById("copy-result"),
-    copyLink: document.getElementById("copy-link"),
-    toast: document.getElementById("toast"),
-    calc: document.getElementById("calc")
-  };
-
-  const PLOT = { left: 52, right: 696, top: 18, bottom: 246, width: 644, height: 228 };
-  const state = {
-    source: "z",
-    z0: 50,
-    z: 50,
-    chart: "rl",
-    result: null,
-    zHigh: 50,
-    zLow: 50
-  };
-  let toastTimer = 0;
-
-  function readQuery() {
-    const q = new URLSearchParams(window.location.search);
-    const z0 = RF.parseNumber(q.get("z0"));
-    if (z0 > 0) state.z0 = z0;
-    const src = q.get("from");
-    if (src === "rl" || src === "vswr" || src === "gamma" || src === "mloss" || src === "z") {
-      state.source = src;
+  'use strict';
+  const $ = id => document.getElementById(id), n = id => RF.parseNumber($(id).value);
+  const fmt = v => v === Infinity ? '∞' : v === -Infinity ? '-∞' : Number.isFinite(v) ? String(Number(v.toPrecision(10))) : '—';
+  const metric = (k, v) => `<div class="metric"><dt>${k}</dt><dd>${v}</dd></div>`;
+  const textNum = id => { const v = $(id).value.trim(); return ['∞', 'Infinity'].includes(v) ? Infinity : ['-∞','-Infinity'].includes(v) ? -Infinity : n(id); };
+  let source = 'z', chart = 'rl', result = null;
+  let re = 0, im = 0;
+  const svg = $('smith'), NS = 'http://www.w3.org/2000/svg';
+  function pathOf(points) { return points.map((p, i) => `${i ? 'L' : 'M'}${(220 + p.re * 190).toFixed(3)},${(220 - p.im * 190).toFixed(3)}`).join(' '); }
+  function buildSmith() {
+    const curves = [];
+    for (const r of [0, .2, .5, 1, 2, 5]) {
+      const pts = [];
+      for (let i = -160; i <= 160; i++) { const x = Math.tan(i / 161 * Math.PI / 2) * 5; pts.push(RF.complexMatch(r, x, 1)); }
+      curves.push(`<path class="smith-grid" d="${pathOf(pts)}"/>`);
     }
-    const chart = q.get("chart");
-    if (chart === "rl" || chart === "vswr" || chart === "ml") state.chart = chart;
-    const z = RF.parseNumber(q.get("z"));
-    const rl = RF.parseNumber(q.get("rl"));
-    const vswr = RF.parseNumber(q.get("vswr"));
-    const gamma = RF.parseNumber(q.get("g"));
-    const mloss = RF.parseNumber(q.get("ml"));
-    if (state.source === "vswr" && vswr >= 1) state.vswr = vswr;
-    else if (state.source === "gamma" && gamma >= 0) state.gamma = gamma;
-    else if (state.source === "mloss" && mloss >= 0) state.mloss = mloss;
-    else if (state.source === "rl" && Number.isFinite(rl)) state.rl = rl;
-    else if (z > 0) {
-      state.source = "z";
-      state.z = z;
+    for (const x of [-5, -2, -1, -.5, -.2, .2, .5, 1, 2, 5]) {
+      const pts = [];
+      for (let i = 0; i <= 160; i++) pts.push(RF.complexMatch((Math.exp(i / 25) - 1) / 5, x, 1));
+      curves.push(`<path class="smith-grid" d="${pathOf(pts)}"/>`);
     }
+    svg.innerHTML = `<circle cx="220" cy="220" r="190" fill="#0b0d12" stroke="#687385"/>${curves.join('')}
+      <path d="M30 220 H410" class="smith-grid"/>
+      <text x="8" y="236">short</text><text x="402" y="236">open</text><text x="227" y="236">1</text>
+      <text x="192" y="16">+jX</text><text x="192" y="435">−jX</text>
+      <text x="97" y="216">0.2</text><text x="153" y="216">0.5</text><text x="283" y="216">2</text><text x="346" y="216">5</text>
+      <line id="smith-vector" x1="220" y1="220" x2="220" y2="220" stroke="#f3b63a" stroke-width="1.5"/>
+      <circle id="smith-marker" cx="220" cy="220" r="6" fill="#f3b63a" stroke="#090b10" stroke-width="2"/>`;
   }
-
-  function writeQuery() {
-    const q = new URLSearchParams();
-    q.set("z0", String(state.z0));
-    q.set("from", state.source);
-    q.set("chart", state.chart);
-    if (state.source === "z") q.set("z", String(state.z));
-    else if (state.source === "vswr") q.set("vswr", String(state.vswr));
-    else if (state.source === "gamma") q.set("g", String(state.gamma));
-    else if (state.source === "mloss") q.set("ml", String(state.mloss));
-    else q.set("rl", String(-Math.abs(state.rl)));
-    window.history.replaceState(null, "", `${window.location.pathname}?${q}`);
-  }
-
-  function metric(label, value) {
-    return `<div class="metric"><dt>${label}</dt><dd>${value}</dd></div>`;
-  }
-
-  function zFromVswr(vswr, z0, high) {
-    if (!(vswr >= 1) || !(z0 > 0)) return NaN;
-    return high ? z0 * vswr : z0 / vswr;
-  }
-
-  function yValue(m) {
-    if (state.chart === "vswr") return m.vswr;
-    if (state.chart === "ml") return m.mloss;
-    return Number.isFinite(m.rl) ? -m.rl : -Infinity;
-  }
-
-  function yRange() {
-    if (state.chart === "vswr") return { min: 1, max: 10, log: false, nice: [1, 2, 3, 5, 10] };
-    if (state.chart === "ml") return { min: 0, max: 3, log: false, nice: [0, 0.5, 1, 2, 3] };
-    return { min: -40, max: 0, log: false, nice: [0, -10, -20, -30, -40] };
-  }
-
-  function xToSvg(z, zMin, zMax) {
-    const t = (Math.log(z) - Math.log(zMin)) / (Math.log(zMax) - Math.log(zMin));
-    return PLOT.left + t * PLOT.width;
-  }
-
-  function svgToZ(x, zMin, zMax) {
-    const t = (x - PLOT.left) / PLOT.width;
-    return Math.exp(Math.log(zMin) + t * (Math.log(zMax) - Math.log(zMin)));
-  }
-
-  function yToSvg(v, range) {
-    const c = Math.min(range.max, Math.max(range.min, v));
-    const t = (c - range.min) / (range.max - range.min);
-    return PLOT.bottom - t * PLOT.height;
-  }
-
-  function drawChart(z0, zMark, gamma) {
-    if (!els.chart) return;
-    const zMin = z0 / 20;
-    const zMax = z0 * 20;
-    const range = yRange();
-    const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim() || "#f3b63a";
-    const grid = "rgba(255,255,255,0.08)";
-    const muted = "#8b929e";
-    const n = 96;
-    const zs = [];
-    for (let i = 0; i < n; i++) {
-      zs.push(Math.exp(Math.log(zMin) + (Math.log(zMax) - Math.log(zMin)) * i / (n - 1)));
-    }
-    zs.push(z0);
-    zs.sort(function (a, b) { return a - b; });
+  function drawRealChart() {
+    const z0 = n('z0') > 0 ? n('z0') : 50;
+    const min = chart === 'rl' ? -40 : chart === 'vswr' ? 1 : 0, max = chart === 'rl' ? 0 : chart === 'vswr' ? 10 : 3;
     const pts = [];
-    for (let i = 0; i < zs.length; i++) {
-      const z = zs[i];
-      const g = Math.abs(RF.reflection(z, z0));
-      const m = RF.matchFromGamma(g);
-      let yv = yValue(m);
-      if (!Number.isFinite(yv)) yv = range.min;
-      pts.push([xToSvg(z, zMin, zMax), yToSvg(yv, range)]);
+    const xpos = z => 52 + Math.log(z / (z0 / 20)) / Math.log(400) * 644;
+    for (let i = 0; i <= 240; i++) {
+      const z = z0 / 20 * 400 ** (i / 240), m = RF.complexMatch(z, 0, z0);
+      const val = chart === 'rl' ? -m.rl : chart === 'vswr' ? m.vswr : m.mloss;
+      pts.push(`${i ? 'L' : 'M'}${xpos(z)},${246 - (Math.max(min, Math.min(max, val)) - min) / (max - min) * 220}`);
     }
-    const d = pts.map(function (p, i) {
-      return (i ? "L" : "M") + p[0].toFixed(2) + " " + p[1].toFixed(2);
-    }).join(" ");
-
-    const xTicks = [z0 / 10, z0 / 5, z0 / 2, z0, z0 * 2, z0 * 5, z0 * 10].filter(function (z) {
-      return z >= zMin && z <= zMax;
-    });
-    let gridXml = "";
-    xTicks.forEach(function (z) {
-      const x = xToSvg(z, zMin, zMax);
-      gridXml += `<line x1="${x}" y1="${PLOT.top}" x2="${x}" y2="${PLOT.bottom}" stroke="${grid}"/>`;
-      const label = z >= 100 ? String(Math.round(z)) : RF.trimFixed(z, 2);
-      gridXml += `<text x="${x}" y="${PLOT.bottom + 16}" text-anchor="middle" fill="${muted}">${label}</text>`;
-    });
-    range.nice.forEach(function (v) {
-      const y = yToSvg(v, range);
-      gridXml += `<line x1="${PLOT.left}" y1="${y}" x2="${PLOT.right}" y2="${y}" stroke="${grid}"/>`;
-      gridXml += `<text x="${PLOT.left - 8}" y="${y + 4}" text-anchor="end" fill="${muted}">${v}</text>`;
-    });
-
-    let marker = "";
-    if (zMark > 0) {
-      const zClip = Math.min(zMax, Math.max(zMin, zMark));
-      const xm = xToSvg(zClip, zMin, zMax);
-      const g = Math.abs(gamma);
-      const m = RF.matchFromGamma(g);
-      const ym = yToSvg(yValue(m), range);
-      marker = `<line x1="${xm}" y1="${PLOT.top}" x2="${xm}" y2="${PLOT.bottom}" stroke="${accent}" stroke-dasharray="4 4"/>
-        <circle cx="${xm}" cy="${ym}" r="5" fill="${accent}"/>`;
+    let labels = '';
+    for (const factor of [.05, .2, 1, 5, 20]) labels += `<text x="${xpos(z0 * factor)}" y="265" text-anchor="middle" fill="#9aa1ae" font-size="11">${fmt(z0 * factor)} Ω</text>`;
+    for (const v of [min, (min + max) / 2, max]) {
+      const y = 246 - (v - min) / (max - min) * 220;
+      labels += `<path d="M52 ${y} H696" stroke="#303640"/><text x="44" y="${y + 4}" text-anchor="end" fill="#9aa1ae" font-size="11">${v}</text>`;
     }
-
-    const yTitle = state.chart === "vswr" ? "VSWR" : state.chart === "ml" ? "ML dB" : "S11 dB";
-    els.chart.innerHTML = `
-      <rect x="${PLOT.left}" y="${PLOT.top}" width="${PLOT.width}" height="${PLOT.height}" fill="none" stroke="${grid}"/>
-      ${gridXml}
-      <path d="${d}" fill="none" stroke="${accent}" stroke-width="2"/>
-      ${marker}
-      <text x="${(PLOT.left + PLOT.right) / 2}" y="274" text-anchor="middle" fill="${muted}">Z (Ω)</text>
-      <text x="14" y="${(PLOT.top + PLOT.bottom) / 2}" text-anchor="middle" fill="${muted}" transform="rotate(-90 14 ${(PLOT.top + PLOT.bottom) / 2})">${yTitle}</text>
-    `;
-    els.chartCap.innerHTML = `vs real Z, Z<sub>0</sub> = ${RF.trimFixed(z0, 4)} Ω`;
+    $('chart').innerHTML = labels + `<path d="${pts.join(' ')}" fill="none" stroke="#f3b63a" stroke-width="2"/>`;
+    document.querySelectorAll('[data-chart]').forEach(b => b.classList.toggle('is-active', b.dataset.chart === chart));
   }
-
   function compute() {
-    const z0 = RF.parseNumber(els.z0.value);
-    state.z0 = z0 > 0 ? z0 : NaN;
-    let gamma = NaN;
-    if (state.source === "z") {
-      const z = RF.parseNumber(els.z.value);
-      state.z = z;
-      if (z > 0 && z0 > 0) gamma = Math.abs(RF.reflection(z, z0));
-    } else if (state.source === "rl") gamma = RF.gammaFromRl(Math.abs(state.rl));
-    else if (state.source === "vswr") gamma = RF.gammaFromVswr(state.vswr);
-    else if (state.source === "gamma") gamma = state.gamma;
-    else gamma = RF.gammaFromMismatchLoss(state.mloss);
-
-    document.querySelectorAll(".chips").forEach(function (group) {
-      const target = group.getAttribute("data-target");
-      const value = target === "z" ? state.z : state.z0;
-      group.querySelectorAll(".chip").forEach(function (chip) {
-        chip.classList.toggle("is-active", Number(chip.getAttribute("data-z")) === value);
-      });
-    });
-    document.querySelectorAll("[data-chart]").forEach(function (btn) {
-      btn.classList.toggle("is-active", btn.getAttribute("data-chart") === state.chart);
-    });
-
-    if (!(z0 > 0) || !Number.isFinite(gamma) || gamma < 0) {
-      state.result = null;
-      els.metrics.innerHTML = metric("Status", "Enter Z, S11, VSWR, |Γ|, or mismatch loss");
-      drawChart(z0 > 0 ? z0 : 50, NaN, NaN);
-      return;
+    const z0 = n('z0');
+    let m = null;
+    if (source === 'z') m = RF.complexMatch(n('z'), n('x'), z0);
+    else if (source === 'point') m = RF.matchFromComplexGamma(re, im, z0);
+    else {
+      let g = n('gamma');
+      if (source === 'rl') { const rl = textNum('rl'); g = rl <= 0 ? (rl === -Infinity ? 0 : 10 ** (rl / 20)) : NaN; }
+      if (source === 'vswr') g = textNum('vswr') === Infinity ? 1 : RF.gammaFromVswr(n('vswr'));
+      if (source === 'mloss') g = textNum('mloss') === Infinity ? 1 : RF.gammaFromMismatchLoss(n('mloss'));
+      const p = n('phase') * Math.PI / 180;
+      if (g >= 0 && g <= 1 && Number.isFinite(p)) m = RF.matchFromComplexGamma(g * Math.cos(p), g * Math.sin(p), z0);
     }
-
-    const m = RF.matchFromGamma(gamma);
-    state.result = m;
-    state.rl = m.rl;
-    state.vswr = m.vswr;
-    state.gamma = m.gamma;
-    state.mloss = m.mloss;
-    state.zHigh = zFromVswr(m.vswr, z0, true);
-    state.zLow = zFromVswr(m.vswr, z0, false);
-    if (state.source !== "z") {
-      const prev = RF.parseNumber(els.z.value);
-      const useLow = prev > 0 && state.zLow > 0 && state.zHigh > 0 &&
-        Math.abs(Math.log(prev) - Math.log(state.zLow)) < Math.abs(Math.log(prev) - Math.log(state.zHigh));
-      state.z = useLow ? state.zLow : state.zHigh;
+    result = m;
+    drawRealChart();
+    if (!m) {
+      $('match-status').textContent = 'Use R ≥ 0, finite reactance, Z₀ > 0, 0 ≤ |Γ| ≤ 1, S11 ≤ 0 dB, and VSWR ≥ 1.';
+      $('match-status').className = 'status-error'; $('metrics').replaceChildren();
+      $('real-solutions').textContent = '';
+      $('smith-marker').setAttribute('visibility', 'hidden'); $('smith-vector').setAttribute('visibility', 'hidden');
+      Bench.update({ valid: false, lines: ['Correct the inputs before calculating or saving. Passive impedances only.'] }); return;
     }
-
-    if (document.activeElement !== els.rl) {
-      els.rl.value = Number.isFinite(m.rl) ? RF.trimFixed(-m.rl, 2) : "-∞";
-    }
-    if (document.activeElement !== els.vswr) {
-      els.vswr.value = Number.isFinite(m.vswr) ? RF.trimFixed(m.vswr, 3) : "∞";
-    }
-    if (document.activeElement !== els.gamma) {
-      els.gamma.value = RF.trimFixed(m.gamma, 4);
-    }
-    if (document.activeElement !== els.mloss) {
-      els.mloss.value = Number.isFinite(m.mloss) ? RF.trimFixed(m.mloss, 3) : "∞";
-    }
-    if (document.activeElement !== els.z && Number.isFinite(state.z)) {
-      els.z.value = RF.trimFixed(state.z, 4);
-    }
-
-    const signed = (state.z > 0 && z0 > 0) ? RF.reflection(state.z, z0) : m.gamma;
-    els.metrics.innerHTML = [
-      metric("Z high", Number.isFinite(state.zHigh) ? `${RF.trimFixed(state.zHigh, 3)} Ω` : "—"),
-      metric("Z low", Number.isFinite(state.zLow) ? `${RF.trimFixed(state.zLow, 3)} Ω` : "—"),
-      metric("Γ signed", RF.trimFixed(signed, 4)),
-      metric("Power delivered", Number.isFinite(m.delivered) ? RF.trimFixed(100 * m.delivered, 2) + " %" : "—")
-    ].join("");
-    drawChart(z0, state.z, signed);
-    writeQuery();
+    re = m.re; im = m.im;
+    $('match-status').textContent = m.gamma === 0 ? 'Perfect match. Reflection phase is undefined; 0° is used as the editing convention.' : m.r === Infinity ? 'Open circuit: Γ = +1.' : '';
+    $('match-status').className = '';
+    const values = {z:m.r, x:m.x, gamma:m.gamma, phase:m.phase, rl:-m.rl, vswr:m.vswr, mloss:m.mloss};
+    for (const [id, value] of Object.entries(values)) if (!(source === 'z' && ['z','x'].includes(id)) && document.activeElement !== $(id)) $(id).value = fmt(value);
+    for (const id of ['smith-marker','smith-vector']) $(id).setAttribute('visibility', 'visible');
+    $('smith-marker').setAttribute('cx', 220 + re * 190); $('smith-marker').setAttribute('cy', 220 - im * 190);
+    $('smith-vector').setAttribute('x2', 220 + re * 190); $('smith-vector').setAttribute('y2', 220 - im * 190);
+    const zText = m.r === Infinity ? 'Open' : `${RF.trimFixed(m.r, 4)} ${m.x < 0 ? '−' : '+'} j${RF.trimFixed(Math.abs(m.x), 4)} Ω`;
+    $('real-solutions').textContent = `For this |Γ|, the two purely real solutions are Z₀ × VSWR = ${fmt(z0 * m.vswr)} Ω and Z₀ / VSWR = ${fmt(z0 / m.vswr)} Ω. These assume X = 0.`;
+    $('metrics').innerHTML = metric('Load impedance', zText) + metric('Return loss', `${fmt(m.rl)} dB`) + metric('VSWR', fmt(m.vswr)) +
+      metric('Delivered fraction', `${RF.trimFixed(m.delivered * 100, 4)} %`) + metric('Γ real', RF.trimFixed(re, 5)) + metric('Γ imaginary', RF.trimFixed(im, 5));
+    const q = new URLSearchParams({ z0: String(z0), from: source, re: String(re), im: String(im), chart,
+      z: String(m.r), x: String(m.x), g: String(m.gamma), phase: String(m.phase),
+      rl: String(-m.rl), vswr: String(m.vswr), ml: String(m.mloss) });
+    history.replaceState(null, '', location.pathname + '?' + q);
+    Bench.update({ valid: true, lines: ['Passive load, real positive reference Z₀; matched source at the reference plane.',
+      `Z = ${zText}; Z₀ = ${fmt(z0)} Ω`,
+      `Γ = (Z − Z₀)/(Z + Z₀) = ${fmt(re)} + j(${fmt(im)})`,
+      `|Γ| = √(ReΓ² + ImΓ²) = ${fmt(m.gamma)}; phase = ${m.gamma === 0 ? 'undefined at match' : fmt(m.phase) + '°'}`,
+      `S11 = 20 log₁₀(${fmt(m.gamma)}) = ${fmt(-m.rl)} dB; return loss = ${fmt(m.rl)} dB`,
+      `VSWR = (1 + ${fmt(m.gamma)})/(1 − ${fmt(m.gamma)}) = ${fmt(m.vswr)}`,
+      `Delivered fraction = 1 − ${fmt(m.gamma)}² = ${fmt(m.delivered)}`,
+      `Mismatch loss = −10 log₁₀(${fmt(m.delivered)}) = ${fmt(m.mloss)} dB`,
+      'Magnitude edits retain the selected phase. The reference curve below the Smith chart is the X = 0 slice.'] });
   }
-
-  function showToast(message) {
-    els.toast.textContent = message;
-    els.toast.classList.add("is-on");
-    window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(function () { els.toast.classList.remove("is-on"); }, 1600);
+  function readQuery() {
+    const q = new URLSearchParams(location.search);
+    if (q.has('z0')) $('z0').value = q.get('z0');
+    if (['rl','vswr','ml'].includes(q.get('chart'))) chart = q.get('chart');
+    if (q.get('from') === 'point') { source = 'point'; re = RF.parseNumber(q.get('re')); im = RF.parseNumber(q.get('im')); return; }
+    for (const [key,id] of Object.entries({z:'z',x:'x',g:'gamma',phase:'phase',rl:'rl',vswr:'vswr',ml:'mloss'})) if (q.has(key)) $(id).value = q.get(key);
+    if (['z','rl','vswr','gamma','mloss'].includes(q.get('from'))) source = q.get('from');
+    // Legacy scalar links had no reflection phase and selected a real solution.
+    if (!q.has('phase')) $('phase').value = '0';
   }
-
-  function copyText(text, ok) {
-    if (!text) return;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { showToast(ok); });
-    }
+  ['z', 'x'].forEach(id => $(id).addEventListener('input', () => { source = 'z'; compute(); }));
+  ['gamma','phase','rl','vswr','mloss'].forEach(id => $(id).addEventListener('input', () => { source = id === 'phase' ? 'gamma' : id; compute(); }));
+  $('z0').addEventListener('input', compute);
+  document.querySelectorAll('[data-reference]').forEach(b => b.addEventListener('click', () => { $('z0').value = b.dataset.reference; compute(); }));
+  document.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => { source = 'z'; $('z').value = b.dataset.load; $('x').value = '0'; compute(); }));
+  document.querySelectorAll('[data-special]').forEach(b => b.addEventListener('click', () => { source = 'point'; re = b.dataset.special === 'open' ? 1 : b.dataset.special === 'short' ? -1 : 0; im = 0; compute(); }));
+  document.querySelectorAll('[data-chart]').forEach(b => b.addEventListener('click', () => { chart = b.dataset.chart; compute(); }));
+  function move(reNext, imNext) {
+    const mag = Math.hypot(reNext, imNext);
+    re = mag > 1 ? reNext / mag : reNext; im = mag > 1 ? imNext / mag : imNext;
+    source = 'point'; compute();
   }
-
-  function bind(id, source, assign) {
-    const el = els[id];
-    el.addEventListener("input", function () {
-      state.source = source;
-      assign(RF.parseNumber(el.value));
-      compute();
-    });
-    el.addEventListener("focus", function (event) { event.target.select(); });
+  function pointer(event) {
+    const point = svg.createSVGPoint(); point.x = event.clientX; point.y = event.clientY;
+    const p = point.matrixTransform(svg.getScreenCTM().inverse());
+    move((p.x - 220) / 190, (220 - p.y) / 190);
   }
-
-  bind("rl", "rl", function (v) { state.rl = v; });
-  bind("vswr", "vswr", function (v) { state.vswr = v; });
-  bind("gamma", "gamma", function (v) { state.gamma = v; });
-  bind("mloss", "mloss", function (v) { state.mloss = v; });
-  els.z.addEventListener("input", function () {
-    state.source = "z";
-    compute();
+  svg.addEventListener('pointerdown', event => { svg.setPointerCapture(event.pointerId); pointer(event); });
+  svg.addEventListener('pointermove', event => { if (svg.hasPointerCapture(event.pointerId)) pointer(event); });
+  svg.addEventListener('pointerup', event => { if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId); });
+  svg.addEventListener('keydown', event => {
+    if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
+    event.preventDefault(); const step = event.shiftKey ? .001 : .01;
+    move(re + (event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0), im + (event.key === 'ArrowUp' ? step : event.key === 'ArrowDown' ? -step : 0));
   });
-  els.z0.addEventListener("input", compute);
-  els.z.addEventListener("focus", function (event) { event.target.select(); });
-  els.z0.addEventListener("focus", function (event) { event.target.select(); });
-
-  els.calc.addEventListener("click", function (event) {
-    const chartBtn = event.target.closest("[data-chart]");
-    if (chartBtn) {
-      state.chart = chartBtn.getAttribute("data-chart");
-      compute();
-      return;
-    }
-    const chip = event.target.closest(".chip[data-z]");
-    if (!chip) return;
-    const target = chip.parentElement.getAttribute("data-target");
-    if (target === "z0") {
-      els.z0.value = chip.getAttribute("data-z");
-    } else if (target === "z") {
-      els.z.value = chip.getAttribute("data-z");
-      state.source = "z";
-    }
-    compute();
+  $('chart').addEventListener('click', event => {
+    const p = $('chart').createSVGPoint(); p.x=event.clientX; p.y=event.clientY;
+    const x=p.matrixTransform($('chart').getScreenCTM().inverse()).x;
+    if (x < 52 || x > 696 || !(n('z0') > 0)) return;
+    source = 'z'; $('z').value = fmt(n('z0') / 20 * 400 ** ((x - 52)/644)); $('x').value = '0'; compute();
   });
-
-  els.chart.addEventListener("click", function (event) {
-    const z0 = state.z0;
-    if (!(z0 > 0)) return;
-    const rect = els.chart.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 720;
-    if (x < PLOT.left || x > PLOT.right) return;
-    const z = svgToZ(x, z0 / 20, z0 * 20);
-    els.z.value = RF.trimFixed(z, 4);
-    state.source = "z";
-    compute();
-  });
-
-  els.copyResult.addEventListener("click", function () {
-    const m = state.result;
-    if (!m) return;
-    copyText(
-      `Z ${RF.trimFixed(state.z, 3)} Ω vs Z0 ${RF.trimFixed(state.z0, 3)} Ω | S11 ${Number.isFinite(m.rl) ? (-m.rl).toFixed(2) : "-∞"} dB | VSWR ${RF.formatVswr(m.vswr)} | Γ ${RF.trimFixed(m.gamma, 4)}`,
-      "Result copied"
-    );
-  });
-  els.copyLink.addEventListener("click", function () {
-    writeQuery();
-    copyText(window.location.href, "Link copied");
-  });
-
-  readQuery();
-  els.z0.value = String(state.z0);
-  if (state.source === "z") els.z.value = String(state.z);
-  compute();
+  $('copy-link').addEventListener('click', () => { if (result) Bench.copy(location.href); });
+  $('copy-result').addEventListener('click', () => { if (result) Bench.copy(`Z₀ ${fmt(result.z0)} Ω | Z ${fmt(result.r)} + j(${fmt(result.x)}) Ω | Γ ${fmt(result.gamma)} ∠ ${result.gamma ? fmt(result.phase) : 'undefined'}° | S11 ${fmt(-result.rl)} dB | VSWR ${fmt(result.vswr)}`); });
+  buildSmith(); readQuery(); compute();
 })();

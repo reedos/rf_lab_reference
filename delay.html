@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
-  <meta name="description" content="Wavelength, electrical delay, and electrical length calculator for VNA fixtures and cables.">
-  <title>Delay · RF Lab Reference</title>
+  <meta name="description" content="Convert length, one-way delay, and electrical angle, or estimate a line length from measured phase.">
+  <title>Wavelength &amp; delay · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css"><link rel="stylesheet" href="css/workbench.css">
 </head>
-<body>
+<body class="delay-page">
   <a class="skip" href="#calc">Skip to calculator</a>
   <div class="shell">
     <header class="top">
@@ -23,111 +23,15 @@
         <a href="match.html">Match</a>
         <a href="large-signal.html">Large-signal</a>
         <a class="is-active" href="delay.html">Delay</a>
-      </nav>
+      <a href="chain.html">Power &amp; noise</a></nav>
     </header>
 
-    <section class="lede">
-      <p class="kicker">VNA fixture</p>
-      <h1>Wavelength &amp; delay</h1>
-      <p>Physical length, time delay, and electrical degrees. Use it for electrical delay, port extensions, and “how long is this cable?”</p>
-    </section>
-
-    <section class="board" id="calc">
-      <div class="board-toolbar">
-        <div class="z-ctrl">
-          <label class="z-field">
-            <span>ε<sub>r</sub></span>
-            <input id="er" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="1" aria-label="Relative permittivity">
-          </label>
-          <label class="z-field">
-            <span>v<sub>f</sub></span>
-            <input id="vf" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="1" aria-label="Velocity factor">
-          </label>
-          <div class="chips" role="group" aria-label="Dielectric presets">
-            <button type="button" class="chip is-active" data-er="1">Air</button>
-            <button type="button" class="chip" data-er="2.1">PTFE</button>
-            <button type="button" class="chip" data-er="4.3">FR4</button>
-            <button type="button" class="chip" data-er="9.8">Alumina</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="fields">
-        <div class="field compact">
-          <div class="field-label"><span>Frequency</span></div>
-          <div class="field-row">
-            <input id="freq" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="1000" aria-label="Frequency">
-            <select id="freq-unit" class="unit-select" aria-label="Frequency unit">
-              <option>Hz</option>
-              <option>kHz</option>
-              <option selected>MHz</option>
-              <option>GHz</option>
-            </select>
-          </div>
-        </div>
-        <div class="field compact">
-          <div class="field-label"><span>Length</span></div>
-          <div class="field-row">
-            <input id="length" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="100" aria-label="Physical length">
-            <select id="len-unit" class="unit-select" aria-label="Length unit">
-              <option selected>mm</option>
-              <option>cm</option>
-              <option>m</option>
-              <option>in</option>
-            </select>
-          </div>
-        </div>
-        <div class="field compact">
-          <div class="field-label"><span>Delay</span></div>
-          <div class="field-row">
-            <input id="delay" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Time delay">
-            <select id="delay-unit" class="unit-select" aria-label="Delay unit">
-              <option>ps</option>
-              <option selected>ns</option>
-              <option>µs</option>
-            </select>
-          </div>
-        </div>
-        <div class="field compact">
-          <div class="field-label"><span>Electrical length</span></div>
-          <div class="field-row">
-            <input id="degrees" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Electrical length in degrees">
-            <span class="unit">deg</span>
-          </div>
-        </div>
-      </div>
-      <dl class="metrics" id="metrics" aria-live="polite"></dl>
-      <div class="toolbar">
-        <button type="button" class="copy" id="copy-result">Copy result</button>
-        <button type="button" class="ghost" id="copy-link">Copy link</button>
-      </div>
-      <p class="hint">1 ns ≈ 300 mm in air, ≈ 207 mm in PTFE (ε<sub>r</sub> ≈ 2.1). A VNA electrical-delay entry is this time delay, opposite sign of the fixture.</p>
-    </section>
-
-    <div class="layout">
-      <section class="panel">
-        <h2>Formulas</h2>
-        <div class="formula">
-          v<sub>f</sub> = 1 / √ε<sub>r</sub><br>
-          λ<sub>g</sub> = c / (f √ε<sub>r</sub>)<br>
-          τ = ℓ √ε<sub>r</sub> / c<br>
-          θ = 360 · ℓ / λ<sub>g</sub>
-        </div>
-      </section>
-      <section class="panel">
-        <h2>Bench notes</h2>
-        <ul>
-          <li>Port extension / electrical delay removes fixture delay after a cal at the coax connector.</li>
-          <li>λ/4 at the DUT is a classic bias-tee / stub check.</li>
-          <li>FR4 ε<sub>r</sub> is messy (≈ 4.2–4.6 and frequency-dependent). Treat it as a starting guess.</li>
-          <li>Phase wrapping on the VNA: 360° is one guided wavelength.</li>
-        </ul>
-      </section>
-    </div>
-    <p class="foot">Static page. Works offline once loaded.</p>
-  </div>
-  <div class="toast" id="toast" role="status"></div>
-  <script src="js/rf.js"></script>
-  <script src="js/delay.js"></script>
-</body>
-</html>
+<section class="lede"><p class="kicker">VNA fixture</p><h1>Wavelength &amp; delay</h1><p>Convert length, one-way delay, and electrical angle, or estimate a line length from measured phase.</p></section>
+<section class="board work-board" id="calc"><h2>Length, delay &amp; electrical angle</h2><div class="work-fields"><label>Effective permittivity εeff<input id="er" value="1" inputmode="decimal" autocomplete="off" aria-label="Effective permittivity εeff"></label><label>Velocity factor<input id="vf" value="1" inputmode="decimal" autocomplete="off" aria-label="Velocity factor"></label><div class="quantity-field"><label for="freq">Frequency</label><div class="unit-pair"><input id="freq" value="1000" inputmode="decimal" autocomplete="off" aria-label="Frequency"><select aria-label="Frequency unit" id="freq-unit"><option value="MHz">MHz</option><option value="GHz">GHz</option><option value="kHz">kHz</option><option value="Hz">Hz</option></select></div></div><div class="quantity-field"><label for="length">Physical length</label><div class="unit-pair"><input id="length" value="100" inputmode="decimal" autocomplete="off" aria-label="Physical length"><select aria-label="Length unit" id="len-unit"><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option><option value="in">in</option></select></div></div><div class="quantity-field"><label for="delay">One-way delay</label><div class="unit-pair"><input id="delay" value="" inputmode="decimal" autocomplete="off" aria-label="One-way delay"><select aria-label="Delay unit" id="delay-unit"><option value="ns">ns</option><option value="ps">ps</option><option value="µs">µs</option></select></div></div><label>One-way electrical angle (deg)<input id="degrees" value="" inputmode="decimal" autocomplete="off" aria-label="One-way electrical angle (deg)"></label></div><div class="match-controls" aria-label="Dielectric presets"><button class="chip" data-er="1">Air</button><button class="chip" data-er="2.1">Solid PTFE ≈ 2.1</button><button class="chip" data-er="4.3">Bulk FR4 ≈ 4.3</button><button class="chip" data-er="9.8">Alumina ≈ 9.8</button></div>
+<p class="hint">Use cable velocity factor or effective permittivity. Bulk board permittivity is not generally the effective value of a microstrip. These calculations assume a uniform, nondispersive line.</p>
+<dl class="metrics" id="metrics" aria-live="polite"></dl>
+<div class="phase-results"><p id="delay-interpretation"></p><p class="hint">Port extension is entered as physical one-way delay per port; reflection compensation accounts for the round trip. Trace electrical delay follows the measured trace delay. The sign and entry convention depend on the instrument control; consult its help.</p></div>
+<hr><h2>Estimate delay from phase slope</h2><p class="hint">Enter two measured phase values at increasing frequencies. For a uniform line, decreasing unwrapped phase gives positive delay.</p><div class="work-fields"><label>Start frequency (MHz)<input id="phase-f1" value="1000" inputmode="decimal" autocomplete="off" aria-label="Start frequency (MHz)"></label><label>End frequency (MHz)<input id="phase-f2" value="1100" inputmode="decimal" autocomplete="off" aria-label="End frequency (MHz)"></label><label>Start phase (deg)<input id="phase-p1" value="0" inputmode="decimal" autocomplete="off" aria-label="Start phase (deg)"></label><label>End phase (deg)<input id="phase-p2" value="-36" inputmode="decimal" autocomplete="off" aria-label="End phase (deg)"></label><label>Extra full turns in phase change<input id="phase-turns" value="0" inputmode="decimal" autocomplete="off" aria-label="Extra full turns in phase change"></label><label>Measurement<select id="phase-mode"><option value="transmission">Transmission · S21</option><option value="reflection">Reflection · S11</option></select></label></div><p class="hint">Unwrapped Δφ = end − start + 360° × extra turns. Example: +170° → −170° across a wrap uses +1 turn for +20°. Two samples cannot resolve the number of turns; choose it from the measured trace. Negative delay is shown as a signed estimate, not a physical cable length.</p>
+<dl id="phase-metrics" class="metrics" aria-live="polite"></dl><p id="phase-status" role="status"></p><button id="phase-use" class="ghost" type="button">Use estimated length above</button><div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+<section class="panel"><h2>Measurement reference</h2><p>Reflection travels out and back through a fixture. Its trace phase slope represents twice the physical one-way delay; transmission through that same line represents one traversal. Phase-slope estimates can include DUT dispersion and resonance.</p><p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comparing_the_pna_delay_functions.htm">Keysight: comparing VNA delay functions</a></p></section>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js"></script><script src="js/rf.js"></script><script src="js/delay.js"></script></body></html>

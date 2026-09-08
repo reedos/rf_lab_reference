@@ -3,6 +3,10 @@
   "private": true,
   "description": "Quick RF lab reference: dBm ↔ VOPP, match, large-signal, delay.",
   "scripts": {
-    "test": "node tests/rf.test.js"
+    "test": "node tests/rf.test.js && node --test tests/workbench.test.js",
+    "test:browser": "node tests/browser.test.js"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

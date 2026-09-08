@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css"><link rel="stylesheet" href="css/workbench.css">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -23,7 +23,7 @@
         <a href="match.html">Match</a>
         <a class="is-active" href="large-signal.html">Large-signal</a>
         <a href="delay.html">Delay</a>
-      </nav>
+      <a href="chain.html">Power &amp; noise</a></nav>
     </header>
 
     <section class="lede">
@@ -93,14 +93,14 @@
         </svg>
         <div class="fields">
           <div class="field compact">
-            <div class="field-label"><span>Each tone</span><span>at DUT</span></div>
+            <div class="field-label"><span>Each tone</span><select id="imd-plane" class="unit-select" aria-label="Tone reference plane"><option value="input">DUT input</option><option value="output">DUT output</option></select></div>
             <div class="field-row">
               <input id="imd-tone" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Per-tone power">
               <span class="unit">dBm</span>
             </div>
           </div>
           <div class="field compact">
-            <div class="field-label"><span>IM3</span>
+            <div class="field-label"><span>IM3 at DUT output</span>
               <select id="imd-unit" class="unit-select" aria-label="IM3 unit">
                 <option value="dbc" selected>dBc</option>
                 <option value="dbm">dBm</option>
@@ -119,7 +119,7 @@
           </div>
         </div>
         <dl class="metrics" id="imd-metrics"></dl>
-        <p class="hint">IIP3 = P<sub>tone</sub> + Δ/2, where Δ is the gap from each tone to IM3. OIP3 = IIP3 + G. Rule of thumb for a cubic nonlinearity: OP1dB ≈ OIP3 − 10 dB. +1 dB on both tones → +3 dB on IM3.</p>
+        <p class="hint">dBc is relative to one output tone; absolute IM3 dBm is measured at the DUT output. Input tone power gives IIP3 = P<sub>in,tone</sub> + Δ/2; output tone power gives OIP3 = P<sub>out,tone</sub> + Δ/2. OIP3 = IIP3 + G. Gain is required to compare input tones with absolute output IM3. Use the small-signal cubic region, below compression. <a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Swept_IMD_and_IM_Spectrum_Concepts.htm">Measurement reference</a>.</p>
       </div>
 
       <div class="ls-panel" id="panel-p1db" hidden>
@@ -240,7 +240,7 @@
     <p class="foot">Static page. Works offline once loaded.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/rf.js"></script>
+  <script src="js/bench.js"></script><script src="js/rf.js"></script>
   <script src="js/large-signal.js"></script>
 </body>
 </html>

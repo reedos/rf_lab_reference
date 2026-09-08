@@ -25,6 +25,7 @@
   }
 
   function wattsToDbm(watts) {
+    if (watts === 0) return -Infinity;
     if (!(watts > 0) || !Number.isFinite(watts)) return NaN;
     return 10 * Math.log10(watts * 1000);
   }
@@ -137,6 +138,7 @@
   }
 
   function formatDbm(dbm, digits) {
+    if (dbm === -Infinity) return "−∞";
     if (!Number.isFinite(dbm)) return "—";
     const n = digits == null ? (Math.abs(dbm) >= 100 ? 1 : 2) : digits;
     return Number(dbm).toFixed(n);
@@ -463,7 +465,92 @@
     return vswr.toFixed(3);
   }
 
+  // Passive loads, real positive reference impedance. Handles short and open.
+  function complexMatch(r, x, z0) {
+    if (![r, x, z0].every(Number.isFinite) || r < 0 || !(z0 > 0)) return null;
+    const a = r / z0, b = x / z0;
+    const den = (a + 1) ** 2 + b * b;
+    if (!Number.isFinite(den)) return null;
+    return matchFromComplexGamma((a * a + b * b - 1) / den, 2 * b / den, z0);
+  }
+
+  function matchFromComplexGamma(re, im, z0) {
+    if (![re, im, z0].every(Number.isFinite) || !(z0 > 0)) return null;
+    let mag = Math.hypot(re, im);
+    if (mag > 1 + 1e-12) return null;
+    if (mag > 1) { re /= mag; im /= mag; mag = 1; }
+    const den = (1 - re) ** 2 + im * im;
+    const r = den === 0 ? Infinity : z0 * Math.max(0, 1 - mag * mag) / den;
+    const x = den === 0 ? 0 : z0 * 2 * im / den;
+    return Object.assign(matchFromGamma(mag), { re, im, r, x, z0,
+      phase: mag === 0 ? 0 : Math.atan2(im, re) * 180 / Math.PI });
+  }
+
+  // Absolute IM3 is measured at the OUTPUT. dBc is relative to one output tone.
+  function ip3Measurement(tone, im3, gain, plane, unit) {
+    if (![tone, im3].every(Number.isFinite) || !['input', 'output'].includes(plane) || !['dbc', 'dbm'].includes(unit)) return null;
+    const hasGain = Number.isFinite(gain);
+    const outputTone = plane === 'output' ? tone : hasGain ? tone + gain : NaN;
+    if (unit === 'dbm' && !Number.isFinite(outputTone)) return null;
+    const dbc = unit === 'dbc' ? im3 : im3 - outputTone;
+    if (dbc > 0) return null;
+    const intercept = tone - dbc / 2;
+    const iip3 = plane === 'input' ? intercept : hasGain ? intercept - gain : NaN;
+    const oip3 = plane === 'output' ? intercept : hasGain ? intercept + gain : NaN;
+    return { iip3, oip3, delta: -dbc, im3Dbc: dbc, outputTone,
+      im3Output: Number.isFinite(outputTone) ? outputTone + dbc : NaN };
+  }
+
+  // Phase must be unwrapped. Reflection includes the outward and return paths.
+  function phaseDelay(f1, f2, phase1, phase2, turns, mode, vf) {
+    if (![f1, f2, phase1, phase2, turns, vf].every(Number.isFinite) ||
+        !(f1 > 0) || !(f2 > f1) || !Number.isInteger(turns) || !(vf > 0 && vf <= 1) ||
+        !['transmission', 'reflection'].includes(mode)) return null;
+    const deltaPhase = phase2 - phase1 + 360 * turns;
+    const traceDelay = -deltaPhase / (360 * (f2 - f1));
+    const oneWayDelay = traceDelay / (mode === 'reflection' ? 2 : 1);
+    return { deltaPhase, traceDelay, oneWayDelay, length: oneWayDelay * C_LIGHT * vf };
+  }
+
+  const K_BOLTZMANN = 1.380649e-23;
+  const T_REF = 290;
+  function cascade(stages, inputDbm, bandwidth, sourceTemperature) {
+    if (!Array.isArray(stages) || stages.length > 24 ||
+        ![inputDbm, bandwidth, sourceTemperature].every(Number.isFinite) ||
+        !(bandwidth > 0) || !(sourceTemperature > 0)) return null;
+    let gain = 1, factor = 1, gainDb = 0;
+    const rows = [];
+    for (const stage of stages) {
+      if (!stage || !['active', 'passive'].includes(stage.kind) || !Number.isFinite(stage.db)) return null;
+      const passive = stage.kind === 'passive';
+      if (passive && (!(stage.db >= 0) || !(stage.temperature > 0) || !Number.isFinite(stage.temperature))) return null;
+      if (!passive && (!(stage.nf >= 0) || !Number.isFinite(stage.nf))) return null;
+      if (stage.limit != null && !Number.isFinite(stage.limit)) return null;
+      const stageGainDb = passive ? -stage.db : stage.db;
+      const stageGain = 10 ** (stageGainDb / 10);
+      const stageFactor = passive ? 1 + (1 / stageGain - 1) * stage.temperature / T_REF : 10 ** (stage.nf / 10);
+      const contribution = (stageFactor - 1) / gain;
+      factor += contribution;
+      gain *= stageGain;
+      gainDb += stageGainDb;
+      const outputDbm = inputDbm + gainDb;
+      const noiseWatts = K_BOLTZMANN * (sourceTemperature + (factor - 1) * T_REF) * bandwidth * gain;
+      if (![gain, factor, outputDbm, noiseWatts].every(Number.isFinite) || !(gain > 0) || !(noiseWatts > 0)) return null;
+      rows.push({ gainDb: stageGainDb, cumulativeGainDb: gainDb, outputDbm, contribution,
+        stageNf: 10 * Math.log10(stageFactor), nf: 10 * Math.log10(factor),
+        noiseDbm: wattsToDbm(noiseWatts), headroom: stage.limit == null ? null : stage.limit - outputDbm });
+    }
+    const equivalentTemperature = (factor - 1) * T_REF;
+    const noiseWatts = K_BOLTZMANN * (sourceTemperature + equivalentTemperature) * bandwidth * gain;
+    if (!(noiseWatts > 0) || !Number.isFinite(noiseWatts)) return null;
+    const noiseDbm = wattsToDbm(noiseWatts);
+    return { rows, gainDb, factor, nf: 10 * Math.log10(factor), equivalentTemperature,
+      outputDbm: inputDbm + gainDb, noiseDbm, inputNoiseDbm: wattsToDbm(K_BOLTZMANN * sourceTemperature * bandwidth),
+      snr: inputDbm + gainDb - noiseDbm };
+  }
+
   const RF = {
+    complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,
     C_LIGHT,

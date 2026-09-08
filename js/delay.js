@@ -1,234 +1,107 @@
 (function () {
-  const RF = window.RF;
-  const els = {
-    er: document.getElementById("er"),
-    vf: document.getElementById("vf"),
-    freq: document.getElementById("freq"),
-    freqUnit: document.getElementById("freq-unit"),
-    length: document.getElementById("length"),
-    lenUnit: document.getElementById("len-unit"),
-    delay: document.getElementById("delay"),
-    delayUnit: document.getElementById("delay-unit"),
-    degrees: document.getElementById("degrees"),
-    metrics: document.getElementById("metrics"),
-    copyResult: document.getElementById("copy-result"),
-    copyLink: document.getElementById("copy-link"),
-    toast: document.getElementById("toast"),
-    chips: Array.prototype.slice.call(document.querySelectorAll(".chip"))
-  };
-
-  const state = {
-    source: "length",
-    er: 1,
-    freq: 1e9,
-    lengthM: 0.1,
-    delayS: 0,
-    degrees: 0
-  };
-  let toastTimer = 0;
-  let erSource = "er";
-
-  function freqToHz(value, unit) {
-    if (unit === "GHz") return value * 1e9;
-    if (unit === "MHz") return value * 1e6;
-    if (unit === "kHz") return value * 1e3;
-    return value;
-  }
-
-  function hzToUnit(hz, unit) {
-    if (unit === "GHz") return hz / 1e9;
-    if (unit === "MHz") return hz / 1e6;
-    if (unit === "kHz") return hz / 1e3;
-    return hz;
-  }
-
-  function lengthToM(value, unit) {
-    if (unit === "mm") return value / 1000;
-    if (unit === "cm") return value / 100;
-    if (unit === "in") return value * 0.0254;
-    return value;
-  }
-
-  function mToLength(m, unit) {
-    if (unit === "mm") return m * 1000;
-    if (unit === "cm") return m * 100;
-    if (unit === "in") return m / 0.0254;
-    return m;
-  }
-
-  function delayToS(value, unit) {
-    if (unit === "ps") return value * 1e-12;
-    if (unit === "ns") return value * 1e-9;
-    if (unit === "µs") return value * 1e-6;
-    return value;
-  }
-
-  function sToDelay(s, unit) {
-    if (unit === "ps") return s * 1e12;
-    if (unit === "ns") return s * 1e9;
-    if (unit === "µs") return s * 1e6;
-    return s;
-  }
-
+  'use strict';
+  const $ = id => document.getElementById(id), n = id => RF.parseNumber($(id).value);
+  const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9, m: 1, cm: .01, mm: .001, in: .0254, ns: 1e-9, ps: 1e-12, 'µs': 1e-6 };
+  const fmt = v => Number.isFinite(v) ? String(Number(v.toPrecision(12))) : '';
+  const show = (v, unit) => RF.trimFixed(v, 5) + ' ' + unit;
+  const metric = (key, value) => `<div class="metric"><dt>${key}</dt><dd>${value}</dd></div>`;
+  let source = 'length', dielectric = 'er', current = null, slope = null;
+  let units = { 'freq-unit': $('freq-unit').value, 'len-unit': $('len-unit').value, 'delay-unit': $('delay-unit').value };
+  const phaseIds = ['phase-f1', 'phase-f2', 'phase-p1', 'phase-p2', 'phase-turns', 'phase-mode'];
   function readQuery() {
-    const q = new URLSearchParams(window.location.search);
-    const er = RF.parseNumber(q.get("er"));
-    if (er > 0) state.er = er;
-    const f = RF.parseNumber(q.get("f"));
-    const fu = q.get("fu");
-    if (f > 0) {
-      if (fu) els.freqUnit.value = fu;
-      state.freq = freqToHz(f, els.freqUnit.value);
-      els.freq.value = String(f);
+    const q = new URLSearchParams(location.search);
+    if (q.has('er')) $('er').value = q.get('er');
+    const entries = { f: 'freq', fu: 'freq-unit', L: 'length', lu: 'len-unit', t: 'delay', tu: 'delay-unit', a: 'degrees' };
+    for (const [key, id] of Object.entries(entries)) if (q.has(key)) {
+      const el = $(id), v = q.get(key);
+      if (el.tagName !== 'SELECT' || Array.from(el.options).some(o => o.value === v)) el.value = v;
     }
-    const src = q.get("from");
-    if (src === "length" || src === "delay" || src === "degrees") state.source = src;
-    const L = RF.parseNumber(q.get("L"));
-    if (L > 0) {
-      const lu = q.get("lu");
-      if (lu) els.lenUnit.value = lu;
-      state.lengthM = lengthToM(L, els.lenUnit.value);
+    if (['length', 'delay', 'degrees'].includes(q.get('from'))) source = q.get('from');
+    // Old links stored only length, even when delay or angle was the driver.
+    if ((source === 'delay' && !q.has('t')) || (source === 'degrees' && !q.has('a'))) source = 'length';
+    for (const id of phaseIds) if (q.has(id)) {
+      if (id !== 'phase-mode' || ['transmission', 'reflection'].includes(q.get(id))) $(id).value = q.get(id);
     }
+    Object.keys(units).forEach(id => units[id] = $(id).value);
   }
-
   function writeQuery() {
-    const q = new URLSearchParams();
-    q.set("er", String(state.er));
-    q.set("f", els.freq.value);
-    q.set("fu", els.freqUnit.value);
-    q.set("from", state.source);
-    q.set("L", els.length.value);
-    q.set("lu", els.lenUnit.value);
-    window.history.replaceState(null, "", `${window.location.pathname}?${q}`);
+    const q = new URLSearchParams({ er: fmt(current.er), f: $('freq').value, fu: $('freq-unit').value,
+      from: source, L: $('length').value, lu: $('len-unit').value,
+      t: $('delay').value, tu: $('delay-unit').value, a: $('degrees').value });
+    phaseIds.forEach(id => q.set(id, $(id).value));
+    history.replaceState(null, '', location.pathname + '?' + q);
   }
-
-  function metric(label, value) {
-    return `<div class="metric"><dt>${label}</dt><dd>${value}</dd></div>`;
-  }
-
-  function formatLen(m) {
-    if (!Number.isFinite(m)) return "—";
-    if (m < 0.01) return `${RF.trimFixed(m * 1000, 3)} mm`;
-    if (m < 1) return `${RF.trimFixed(m * 100, 3)} cm`;
-    return `${RF.trimFixed(m, 4)} m`;
-  }
-
-  function formatTime(s) {
-    if (!Number.isFinite(s)) return "—";
-    if (s < 1e-9) return `${RF.trimFixed(s * 1e12, 3)} ps`;
-    if (s < 1e-6) return `${RF.trimFixed(s * 1e9, 3)} ns`;
-    return `${RF.trimFixed(s * 1e6, 3)} µs`;
-  }
-
   function compute() {
-    const er = RF.parseNumber(els.er.value);
-    const vf = RF.parseNumber(els.vf.value);
-    if (erSource === "er" && er > 0) {
-      state.er = er;
-      if (document.activeElement !== els.vf) els.vf.value = RF.trimFixed(RF.vfFromEr(er), 4);
-    } else if (erSource === "vf" && vf > 0) {
-      state.er = RF.erFromVf(vf);
-      if (document.activeElement !== els.er) els.er.value = RF.trimFixed(state.er, 4);
-    }
-
-    const fVal = RF.parseNumber(els.freq.value);
-    state.freq = freqToHz(fVal, els.freqUnit.value);
-
-    if (state.source === "length") {
-      state.lengthM = lengthToM(RF.parseNumber(els.length.value), els.lenUnit.value);
-    } else if (state.source === "delay") {
-      state.delayS = delayToS(RF.parseNumber(els.delay.value), els.delayUnit.value);
-      state.lengthM = RF.lengthFromDelay(state.delayS, state.er);
-    } else {
-      state.degrees = RF.parseNumber(els.degrees.value);
-      state.lengthM = RF.lengthFromDegrees(state.degrees, state.freq, state.er);
-    }
-
-    state.delayS = RF.delayFromLength(state.lengthM, state.er);
-    state.degrees = RF.degreesFromLength(state.lengthM, state.freq, state.er);
-    const lambda = RF.guidedWavelength(state.freq, state.er);
-    const ok = state.er > 0 && state.freq > 0 && Number.isFinite(state.lengthM);
-
-    if (document.activeElement !== els.length) {
-      const shown = mToLength(state.lengthM, els.lenUnit.value);
-      els.length.value = ok ? RF.trimFixed(shown, 4) : els.length.value;
-    }
-    if (document.activeElement !== els.delay) {
-      const shown = sToDelay(state.delayS, els.delayUnit.value);
-      els.delay.value = ok ? RF.trimFixed(shown, 4) : els.delay.value;
-    }
-    if (document.activeElement !== els.degrees) {
-      els.degrees.value = ok ? RF.trimFixed(state.degrees, 3) : els.degrees.value;
-    }
-
-    els.chips.forEach(function (chip) {
-      chip.classList.toggle("is-active", Math.abs(Number(chip.getAttribute("data-er")) - state.er) < 0.05);
-    });
-
+    const raw = dielectric === 'er' ? n('er') : n('vf');
+    const er = dielectric === 'er' ? raw : RF.erFromVf(raw);
+    const validDielectric = Number.isFinite(raw) && (dielectric === 'er' ? raw >= 1 : raw > 0 && raw <= 1);
+    const f = n('freq') * scales[$('freq-unit').value];
+    const length = source === 'length' ? n('length') * scales[$('len-unit').value] :
+      source === 'delay' ? RF.lengthFromDelay(n('delay') * scales[$('delay-unit').value], er) : RF.lengthFromDegrees(n('degrees'), f, er);
+    const delay = RF.delayFromLength(length, er), degrees = RF.degreesFromLength(length, f, er);
+    const lambda = RF.guidedWavelength(f, er);
+    const ok = validDielectric && f > 0 && length >= 0 && [f, length, delay, degrees, lambda].every(Number.isFinite);
     if (!ok) {
-      els.metrics.innerHTML = metric("Status", "Enter frequency, εr, and a length, delay, or angle");
+      current = null; slope = null;
+      $('metrics').innerHTML = metric('Status', 'Enter positive frequency, εeff ≥ 1 (0 &lt; VF ≤ 1), and nonnegative length, delay, or angle.');
+      $('phase-metrics').replaceChildren(); $('delay-interpretation').textContent = '';
+      $('phase-use').disabled = true;
+      $('phase-status').textContent = 'Correct the line inputs above to estimate length.';
+      Bench.update({ valid: false, lines: ['Correct the line inputs before calculating or saving.'] });
       return;
     }
-
-    els.metrics.innerHTML = [
-      metric("λ<sub>g</sub>", formatLen(lambda)),
-      metric("λ<sub>g</sub>/2", formatLen(lambda / 2)),
-      metric("λ<sub>g</sub>/4", formatLen(lambda / 4)),
-      metric("v<sub>p</sub>", `${RF.trimFixed(RF.C_LIGHT * RF.vfFromEr(state.er) / 1e8, 3)} × 10⁸ m/s`)
-    ].join("");
-    writeQuery();
+    current = { er, f, length, delay, degrees, lambda };
+    if (dielectric === 'er') $('vf').value = fmt(RF.vfFromEr(er)); else $('er').value = fmt(er);
+    if (source !== 'length') $('length').value = fmt(length / scales[$('len-unit').value]);
+    if (source !== 'delay') $('delay').value = fmt(delay / scales[$('delay-unit').value]);
+    if (source !== 'degrees') $('degrees').value = fmt(degrees);
+    document.querySelectorAll('[data-er]').forEach(b => b.classList.toggle('is-active', Math.abs(Number(b.dataset.er) - er) < 1e-9));
+    $('metrics').innerHTML = metric('Guided wavelength', show(lambda * 1000, 'mm')) + metric('Half wavelength', show(lambda * 500, 'mm')) + metric('Quarter wavelength', show(lambda * 250, 'mm')) +
+      metric('Propagation velocity', show(RF.C_LIGHT * RF.vfFromEr(er) / 1e8, '× 10⁸ m/s')) +
+      metric('One-way delay', show(delay * 1e9, 'ns')) + metric('Reflection trace delay', show(delay * 2e9, 'ns'));
+    $('delay-interpretation').textContent = `At ${fmt(f / 1e6)} MHz, transmission phase is ${RF.trimFixed(-degrees, 3)}° and reflection phase is ${RF.trimFixed(-2 * degrees, 3)}° (unwrapped propagation phase). Physical one-way port extension: ${RF.trimFixed(delay * 1e9, 5)} ns.`;
+    slope = RF.phaseDelay(n('phase-f1') * 1e6, n('phase-f2') * 1e6, n('phase-p1'), n('phase-p2'), n('phase-turns'), $('phase-mode').value, RF.vfFromEr(er));
+    const slopeOk = slope && [slope.traceDelay, slope.length].every(Number.isFinite);
+    $('phase-metrics').innerHTML = slopeOk ? metric('Unwrapped phase change', show(slope.deltaPhase, 'deg')) + metric('Measured trace delay', show(slope.traceDelay * 1e9, 'ns')) +
+      metric('Estimated one-way delay', show(slope.oneWayDelay * 1e9, 'ns')) + metric(slope.length < 0 ? 'Signed length estimate' : 'Estimated length', show(slope.length * 1000, 'mm')) : '';
+    $('phase-status').textContent = !slopeOk ? 'Use increasing positive frequencies, finite phase values, and an integer number of extra turns.' :
+      slope.length < 0 ? 'Negative delay: check unwrapping or DUT dispersion. This estimate cannot be applied as a physical cable length.' : 'Estimate assumes the measured phase slope comes from the line.';
+    $('phase-use').disabled = !slopeOk || slope.length < 0;
+    const lines = [
+      'Uniform, nondispersive line; VF = 1/√εeff. Phase uses degrees.',
+      `VF = 1/√${fmt(er)} = ${fmt(RF.vfFromEr(er))}`,
+      `λg = c/(f√εeff) = 299792458/(${fmt(f)} × √${fmt(er)}) = ${fmt(lambda)} m`,
+      `τ = ℓ√εeff/c = ${fmt(length)} × √${fmt(er)}/299792458 = ${fmt(delay * 1e9)} ns`,
+      `θ = 360 f τ = 360 × ${fmt(f)} × ${fmt(delay)} = ${fmt(degrees)}°`,
+      `S21 propagation phase = −θ = ${fmt(-degrees)}°; S11 round-trip phase = −2θ = ${fmt(-2 * degrees)}°`
+    ];
+    if (slopeOk) lines.push('', `Measured Δφ = ${n('phase-p2')} − (${n('phase-p1')}) + 360 × ${n('phase-turns')} = ${fmt(slope.deltaPhase)}°`,
+      `τtrace = −Δφ/(360 Δf) = −(${fmt(slope.deltaPhase)})/(360 × ${fmt((n('phase-f2') - n('phase-f1')) * 1e6)}) = ${fmt(slope.traceDelay * 1e9)} ns`,
+      `τone-way = τtrace / ${$('phase-mode').value === 'reflection' ? 2 : 1} = ${fmt(slope.oneWayDelay * 1e9)} ns`,
+      `Estimated ℓ = c × VF × τone-way = ${fmt(slope.length * 1000)} mm; extra turns are user supplied.`);
+    else lines.push('', 'Phase-slope inputs are invalid. Correct them before saving the setup.');
+    Bench.update({ valid: Boolean(slopeOk), lines });
+    if (slopeOk) writeQuery();
   }
-
-  function showToast(message) {
-    els.toast.textContent = message;
-    els.toast.classList.add("is-on");
-    window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(function () { els.toast.classList.remove("is-on"); }, 1600);
-  }
-
-  function copyText(text, ok) {
-    if (!text) return;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { showToast(ok); });
-    }
-  }
-
-  function selectOnFocus(el) {
-    el.addEventListener("focus", function (event) { event.target.select(); });
-  }
-
-  els.er.addEventListener("input", function () { erSource = "er"; compute(); });
-  els.vf.addEventListener("input", function () { erSource = "vf"; compute(); });
-  els.freq.addEventListener("input", compute);
-  els.freqUnit.addEventListener("change", compute);
-  els.length.addEventListener("input", function () { state.source = "length"; compute(); });
-  els.lenUnit.addEventListener("change", function () { state.source = "length"; compute(); });
-  els.delay.addEventListener("input", function () { state.source = "delay"; compute(); });
-  els.delayUnit.addEventListener("change", function () { state.source = "delay"; compute(); });
-  els.degrees.addEventListener("input", function () { state.source = "degrees"; compute(); });
-
-  [els.er, els.vf, els.freq, els.length, els.delay, els.degrees].forEach(selectOnFocus);
-
-  els.chips.forEach(function (chip) {
-    chip.addEventListener("click", function () {
-      erSource = "er";
-      els.er.value = chip.getAttribute("data-er");
-      compute();
-    });
+  ['length', 'delay', 'degrees'].forEach(id => $(id).addEventListener('input', () => { source = id; compute(); }));
+  ['er', 'vf'].forEach(id => $(id).addEventListener('input', () => { dielectric = id; compute(); }));
+  $('freq').addEventListener('input', compute);
+  const fields = { 'freq-unit': 'freq', 'len-unit': 'length', 'delay-unit': 'delay' };
+  Object.keys(fields).forEach(id => $(id).addEventListener('change', () => {
+    const field = fields[id], value = n(field);
+    if (Number.isFinite(value)) $(field).value = fmt(value * scales[units[id]] / scales[$(id).value]);
+    units[id] = $(id).value;
+    compute();
+  }));
+  phaseIds.forEach(id => $(id).addEventListener(id === 'phase-mode' ? 'change' : 'input', compute));
+  document.querySelectorAll('[data-er]').forEach(b => b.addEventListener('click', () => { dielectric = 'er'; $('er').value = b.dataset.er; compute(); }));
+  $('phase-use').addEventListener('click', () => {
+    if (!slope || slope.length < 0) return;
+    source = 'length'; $('length').value = fmt(slope.length / scales[$('len-unit').value]); compute();
   });
-
-  els.copyResult.addEventListener("click", function () {
-    copyText(
-      `${hzToUnit(state.freq, els.freqUnit.value)} ${els.freqUnit.value} | εr ${RF.trimFixed(state.er, 3)} | ${formatLen(state.lengthM)} | ${formatTime(state.delayS)} | ${RF.trimFixed(state.degrees, 2)}°`,
-      "Result copied"
-    );
+  $('copy-link').addEventListener('click', () => { if (Bench.valid) Bench.copy(location.href); });
+  $('copy-result').addEventListener('click', () => {
+    if (current && Bench.valid) Bench.copy(`${fmt(current.f / 1e6)} MHz | εeff ${fmt(current.er)} | ${fmt(current.length * 1000)} mm | one-way ${fmt(current.delay * 1e9)} ns | ${fmt(current.degrees)}°\nPhase slope (${$('phase-mode').value}): ${fmt(slope.deltaPhase)}° | trace ${fmt(slope.traceDelay * 1e9)} ns | estimated one-way length ${fmt(slope.length * 1000)} mm`);
   });
-  els.copyLink.addEventListener("click", function () {
-    writeQuery();
-    copyText(window.location.href, "Link copied");
-  });
-
-  readQuery();
-  els.er.value = String(state.er);
-  compute();
+  readQuery(); compute();
 })();
