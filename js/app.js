@@ -1,4 +1,5 @@
 (function () {
+  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
   const RF = window.RF;
   const CHEAT_DBM = [-20, -10, -6, -3, 0, 3, 6, 10];
 
@@ -349,17 +350,19 @@
       els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.formatNumber(r.zDiffDut)} Ω`;
     }
     Bench.update({ valid: true, lines: [
-      'CW sinusoid; real positive source/load impedances. Differential drive is two equal complementary signals, 180° apart.',
-      `Direction: ${state.path === 'src' ? 'VNA → DUT; dBm is available source power' : 'DUT → VNA; dBm is delivered receiver power'}.`,
-      `Zsource = ${RF.formatNumber(r.zS)} Ω; Zload = ${RF.formatNumber(r.zL)} Ω (per side for differential).`,
-      `P = 10^(dBm/10)/1000; ${RF.formatDbm(r.dbm)} dBm corresponds to ${RF.formatNumber(state.path === 'src' ? r.wattsAvailable : r.wattsDelivered)} W per port.`,
-      state.path === 'src' ? `Voc,rms = 2√(Pavailable × Zsource) = ${RF.formatVoltage(r.vocRms)}; Vrms,load = Voc × ${RF.formatNumber(r.zL)}/(${RF.formatNumber(r.zS)} + ${RF.formatNumber(r.zL)}) = ${RF.formatVoltage(r.vrmsSe)}` :
-        `Vrms,load = √(Pdelivered × ${RF.formatNumber(r.zL)}) = ${RF.formatVoltage(r.vrmsSe)}`,
-      `Vpp,line = 2√2 × Vrms,load = ${RF.formatVoltage(r.vppSe)}`,
-      `VOPP${r.drive === 'diff' ? ',diff = 2 × Vpp,line' : ' = Vpp,line'} = ${RF.formatVoltage(RF.voppOf(r))}`,
-      `Pdelivered = Vrms,load²/${RF.formatNumber(r.zL)} = ${RF.formatPowerWatts(r.wattsDelivered)} per port`,
-      `Γ = (${RF.formatNumber(r.zL)} − ${RF.formatNumber(r.zS)})/(${RF.formatNumber(r.zL)} + ${RF.formatNumber(r.zS)}) = ${RF.formatNumber(r.gamma)}`,
-      r.drive === 'diff' ? 'Total power across both ports is twice per-port power (+3.0103 dB).' : 'The indicated voltage is at the load reference plane.'
+      'CW sinusoid with real positive source/load impedances. Differential drive uses two equal signals, 180° apart.',
+      `Direction: ${state.path === 'src' ? 'VNA → DUT; power is available source power' : 'DUT → VNA; power is delivered receiver power'}. All powers below are per port.`,
+      eq('Reference impedances', String.raw`Z_{\mathrm S} &= ${tex(r.zS, 'Ω')} \\ Z_{\mathrm L} &= ${tex(r.zL, 'Ω')}`),
+      eq('Power conversion', String.raw`P &= 10^{P_{\mathrm{dBm}}/10}\times 10^{-3}\,\mathrm W`, tex(state.path === 'src' ? r.wattsAvailable : r.wattsDelivered, 'W'), String.raw`10^{${tex(r.dbm,'dBm',false)}/10}\times 10^{-3}\,\mathrm W`),
+      ...(state.path === 'src' ? [
+        eq('Open-circuit source voltage', String.raw`V_{\mathrm{oc,rms}} &= 2\sqrt{P_{\mathrm{avs}} Z_{\mathrm S}}`, volts(r.vocRms), String.raw`2\sqrt{${tex(r.wattsAvailable)}\times ${tex(r.zS)}}\,\mathrm V`),
+        eq('Loaded RMS voltage', String.raw`V_{\mathrm{rms,L}} &= V_{\mathrm{oc,rms}}\frac{Z_{\mathrm L}}{Z_{\mathrm S}+Z_{\mathrm L}}`, volts(r.vrmsSe), String.raw`${tex(r.vocRms)}\frac{${tex(r.zL)}}{${tex(r.zS)}+${tex(r.zL)}}\,\mathrm V`)
+      ] : [eq('Loaded RMS voltage', String.raw`V_{\mathrm{rms,L}} &= \sqrt{P_{\mathrm{del}} Z_{\mathrm L}}`, volts(r.vrmsSe), String.raw`\sqrt{${tex(r.wattsDelivered)}\times ${tex(r.zL)}}\,\mathrm V`)]),
+      eq('Peak-to-peak voltage per line', String.raw`V_{\mathrm{pp,line}} &= 2\sqrt{2}\,V_{\mathrm{rms,L}}`, volts(r.vppSe)),
+      eq('Voltage at the selected reference plane', r.drive === 'diff' ? String.raw`V_{\mathrm{pp,diff}} &= 2V_{\mathrm{pp,line}}` : String.raw`V_{\mathrm{pp}} &= V_{\mathrm{pp,line}}`, volts(RF.voppOf(r))),
+      eq('Delivered power per port', String.raw`P_{\mathrm{del}} &= \frac{V_{\mathrm{rms,L}}^2}{Z_{\mathrm L}}`, tex(r.wattsDelivered, 'W'), String.raw`\frac{(${tex(r.vrmsSe)})^2}{${tex(r.zL)}}\,\mathrm W`),
+      eq('Reflection coefficient', String.raw`\Gamma &= \frac{Z_{\mathrm L}-Z_{\mathrm S}}{Z_{\mathrm L}+Z_{\mathrm S}}`, tex(r.gamma), String.raw`\frac{${tex(r.zL)}-${tex(r.zS)}}{${tex(r.zL)}+${tex(r.zS)}}`),
+      r.drive === 'diff' ? 'Total power across both ports is twice per-port power (+3.01 dB).' : 'The indicated voltage is at the load reference plane.'
     ] });
     renderTable();
   }

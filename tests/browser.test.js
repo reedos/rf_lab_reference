@@ -57,6 +57,17 @@ let checks=0;
           await expect(page.locator('#metrics')).toContainText(/∞/);
           await fill('dbm','999999'); await expect.poll(valid).toBe(false);
         });
+        await check('Zero dBm displays as zero in available and delivered power metrics',async()=>{
+          for (const drive of ['se','diff']) for (const direction of ['src','rx']) {
+            await go(`index.html?d=0&from=dbm&m=${drive}&dir=${direction}&zd=50`);
+            for (const label of ['Available','Delivered']) {
+              const metric = page.locator('#metrics .metric').filter({has:page.locator('dt', {hasText:label})});
+              await expect(metric.locator('dd')).toHaveText('0 dBm');
+            }
+            await page.locator('#copy-result').click();
+            assert.match(await page.evaluate(()=>window.copiedText), /\| 0 dBm/);
+          }
+        });
         await check('Delay legacy links, driver restoration, physical unit conversion, and invalid inputs',async()=>{
           await go('delay.html?er=1&f=1&fu=GHz&from=length&L=250&lu=mm'); await numeric('length',250);
           const t=await num('delay'); near(t,.8339);
@@ -255,6 +266,40 @@ let checks=0;
           assert.equal(await page.locator('#power-path img').count(),0);
           await page.reload(); assert.equal(await page.locator('.stage').first().locator('[data-key="name"]').inputValue(),'<img src=x onerror=alert(1)>');
         });
+        await check('LaTeX equations update across calculator modes and preserve plain-text stage names',async()=>{
+          const rendered=async()=>{
+            await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
+            assert.equal(await page.locator('.equation-error').count(),0, page.url());
+            assert.equal(await page.locator('.equation .katex-mathml').count(),await page.locator('.equation').count());
+          };
+          for (const file of [
+            'index.html?from=vopp&v=0&m=diff&dir=rx',
+            'index.html?d=-100&m=diff',
+            'match.html?from=point&re=1&im=0',
+            'match.html?from=point&re=-1&im=0',
+            'match.html?z=50&x=50',
+            'delay.html?phase-mode=reflection&phase-p2=-72',
+            'large-signal.html?tab=twotone&m=diff',
+            'large-signal.html?tab=imd3&imd-unit=dbm',
+            'large-signal.html?tab=p1db&p1-meas=7',
+            'large-signal.html?tab=thd&thd-h4=-60&thd-h5=-70',
+            'chain.html?stages=%5B%5D'
+          ]) {
+            await go(file); await page.locator('.calculation summary').click(); await rendered();
+          }
+          await go('delay.html'); await page.locator('.calculation summary').click(); await rendered();
+          const wavelength=page.locator('.equation').filter({has:page.getByRole('heading',{name:'Guided wavelength',exact:true})});
+          await fill('freq',2000);
+          await expect(wavelength.locator('annotation')).toContainText('149.9');
+          await fill('freq',''); await expect(page.locator('#calculation-text')).toContainText('Correct the line inputs');
+          assert.equal(await page.locator('#calculation-text .katex').count(),0);
+          await fill('freq',1000); await rendered();
+          await go('chain.html'); await page.locator('.calculation summary').click();
+          const stageName='<img src=x onerror=alert(1)> \\frac{1}{2}';
+          await page.locator('.stage').first().locator('[data-key="name"]').fill(stageName);
+          await expect(page.locator('#calculation-text')).toContainText(stageName);
+          assert.equal(await page.locator('#calculation-text img').count(),0); await rendered();
+        });
         await check('Every page has working navigation, calculation detail, and responsive layout',async()=>{
           for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','delay.html','chain.html']) {
             await page.setViewportSize({width,height:900}); await go(file);
@@ -263,12 +308,16 @@ let checks=0;
             if (overflow) console.log(await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(el=>!el.closest('.schematic-stage')).map(el=>({tag:el.tagName,id:el.id,class:el.className,left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right})).filter(el=>el.right>innerWidth+1).slice(0,30)));
             assert.equal(overflow,false,`${file} overflows at ${width}px`);
             await page.locator('.calculation summary').click();
-            assert.ok((await page.locator('#calculation-text').innerText()).length>150);
+            await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
+            assert.equal(await page.locator('.equation-error').count(),0, `${file} has an invalid LaTeX equation`);
+            assert.equal(await page.locator('.equation .katex-mathml').count(), await page.locator('.equation').count());
+            assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${file} equations overflow at ${width}px`);
             for(const link of await page.locator('nav a').all()) {
               const target=await link.getAttribute('href'); const response=await context.request.get(new URL(target,page.url()).href); assert.equal(response.status(),200);
             }
             if(process.env.SCREENSHOTS) {
               const dir=path.join(root,'tmp','screenshots',browserName); fs.mkdirSync(dir,{recursive:true});
+              await page.locator('.calculation').screenshot({path:path.join(dir,`equations-${file}-${width}.png`)});
               await page.locator('.calculation summary').click();
               await page.screenshot({path:path.join(dir,`${file}-${width}.png`),fullPage:true});
             }

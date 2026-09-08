@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260908-2"><link rel="stylesheet" href="css/workbench.css?v=20260908-2">
+  <link rel="stylesheet" href="css/app.css?v=20260908-3"><link rel="stylesheet" href="vendor/katex/katex.min.css?v=0.18.7"><link rel="stylesheet" href="css/workbench.css?v=20260908-3">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -41,4 +41,4 @@
 <div class="match-controls"><button class="chip is-active" data-chart="rl">S11</button><button class="chip" data-chart="vswr">VSWR</button><button class="chip" data-chart="ml">Mismatch loss</button></div>
 <svg id="chart" viewBox="0 0 720 280" role="img" aria-label="Mismatch against real resistance"></svg><p class="hint">This slice has X = 0. Click it to set a real resistance.</p></details><div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
 <section class="panel"><h2>Model and reference</h2><p>Passive impedances (R ≥ 0), real positive Z₀. Γ = (Z − Z₀)/(Z + Z₀). Delivered power fraction is 1 − |Γ|² for a matched source at this plane. This is not a full source/load mismatch uncertainty model.</p><p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260908-2"></script><script src="js/rf.js?v=20260908-2"></script><script src="js/match.js?v=20260908-2"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="vendor/katex/katex.min.js?v=0.18.7"></script><script src="js/bench.js?v=20260908-3"></script><script src="js/rf.js?v=20260908-3"></script><script src="js/match.js?v=20260908-3"></script></body></html>

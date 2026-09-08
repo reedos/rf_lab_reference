@@ -17,6 +17,24 @@ test('display precision follows value and unit without erasing tiny values', () 
   assert.equal(RF.formatNumber(Infinity),'∞');
   assert.equal(RF.formatNumber(NaN),'—');
 });
+test('logarithmic and angle displays round floating-point residue to zero', () => {
+  for (const value of [0, -0, 9.643e-16, -9.643e-16, .0049, -.0049]) {
+    assert.equal(RF.formatDbm(value), '0');
+    for (const unit of ['dB', 'dBm', 'dBc', 'deg']) assert.equal(RF.formatNumber(value, unit), '0');
+  }
+  for (const value of [.0051, -.0051]) {
+    assert.equal(RF.formatDbm(value), value > 0 ? '0.01' : '-0.01');
+    assert.equal(RF.formatNumber(value, 'dB'), value > 0 ? '0.01' : '-0.01');
+  }
+  assert.equal(RF.formatDbm(-Infinity), '−∞');
+  assert.equal(RF.formatNumber(9.643e-16, 's'), '9.643e-16');
+  for (const drive of ['se', 'diff']) for (const direction of ['src', 'rx']) {
+    const result = RF.fromDbmPlane(0, 50, 50, drive, direction);
+    assert.equal(RF.formatDbm(result.dbmAvailable), '0');
+    assert.equal(RF.formatDbm(result.dbmDelivered), '0');
+  }
+});
+
 test('blank-as-zero parser changes only empty input, not invalid input', () => {
   assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
   assert.equal(RF.parseZero('0,25'),.25);

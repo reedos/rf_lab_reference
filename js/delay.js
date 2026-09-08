@@ -1,5 +1,6 @@
 (function () {
   'use strict';
+  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
   const $ = id => document.getElementById(id), n = id => Bench.read(id, ['length','delay','degrees','phase-p1','phase-p2','phase-turns'].includes(id));
   const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9, m: 1, cm: .01, mm: .001, in: .0254, ns: 1e-9, ps: 1e-12, 'µs': 1e-6 };
   const fmt = RF.formatNumber;
@@ -68,18 +69,20 @@
       slope.length < 0 ? 'Negative delay: check unwrapping or DUT dispersion. This estimate cannot be applied as a physical cable length.' : 'Estimate assumes the measured phase slope comes from the line.';
     $('phase-use').disabled = !slopeOk || slope.length < 0;
     const lines = [
-      'Uniform, nondispersive line; VF = 1/√εeff. Phase uses degrees.',
-      `VF = 1/√${fmt(er)} = ${fmt(RF.vfFromEr(er))}`,
-      `λg = c/(f√εeff) = 299792458/(${fmt(f)} × √${fmt(er)}) = ${fmt(lambda)} m`,
-      `τ = ℓ√εeff/c = ${fmt(length)} × √${fmt(er)}/299792458 = ${fmt(delay * 1e9)} ns`,
-      `θ = 360 f τ = 360 × ${fmt(f)} × ${fmt(delay)} = ${fmt(degrees, 'deg')}°`,
-      `S21 propagation phase = −θ = ${fmt(-degrees, 'deg')}°; S11 round-trip phase = −2θ = ${fmt(-2 * degrees, 'deg')}°`
+      'Uniform, nondispersive line. Use the effective permittivity or measured velocity factor for the line. Phase is in degrees.',
+      eq('Velocity factor', String.raw`\mathrm{VF} &= \frac{1}{\sqrt{\varepsilon_{\mathrm{eff}}}}`, tex(RF.vfFromEr(er)), String.raw`\frac{1}{\sqrt{${tex(er)}}}`),
+      eq('Guided wavelength', String.raw`\lambda_{\mathrm g} &= \frac{c}{f\sqrt{\varepsilon_{\mathrm{eff}}}}`, tex(lambda * 1000, 'mm'), String.raw`\frac{299792458}{(${tex(f)})\sqrt{${tex(er)}}}\,\mathrm m`),
+      eq('One-way delay', String.raw`\tau &= \frac{\ell\sqrt{\varepsilon_{\mathrm{eff}}}}{c}`, tex(delay * 1e9, 'ns'), String.raw`\frac{${tex(length)}\sqrt{${tex(er)}}}{299792458}\,\mathrm s`),
+      eq('Electrical angle', String.raw`\theta &= 360 f\tau`, tex(degrees, 'deg'), String.raw`360\times (${tex(f)})\times (${tex(delay)})\,{}^\circ`),
+      eq('Transmission propagation phase', String.raw`\phi_{21} &= -\theta`, tex(-degrees, 'deg')),
+      eq('Reflection propagation phase', String.raw`\phi_{11} &= -2\theta`, tex(-2 * degrees, 'deg'))
     ];
-    if (slopeOk) lines.push('', `Measured Δφ = ${fmt(n('phase-p2'), 'deg')} − (${fmt(n('phase-p1'), 'deg')}) + 360 × ${n('phase-turns')} = ${fmt(slope.deltaPhase, 'deg')}°`,
-      `τtrace = −Δφ/(360 Δf) = −(${fmt(slope.deltaPhase, 'deg')})/(360 × ${fmt((n('phase-f2') - n('phase-f1')) * 1e6)}) = ${fmt(slope.traceDelay * 1e9)} ns`,
-      `τone-way = τtrace / ${$('phase-mode').value === 'reflection' ? 2 : 1} = ${fmt(slope.oneWayDelay * 1e9)} ns`,
-      `Estimated ℓ = c × VF × τone-way = ${fmt(slope.length * 1000)} mm; extra turns are user supplied.`);
-    else lines.push('', 'Phase-slope inputs are invalid. Correct them before saving the setup.');
+    if (slopeOk) lines.push('Phase-slope estimate. The number of extra turns is supplied by the user; two points alone cannot determine unwrapping.',
+      eq('Unwrapped phase change', String.raw`\Delta\phi &= \phi_2-\phi_1+360N`, tex(slope.deltaPhase, 'deg'), String.raw`${tex(n('phase-p2'), 'deg')}-(${tex(n('phase-p1'), 'deg')})+360\times ${n('phase-turns')}\,{}^\circ`),
+      eq('Measured trace delay', String.raw`\tau_{\mathrm{trace}} &= -\frac{\Delta\phi}{360(f_2-f_1)}`, tex(slope.traceDelay * 1e9, 'ns'), String.raw`-\frac{${tex(slope.deltaPhase, 'deg', false)}}{360\times (${tex((n('phase-f2')-n('phase-f1'))*1e6)})}\,\mathrm s`),
+      eq('Physical one-way delay', String.raw`\tau_{\mathrm{one\,way}} &= \frac{\tau_{\mathrm{trace}}}{${$('phase-mode').value === 'reflection' ? 2 : 1}}`, tex(slope.oneWayDelay * 1e9, 'ns')),
+      eq('Estimated length', String.raw`\ell &= c\,\mathrm{VF}\,\tau_{\mathrm{one\,way}}`, tex(slope.length * 1000, 'mm')));
+    else lines.push('Phase-slope inputs are invalid. Correct them before saving the setup.');
     Bench.update({ valid: Boolean(slopeOk), lines });
     if (slopeOk) writeQuery();
   }

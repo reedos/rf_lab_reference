@@ -1,5 +1,6 @@
 (function () {
   'use strict';
+  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
   const $ = id => document.getElementById(id), n = id => Bench.read(id, ['z', 'x', 'phase'].includes(id));
   const fmt = RF.formatNumber;
   const metric = (k, v) => `<div class="metric"><dt>${k}</dt><dd>${v}</dd></div>`;
@@ -85,15 +86,17 @@
       z: String(m.r), x: String(m.x), g: String(m.gamma), phase: String(m.phase),
       rl: String(-m.rl), vswr: String(m.vswr), ml: String(m.mloss) });
     history.replaceState(null, '', location.pathname + '?' + q);
-    Bench.update({ valid: true, lines: ['Passive load, real positive reference Z₀; matched source at the reference plane.',
-      `Z = ${zText}; Z₀ = ${fmt(z0)} Ω`,
-      `Γ = (Z − Z₀)/(Z + Z₀) = ${fmt(re)} + j(${fmt(im)})`,
-      `|Γ| = √(ReΓ² + ImΓ²) = ${fmt(m.gamma)}; phase = ${m.gamma === 0 ? 'undefined at match' : fmt(m.phase, 'deg') + '°'}`,
-      `S11 = 20 log₁₀(${fmt(m.gamma)}) = ${fmt(-m.rl, 'dB')} dB; return loss = ${fmt(m.rl, 'dB')} dB`,
-      `VSWR = (1 + ${fmt(m.gamma)})/(1 − ${fmt(m.gamma)}) = ${fmt(m.vswr)}`,
-      `Delivered fraction = 1 − ${fmt(m.gamma)}² = ${fmt(m.delivered)}`,
-      `Mismatch loss = −10 log₁₀(${fmt(m.delivered)}) = ${fmt(m.mloss, 'dB')} dB`,
-      'Magnitude edits retain the selected phase. The reference curve below the Smith chart is the X = 0 slice.'] });
+    Bench.update({ valid: true, lines: ['Passive load, real positive reference impedance; matched source at the reference plane.',
+      eq('Load and reference impedances', String.raw`Z &= R+jX \\ &= ${tex(m.r)}+j(${tex(m.x)})\,\Omega \\ Z_0 &= ${tex(z0, 'Ω')}`),
+      eq('Complex reflection coefficient', String.raw`\Gamma &= \frac{Z-Z_0}{Z+Z_0}`, String.raw`${tex(re)}+j(${tex(im)})`),
+      eq('Reflection magnitude', String.raw`|\Gamma| &= \sqrt{(\operatorname{Re}\Gamma)^2+(\operatorname{Im}\Gamma)^2}`, tex(m.gamma)),
+      m.gamma === 0 ? 'Reflection phase is undefined at a perfect match; the editing convention is 0°.' : eq('Reflection phase', String.raw`\angle\Gamma &= \operatorname{atan2}(\operatorname{Im}\Gamma,\operatorname{Re}\Gamma)`, tex(m.phase, 'deg')),
+      eq('S11 magnitude in dB', String.raw`S_{11,\mathrm{dB}} &= 20\log_{10}|\Gamma|`, tex(-m.rl, 'dB'), String.raw`20\log_{10}(${tex(m.gamma)})\,\mathrm{dB}`),
+      eq('Return loss', String.raw`\mathrm{RL} &= -20\log_{10}|\Gamma|`, tex(m.rl, 'dB')),
+      eq('Voltage standing-wave ratio', String.raw`\mathrm{VSWR} &= \frac{1+|\Gamma|}{1-|\Gamma|}`, tex(m.vswr), String.raw`\frac{1+${tex(m.gamma)}}{1-${tex(m.gamma)}}`),
+      eq('Delivered power fraction', String.raw`\frac{P_{\mathrm{del}}}{P_{\mathrm{avs}}} &= 1-|\Gamma|^2`, tex(m.delivered * 100, '%')),
+      eq('Mismatch loss', String.raw`L_{\mathrm m} &= -10\log_{10}(1-|\Gamma|^2)`, tex(m.mloss, 'dB')),
+      'Magnitude edits retain the selected phase. The real-resistance reference curve uses zero reactance.'] });
   }
   function readQuery() {
     const q = new URLSearchParams(location.search);

@@ -17,9 +17,11 @@ No build step. Classic scripts, no bundler.
 | [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, and phase-slope length estimates |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
 
-Every calculator has **Show calculation**, with substituted numbers, units, and model
-assumptions. **Copy link** preserves the setup, including the input used to solve the
-other fields. **Named setups** stores up to 50 setups per calculator in this browser;
+Every calculator has **Show calculation**, with rendered LaTeX equations, substituted
+numbers, units, and model assumptions. Equations update with the inputs; long equations
+scroll within their own panel on small screens. KaTeX and its fonts are bundled locally,
+with MathML included for assistive technology. **Copy link** preserves the setup,
+including the input used to solve the other fields. **Named setups** stores up to 50 setups per calculator in this browser;
 saving an existing name updates it. Use a copied link to move a setup to another device.
 Storage and clipboard failures are reported without preventing calculation.
 
@@ -30,9 +32,10 @@ External font requests are optional; system fonts are used when unavailable.
 
 Linear values display up to four significant figures; dB values and angles use
 hundredths. Decimal places follow the selected unit: the same delay displays as
-0.3336 ns or 333.6 ps. Very small values retain significant figures instead of
-rounding to zero. Inputs compact after editing; calculations and saved links keep
-full precision, including through repeated unit changes. Displayed equations and
+0.3336 ns or 333.6 ps. Very small linear values retain significant figures instead of
+rounding to zero. Logarithmic levels and angles round to hundredths even near
+zero, so floating-point residue displays as 0 rather than scientific notation.
+Inputs compact after editing; calculations and saved links keep full precision, including through repeated unit changes. Displayed equations and
 copied results use rounded values.
 
 Blank neutral terms mean zero: load resistance/reactance, reflection and measured
@@ -155,7 +158,9 @@ layout. Mathematical tests include known values, inverse conversions, conservati
 checks, thermal equilibrium, and invalid-input boundaries. CI runs both engines.
 
 Shared math is in `js/rf.js`; each page has a separate controller. `js/bench.js`
-provides calculation details, clipboard handling for the new tools, and local setups.
+provides equation rendering, calculation details, clipboard handling, and local setups.
+To refresh the committed KaTeX assets from the pinned dependency, run
+`npm run vendor:katex`. Normal use and GitHub Pages deployment need no build step.
 
 ## GitHub Pages
 

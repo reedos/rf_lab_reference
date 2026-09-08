@@ -1,5 +1,6 @@
 (function () {
   'use strict';
+  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
   const $ = id => document.getElementById(id), n = id => Bench.read(id);
   const fmt = RF.formatNumber, dbm = v => RF.formatDbm(v) + ' dBm';
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -74,23 +75,26 @@
       const share = totalAdded > 0 ? r.contribution / totalAdded * 100 : 0;
       return `<div><div class="noise-bar-label"><span>${escape(stages[i].name || `Stage ${i + 1}`)}</span><span>${fmt(r.contribution * RF.T_REF)} K · ${fmt(share)}%</span></div><div class="noise-bar-track"><div class="noise-bar-fill" style="width:${Math.max(0,Math.min(100,share))}%"></div></div></div>`;
     }).join('') || '<p class="hint">No stages: only the input source noise is present.</p>';
-    const lines = ['Matched stages at one frequency, small-signal CW power; gains and noise figures are constant over equivalent noise bandwidth.',
-      `Source = ${fmt(power, 'dB')} dBm; bandwidth B = ${fmt(bandwidth)} Hz; Tsource = ${fmt(temperature)} K; T₀ = 290 K.`];
+    const lines = ['Matched stages at one frequency, small-signal CW power. Gains and noise figures are constant over equivalent noise bandwidth.',
+      eq('Source conditions', String.raw`P_{\mathrm{src}} &= ${tex(power,'dBm')} \\ B &= ${tex(bandwidth,'Hz')} \\ T_{\mathrm{src}} &= ${tex(temperature,'K')} \\ T_0 &= 290\,\mathrm K`)];
     let previousGain = 1;
     result.rows.forEach((r,i) => {
       const s = parsed[i], f = 10 ** (r.stageNf / 10), g = 10 ** (r.gainDb / 10);
-      lines.push('', `Stage ${i + 1}: ${stages[i].name}`, `Power out = ${fmt(power, 'dB')} + (${fmt(r.cumulativeGainDb, 'dB')}) = ${fmt(r.outputDbm, 'dB')} dBm`,
-        s.kind === 'passive' ? `Fstage = 1 + (10^(${fmt(s.db, 'dB')}/10) − 1) × ${fmt(s.temperature)}/290 = ${fmt(f)}` : `Fstage = 10^(${fmt(s.nf, 'dB')}/10) = ${fmt(f)}`,
-        `Gain = 10^(${fmt(r.gainDb, 'dB')}/10) = ${fmt(g)}; prior gain = ${fmt(previousGain)}`,
-        `Added input noise factor = (${fmt(f)} − 1)/${fmt(previousGain)} = ${fmt(r.contribution)}`);
-      if (r.headroom !== null) lines.push(`Headroom = ${fmt(s.limit, 'dB')} − (${fmt(r.outputDbm, 'dB')}) = ${fmt(r.headroom, 'dB')} dB`);
+      lines.push(`Stage ${i + 1}: ${stages[i].name}`,
+        eq('Output signal power', String.raw`P_{\mathrm{out},${i+1}} &= P_{\mathrm{src}}+\sum_{k=1}^{${i+1}}G_{k,\mathrm{dB}}`, tex(r.outputDbm,'dBm'), String.raw`${tex(power,'dBm',false)}+(${tex(r.cumulativeGainDb,'dB',false)})\,\mathrm{dBm}`),
+        eq('Stage noise factor', s.kind === 'passive' ? String.raw`F_i &= 1+(10^{L_{i,\mathrm{dB}}/10}-1)\frac{T_i}{T_0}` : String.raw`F_i &= 10^{\mathrm{NF}_i/10}`, tex(f), s.kind === 'passive' ? String.raw`1+(10^{${tex(s.db,'dB',false)}/10}-1)\frac{${tex(s.temperature)}}{290}` : String.raw`10^{${tex(s.nf,'dB',false)}/10}`),
+        eq('Linear power gain', String.raw`G_i &= 10^{G_{i,\mathrm{dB}}/10}`, tex(g)),
+        eq('Added input noise factor', String.raw`\Delta F_i &= \frac{F_i-1}{\prod_{k<i}G_k}`, tex(r.contribution), String.raw`\frac{${tex(f)}-1}{${tex(previousGain)}}`));
+      if (r.headroom !== null) lines.push(eq('Output headroom', String.raw`H_i &= P_{\mathrm{limit},i}-P_{\mathrm{out},i}`, tex(r.headroom,'dB'), String.raw`${tex(s.limit,'dBm',false)}-(${tex(r.outputDbm,'dBm',false)})\,\mathrm{dB}`));
       previousGain *= g;
     });
-    lines.push('', `Ftotal = 1 + Σ added factors = ${fmt(result.factor)}; NF = 10 log₁₀(Ftotal) = ${fmt(result.nf, 'dB')} dB`,
-      `Teq = (Ftotal − 1) × 290 = ${fmt(result.equivalentTemperature)} K`,
-      `Noise output = k × B × (Tsource + Teq) × Gtotal`,
-      `= 1.380649e−23 × ${fmt(bandwidth)} × (${fmt(temperature)} + ${fmt(result.equivalentTemperature)}) × 10^(${fmt(result.gainDb, 'dB')}/10) W = ${dbm(result.noiseDbm)}`,
-      `Output SNR = ${fmt(result.outputDbm, 'dB')} − (${fmt(result.noiseDbm, 'dB')}) = ${fmt(result.snr, 'dB')} dB`);
+    lines.push('Cascade totals. Noise figure is referenced to 290 K; equivalent noise temperature is referred to the chain input.',
+      eq('Friis noise factor', String.raw`F_{\mathrm{total}} &= 1+\sum_i\frac{F_i-1}{\prod_{k<i}G_k}`, tex(result.factor)),
+      eq('Cascaded noise figure', String.raw`\mathrm{NF} &= 10\log_{10}F_{\mathrm{total}}`, tex(result.nf,'dB')),
+      eq('Equivalent input noise temperature', String.raw`T_{\mathrm{eq}} &= (F_{\mathrm{total}}-1)T_0`, tex(result.equivalentTemperature,'K')),
+      eq('Output noise power', String.raw`P_{\mathrm{n,out}} &= kB(T_{\mathrm{src}}+T_{\mathrm{eq}})G_{\mathrm{total}} \\ P_{\mathrm{n,out,dBm}} &= 10\log_{10}\frac{P_{\mathrm{n,out}}}{10^{-3}\,\mathrm W}`, tex(result.noiseDbm,'dBm')),
+      eq('Output signal-to-noise ratio', String.raw`\mathrm{SNR}_{\mathrm{out}} &= P_{\mathrm{out,dBm}}-P_{\mathrm{n,out,dBm}}`, tex(result.snr,'dB'), String.raw`${tex(result.outputDbm,'dBm',false)}-(${tex(result.noiseDbm,'dBm',false)})\,\mathrm{dB}`),
+      'Boltzmann constant k = 1.380649 × 10⁻²³ J/K. Linear gains and noise factors are power ratios.');
     Bench.update({ valid: true, lines }); writeQuery();
   }
   $('stages').addEventListener('input', event => {

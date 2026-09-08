@@ -1,4 +1,5 @@
 (function () {
+  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
   const RF = window.RF;
   const els = {
     body: document.body,
@@ -130,13 +131,13 @@
       els.ttMetrics.innerHTML = metric('Status', 'Power is outside the supported numeric range.');
       return;
     }
-    calculation = ['Two equal CW tones, matched real loads, complementary drive when differential.',
-      `Per-tone power = ${RF.formatNumber(state.toneDbm, 'dB')} dBm; Z₀ = ${RF.formatNumber(z0)} Ω per port.`,
-      `Vpp,CW = 2√2 × √(10^(${RF.formatNumber(state.toneDbm, 'dB')}/10)/1000 × ${RF.formatNumber(z0)})${state.drive === 'diff' ? ' × 2 (differential)' : ''} = ${RF.formatVoltage(tt.vppOne)}`,
-      `Vpp,envelope = 2 × Vpp,CW = ${RF.formatVoltage(tt.vppEnv)}`,
-      `Paverage = Ptone + 10 log₁₀2 = ${RF.formatDbm(tt.dbmPortAvg)} dBm per port`,
-      `PEP = Ptone + 10 log₁₀4 = ${RF.formatDbm(tt.dbmPortPep)} dBm per port`,
-      'Peak envelope power is 3.0103 dB above two-tone average power.'];
+    calculation = ['Two equal CW tones with matched real loads. Differential drive is complementary; voltage doubles relative to one line.',
+      eq('Per-tone input and impedance', String.raw`P_{\mathrm{tone}} &= ${tex(state.toneDbm, 'dBm')} \\ Z_0 &= ${tex(z0, 'Ω')}`),
+      eq('CW peak-to-peak voltage', String.raw`V_{\mathrm{pp,CW}} &= ${state.drive === 'diff' ? 4 : 2}\sqrt{2}\sqrt{10^{P_{\mathrm{tone}}/10}\times 10^{-3}Z_0}`, volts(tt.vppOne)),
+      eq('Two-tone envelope voltage', String.raw`V_{\mathrm{pp,env}} &= 2V_{\mathrm{pp,CW}}`, volts(tt.vppEnv)),
+      eq('Average power per port', String.raw`P_{\mathrm{avg}} &= P_{\mathrm{tone}}+10\log_{10}2`, tex(tt.dbmPortAvg, 'dBm'), String.raw`${tex(state.toneDbm, 'dBm', false)}+10\log_{10}2\,\mathrm{dBm}`),
+      eq('Peak envelope power per port', String.raw`P_{\mathrm{PEP}} &= P_{\mathrm{tone}}+10\log_{10}4`, tex(tt.dbmPortPep, 'dBm')),
+      'Peak envelope power is 3.01 dB above two-tone average power.'];
     const rows = [
       metric("CW VOPP, one tone", RF.formatVoltage(tt.vppOne)),
       metric("Envelope VOPP", RF.formatVoltage(tt.vppEnv)),
@@ -164,12 +165,14 @@
       metric('IM3 at output', number(ip3.im3Output)), metric('IIP3', number(ip3.iip3)), metric('OIP3', number(ip3.oip3)),
       metric('IM3 relative to output tone', RF.formatNumber(ip3.im3Dbc, 'dB') + ' dBc'),
       metric('Approx. OP1dB (cubic model)', number(ip3.oip3 - 10))].join('');
-    calculation = ['Small-signal third-order extrapolation; two equal tones, IM3 measured at DUT output.',
-      `Tone reference: DUT ${plane}; each tone = ${RF.formatNumber(tone, 'dB')} dBm. Gain = ${Number.isFinite(gain) ? RF.formatNumber(gain, 'dB') + ' dB' : 'unspecified'}.`,
-      unit === 'dbc' ? `Δ = −IM3(dBc) = −(${RF.formatNumber(im3, 'dB')}) = ${RF.formatNumber(ip3.delta, 'dB')} dB` : `Δ = Pout,tone − Pout,IM3 = ${RF.formatNumber(ip3.outputTone, 'dB')} − (${RF.formatNumber(im3, 'dB')}) = ${RF.formatNumber(ip3.delta, 'dB')} dB`,
-      `${plane === 'input' ? 'IIP3' : 'OIP3'} = Ptone + Δ/2 = ${RF.formatNumber(tone, 'dB')} + ${RF.formatNumber(ip3.delta, 'dB')}/2 = ${RF.formatNumber(tone + ip3.delta / 2, 'dB')} dBm`,
-      `IIP3 = ${number(ip3.iip3)}; OIP3 = IIP3 + gain = ${number(ip3.oip3)}`,
-      'OP1dB ≈ OIP3 − 10 dB is only a cubic-model rule of thumb.'];
+    calculation = ['Small-signal third-order extrapolation with two equal tones; IM3 is measured at the DUT output.',
+      `Tone reference: DUT ${plane}. Absolute IM3 is output dBm; relative IM3 is dBc relative to one output tone.`,
+      eq('Measured tone and gain', String.raw`P_{\mathrm{tone}} &= ${tex(tone, 'dBm')} \\ G &= ${tex(gain, 'dB')}`),
+      eq('Tone-to-IM3 separation', unit === 'dbc' ? String.raw`\Delta &= -\mathrm{IM3}_{\mathrm{dBc}}` : String.raw`\Delta &= P_{\mathrm{out,tone}}-P_{\mathrm{out,IM3}}`, tex(ip3.delta, 'dB'), unit === 'dbc' ? String.raw`-(${tex(im3, 'dBc')})` : String.raw`${tex(ip3.outputTone,'dBm',false)}-(${tex(im3,'dBm',false)})\,\mathrm{dB}`),
+      eq('Input third-order intercept', String.raw`\mathrm{IIP3} &= P_{\mathrm{in,tone}}+\frac{\Delta}{2}`, tex(ip3.iip3, 'dBm'), String.raw`${tex(plane === 'input' ? tone : tone-gain,'dBm',false)}+\frac{${tex(ip3.delta,'dB',false)}}{2}\,\mathrm{dBm}`),
+      eq('Output third-order intercept', String.raw`\mathrm{OIP3} &= \mathrm{IIP3}+G`, tex(ip3.oip3, 'dBm')),
+      eq('Approximate compression point', String.raw`\mathrm{OP1dB} &\approx \mathrm{OIP3}-10\,\mathrm{dB}`, tex(ip3.oip3-10, 'dBm')),
+      'The compression-point estimate is a cubic-model rule of thumb, not a measurement.'];
     lastLine = `IMD3 | tones at DUT ${plane}: ${RF.formatNumber(tone, 'dB')} dBm | output IM3 ${RF.formatNumber(ip3.im3Dbc, 'dB')} dBc | IIP3 ${number(ip3.iip3)} | OIP3 ${number(ip3.oip3)}`;
   }
 
@@ -190,9 +193,10 @@
     if (state.p1Source !== 'pout') Bench.setNumber(els.p1Pout, p1.pout1dB, 'dBm');
 
     calculation = ['CW compression point; G₀ is small-signal power gain in dB.',
-      `OP1dB = IP1dB + G₀ − 1 = ${RF.formatNumber(p1.pin1dB, 'dB')} + ${RF.formatNumber(gain, 'dB')} − 1 = ${RF.formatNumber(p1.pout1dB, 'dB')} dBm`,
-      `Uncompressed output at IP1dB = ${RF.formatNumber(p1.pin1dB, 'dB')} + ${RF.formatNumber(gain, 'dB')} = ${RF.formatNumber(p1.poutLinear, 'dB')} dBm`,
-      'OIP3 ≈ OP1dB + 10 dB is an estimate, not a measured intercept.'];
+      eq('Output compression point', String.raw`\mathrm{OP1dB} &= \mathrm{IP1dB}+G_0-1\,\mathrm{dB}`, tex(p1.pout1dB, 'dBm'), String.raw`${tex(p1.pin1dB,'dBm',false)}+${tex(gain,'dB',false)}-1\,\mathrm{dBm}`),
+      eq('Uncompressed output at IP1dB', String.raw`P_{\mathrm{out,linear}} &= \mathrm{IP1dB}+G_0`, tex(p1.poutLinear,'dBm')),
+      eq('Approximate output intercept', String.raw`\mathrm{OIP3} &\approx \mathrm{OP1dB}+10\,\mathrm{dB}`, tex(p1.pout1dB+10,'dBm')),
+      'The intercept estimate is a cubic-model rule of thumb, not a measured intercept.'];
     const rows = [
       metric("IP1dB", `${RF.formatDbm(p1.pin1dB)} dBm`),
       metric("OP1dB", `${RF.formatDbm(p1.pout1dB)} dBm`),
@@ -201,7 +205,7 @@
     ];
     const cmp = RF.compressionAt(gain, p1.pin1dB, meas);
     if (cmp) {
-      calculation.push(`Compression = Pin + G₀ − Pout,measured = ${RF.formatNumber(p1.pin1dB, 'dB')} + ${RF.formatNumber(gain, 'dB')} − (${RF.formatNumber(meas, 'dB')}) = ${RF.formatNumber(cmp.compression, 'dB')} dB`);
+      calculation.push(eq('Measured compression', String.raw`C &= P_{\mathrm{in}}+G_0-P_{\mathrm{out,meas}}`, tex(cmp.compression,'dB'), String.raw`${tex(p1.pin1dB,'dBm',false)}+${tex(gain,'dB',false)}-(${tex(meas,'dBm',false)})\,\mathrm{dB}`));
       rows.push(metric("Measured gain", `${RF.formatNumber(cmp.gainMeas, 'dB')} dB`));
       rows.push(metric("Compression", `${RF.formatNumber(cmp.compression, 'dB')} dB`));
     }
@@ -220,11 +224,11 @@
       lastLine = "";
       return;
     }
-    calculation = ['Harmonics are power ratios in dBc relative to the fundamental; blank harmonics are omitted.',
-      `THD ratio = √(Σ 10^(Hn/10)) = √(${harmonics.filter(Number.isFinite).map(h => `10^(${RF.formatNumber(h, 'dB')}/10)`).join(' + ')}) = ${RF.formatNumber(thd.ratio)}`,
-      `THD % = 100 × ratio = ${RF.formatNumber(thd.percent)}%`,
-      `THD dB = 20 log₁₀(ratio) = ${RF.formatNumber(thd.db, 'dB')} dB`,
-      'Harmonic measurements must use a consistent power reference; receiver distortion is not removed.'];
+    calculation = ['Harmonics are power ratios in dBc relative to the fundamental. Blank harmonics are omitted.',
+      eq('Root-sum-square harmonic ratio', String.raw`r_{\mathrm{THD}} &= \sqrt{\sum_{n\ge 2}10^{H_n/10}}`, tex(thd.ratio), String.raw`\sqrt{${harmonics.filter(Number.isFinite).map(h => String.raw`10^{${tex(h,'dBc',false)}/10}`).join(' + ')}}`),
+      eq('Total harmonic distortion', String.raw`\mathrm{THD}_{\%} &= 100\,r_{\mathrm{THD}}`, tex(thd.percent,'%')),
+      eq('Distortion level', String.raw`\mathrm{THD}_{\mathrm{dB}} &= 20\log_{10}r_{\mathrm{THD}}`, tex(thd.db,'dB')),
+      'Use a consistent power reference for every harmonic measurement. Receiver distortion is not removed.'];
     const h2 = harmonics[0];
     const rows = [
       metric("THD", `${RF.formatNumber(thd.percent)} %`),

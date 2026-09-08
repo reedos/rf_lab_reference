@@ -41,9 +41,39 @@
     const exact = read(el);
     if (Number.isFinite(exact)) setNumber(el, exact, inputUnit(el));
   });
+  // Keep authored equations separate from prose and user-supplied labels.
+  function tex(value, unit = '', withUnit = true) {
+    let number = RF.formatNumber(value, unit).replace(/(-?)∞/, '$1\\infty').replace('—', '\\text{undefined}');
+    number = number.replace(/e([+-]?\d+)$/, '\\times 10^{$1}');
+    const units = { deg: '{}^\\circ', '%': '\\,\\%', 'Ω': '\\,\\Omega', 'µV': '\\,\\mu\\mathrm{V}' };
+    return number + (unit && withUnit ? units[unit] || '\\,\\mathrm{' + unit + '}' : '');
+  }
+  function voltage(value) { const split = RF.splitVoltage(value); return tex(split.value, split.unit); }
+  function equation(label, formula, result, substitution) {
+    return { label, latex: '\\begin{aligned}' + formula +
+      (substitution ? '\\\\ &= ' + substitution : '') +
+      (result ? '\\\\ &\\approx ' + result : '') + '\\end{aligned}' };
+  }
+  function renderCalculation() {
+    if (!detail || !detail.closest('details').open) return;
+    detail.replaceChildren();
+    for (const line of latest.lines) {
+      if (!line) continue;
+      if (typeof line === 'string') {
+        const paragraph = document.createElement('p'); paragraph.textContent = line; detail.append(paragraph);
+        continue;
+      }
+      const block = document.createElement('section'), label = document.createElement('h3'), math = document.createElement('div');
+      block.className = 'equation'; label.textContent = line.label; math.className = 'equation-math';
+      math.tabIndex = 0; math.setAttribute('role', 'region'); math.setAttribute('aria-label', line.label);
+      try { katex.render(line.latex, math, { displayMode: true, output: 'htmlAndMathml', throwOnError: true, trust: false, strict: 'error' }); }
+      catch (_) { math.classList.add('equation-error'); math.textContent = 'Equation unavailable. The calculator result is shown above.'; }
+      block.append(label, math); detail.append(block);
+    }
+  }
   function update(value) {
     latest = value;
-    if (detail) detail.textContent = value.lines.join('\n');
+    renderCalculation();
     if (save) save.disabled = !value.valid;
     ['copy-result', 'copy-link'].forEach(id => { const button = document.getElementById(id); if (button) button.disabled = !value.valid; });
   }
@@ -54,7 +84,7 @@
       say('Copied.');
     } catch (_) { say('Clipboard unavailable. Select and copy the address or calculation text.'); }
   }
-  window.Bench = { update, copy, read, raw, setNumber, compactInputs, get valid() { return latest.valid; } };
+  window.Bench = { update, copy, read, raw, setNumber, compactInputs, tex, voltage, equation, get valid() { return latest.valid; } };
   document.addEventListener('DOMContentLoaded', function () {
     const calc = document.getElementById('calc');
     if (!calc) return;
@@ -62,7 +92,7 @@
     const area = document.createElement('section');
     area.className = 'bench-tools';
     area.setAttribute('aria-label', 'Calculation and saved setups');
-    area.innerHTML = `<details class="calculation"><summary>Show calculation</summary><p class="hint">Linear results use four significant figures; dB values and angles use hundredths. Decimal places follow the selected unit. Calculations and saved links retain full precision. Displayed equations are rounded.</p><pre id="calculation-text"></pre></details>
+    area.innerHTML = `<details class="calculation"><summary>Show calculation</summary><p class="hint">Linear results use four significant figures; dB values and angles use hundredths. Calculations and saved links retain full precision. Substituted values and results below are rounded.</p><div id="calculation-text"></div></details>
       <details class="saved-setups"><summary>Named setups <span class="muted">· saved on this device</span></summary>
       <div class="setup-controls"><label>Setup name<input id="setup-name" maxlength="80" placeholder="e.g. Receiver bench"></label>
       <button type="button" id="setup-save" class="copy">Save setup</button>
@@ -73,6 +103,7 @@
       <p id="bench-status" class="hint" role="status"></p>`;
     calc.after(area);
     detail = document.getElementById('calculation-text');
+    detail.closest('details').addEventListener('toggle', renderCalculation);
     status = document.getElementById('bench-status');
     list = document.getElementById('setup-list');
     name = document.getElementById('setup-name');

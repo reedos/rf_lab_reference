@@ -138,14 +138,15 @@
   }
 
   // Presentation only: four significant figures for linear quantities, and
-  // hundredths for logarithmic levels/angles. Preserve tiny nonzero values.
+  // hundredths for logarithmic levels/angles, including near zero.
+  // Tiny linear quantities (e.g. delays in seconds) retain significant figures.
   function formatNumber(value, unit) {
     if (value === Infinity) return '∞';
     if (value === -Infinity) return '-∞';
     if (!Number.isFinite(value)) return '—';
     if (value === 0) return '0';
     const mag = Math.abs(value);
-    if (['dB', 'dBm', 'dBc', 'deg'].includes(unit) && mag >= .01 && mag < 1e6) return String(Number(value.toFixed(2)));
+    if (['dB', 'dBm', 'dBc', 'deg'].includes(unit) && mag < 1e6) return String(Number(value.toFixed(2)));
     const rounded = Number(value.toPrecision(4));
     return Math.abs(rounded) >= 1e6 || Math.abs(rounded) < 1e-3 ? rounded.toExponential().replace('e+', 'e') : String(rounded);
   }
@@ -157,9 +158,9 @@
   function formatDbm(dbm, digits) {
     if (dbm === -Infinity) return "−∞";
     if (!Number.isFinite(dbm)) return "—";
-    if (dbm !== 0 && Math.abs(dbm) < .01) return formatNumber(dbm, 'dBm');
     const n = digits == null ? 2 : digits;
-    return Number(dbm.toFixed(n)).toFixed(n);
+    const rounded = Number(dbm.toFixed(n));
+    return rounded === 0 ? "0" : rounded.toFixed(n);
   }
 
   function splitVoltage(volts) {

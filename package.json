@@ -4,9 +4,11 @@
   "description": "Quick RF lab reference: dBm ↔ VOPP, match, large-signal, delay.",
   "scripts": {
     "test": "node tests/rf.test.js && node --test tests/workbench.test.js",
-    "test:browser": "node tests/browser.test.js"
+    "test:browser": "node tests/browser.test.js",
+    "vendor:katex": "node scripts/vendor-katex.js"
   },
   "devDependencies": {
+    "katex": "0.18.7",
     "playwright": "1.62.1"
   }
 }
