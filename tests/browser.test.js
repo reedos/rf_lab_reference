@@ -46,9 +46,9 @@ let checks=0;
         };
         const valid=()=>page.evaluate(()=>window.Bench.valid);
         await check('VOPP drive, units, zero voltage, invalid impedance, and driver restoration',async()=>{
-          await go(''); await numeric('vopp',.63246,1e-5);
-          await page.locator('#btn-diff').click(); await numeric('vopp',1.26491,1e-5);
-          await page.locator('#vopp-unit').selectOption('mV'); await numeric('vopp',1264.911,1e-3);
+          await go(''); await numeric('vopp',.6325);
+          await page.locator('#btn-diff').click(); await numeric('vopp',1.265);
+          await page.locator('#vopp-unit').selectOption('mV'); await numeric('vopp',1265);
           await fill('vopp',1000); await expect(page).toHaveURL(/from=vopp/); const saved=page.url();
           await page.reload(); await numeric('vopp',1000);
           assert.equal(new URL(saved).searchParams.get('from'),'vopp');
@@ -59,11 +59,11 @@ let checks=0;
         });
         await check('Delay legacy links, driver restoration, physical unit conversion, and invalid inputs',async()=>{
           await go('delay.html?er=1&f=1&fu=GHz&from=length&L=250&lu=mm'); await numeric('length',250);
-          const t=await num('delay'); near(t,.833910237995,1e-10);
+          const t=await num('delay'); near(t,.8339);
           await page.locator('#len-unit').selectOption('cm'); await numeric('length',25);
           await page.locator('#freq-unit').selectOption('MHz'); await numeric('freq',1000);
           await page.locator('#delay-unit').selectOption('ps'); await numeric('delay',t*1000,1e-6);
-          await fill('delay',1000); await page.reload(); await numeric('delay',1000); await numeric('length',29.9792458);
+          await fill('delay',1000); await page.reload(); await numeric('delay',1000); await numeric('length',29.98);
           await fill('degrees',90); await page.reload(); await numeric('degrees',90);
           await go('delay.html?er=1&f=1&fu=GHz&from=delay&L=250&lu=mm'); await numeric('length',250); await expect.poll(valid).toBe(true);
           await fill('er',''); await expect.poll(valid).toBe(false);
@@ -73,8 +73,8 @@ let checks=0;
         await check('Phase estimator transmission/reflection, unwrapping, application and saved inputs',async()=>{
           await go('delay.html');
           await fill('phase-p2',-72); await page.locator('#phase-mode').selectOption('reflection');
-          await expect(page.locator('#phase-metrics')).toContainText(/299\.79246 mm/);
-          await page.locator('#phase-use').click(); await numeric('length',299.792458);
+          await expect(page.locator('#phase-metrics')).toContainText(/299\.8 mm/);
+          await page.locator('#phase-use').click(); await numeric('length',299.8);
           await fill('phase-p1',-170); await fill('phase-p2',170); await fill('phase-turns',-1);
           await page.reload(); await numeric('phase-turns',-1); await numeric('phase-p1',-170);
           await expect(page.locator('#phase-metrics')).toContainText(/−?\-?20 deg/);
@@ -83,15 +83,15 @@ let checks=0;
           await expect(page.locator('#phase-status')).toContainText(/Negative delay/);
           assert.equal(await page.locator('#phase-use').isDisabled(),true);
         });
-        await check('IP3 reference planes, absolute IM3 conversion and incomplete gain',async()=>{
+        await check('IP3 reference planes, absolute IM3 conversion and blank unity gain',async()=>{
           await go('large-signal.html?tab=imd3');
           const before=await page.locator('#imd-metrics').innerText(); assert.match(before,/30\.00 dBm/);
           await page.locator('#imd-unit').selectOption('dbm'); await numeric('imd-im3',-30);
           await page.locator('#imd-plane').selectOption('output'); await numeric('imd-tone',10);
           await expect(page.locator('#imd-metrics')).toContainText(/30\.00 dBm/);
           await fill('imd-gain',''); await expect.poll(valid).toBe(true);
-          await page.locator('#imd-plane').selectOption('input'); await expect.poll(valid).toBe(false);
-          await fill('imd-tone',-10); await expect.poll(valid).toBe(false);
+          await page.locator('#imd-plane').selectOption('input'); await expect.poll(valid).toBe(true); await numeric('imd-tone',10);
+          await fill('imd-tone',-10); await expect.poll(valid).toBe(true);
           await fill('imd-gain',20); await expect.poll(valid).toBe(true);
         });
         await check('Large-signal saves every tab, P1dB driver and THD data',async()=>{
@@ -105,7 +105,7 @@ let checks=0;
           await page.locator('[data-panel="thd"]').click(); await fill('thd-h4','bad'); await expect.poll(valid).toBe(false);
         });
         await check('Match complex impedance, scalar edits, invalid data and canonical links',async()=>{
-          await go('match.html'); await fill('x',50); await numeric('gamma',Math.sqrt(.2));
+          await go('match.html'); await fill('x',50); await numeric('gamma',.4472);
           const phase=await num('phase'); await fill('rl',-20); await numeric('gamma',.1); await numeric('phase',phase);
           await page.reload(); await numeric('phase',phase); await numeric('gamma',.1);
           await fill('gamma',1.1); await expect.poll(valid).toBe(false);
@@ -172,10 +172,69 @@ let checks=0;
           await expect(page.locator('#bench-status')).toContainText(/Clipboard unavailable/);
         });
         await check('Fractional inputs retain precision across saved links',async()=>{
-          await go('large-signal.html?t=-10.123456789'); await numeric('tone-dbm',-10.123456789,1e-11);
-          await page.locator('[data-panel="p1db"]').click(); await fill('p1-pout',7.123456789); await page.reload(); await numeric('p1-pout',7.123456789,1e-11);
-          await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50'); await numeric('vopp',.123456789012,1e-12);
-          await page.reload(); await numeric('vopp',.123456789012,1e-12);
+          await go('large-signal.html?t=-10.123456789'); await numeric('tone-dbm',-10.12);
+          await page.locator('[data-panel="p1db"]').click(); await fill('p1-pout',7.123456789); await page.reload(); await numeric('p1-pout',7.12);
+          await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50'); await numeric('vopp',.1235);
+          await page.reload(); await numeric('vopp',.1235);
+          near(Number(new URL(page.url()).searchParams.get('v')),.123456789012,1e-14);
+        });
+        await check('Rounded fields retain exact values across repeated unit changes and restoration',async()=>{
+          await go('delay.html'); await numeric('delay',.3336);
+          const originalDelay=Number(new URL(page.url()).searchParams.get('t'));
+          near(originalDelay,1e9*.1/299792458,1e-14);
+          for(let i=0;i<3;i++) {
+            await page.locator('#delay-unit').selectOption('ps'); await numeric('delay',333.6);
+            await page.locator('#delay-unit').selectOption('ns'); await numeric('delay',.3336);
+            await page.locator('#len-unit').selectOption('in'); await numeric('length',3.937);
+            await page.locator('#len-unit').selectOption('mm'); await numeric('length',100);
+          }
+          await page.reload(); await numeric('delay',.3336);
+          near(Number(new URL(page.url()).searchParams.get('t')),originalDelay,1e-12);
+          await page.locator('#phase-use').click(); await numeric('length',299.8);
+          await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('L'))).toBeCloseTo(299.792458,9);
+          await page.reload(); await numeric('length',299.8);
+          await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50');
+          for(let i=0;i<3;i++) { await page.locator('#vopp-unit').selectOption('mV'); await numeric('vopp',123.5); await page.locator('#vopp-unit').selectOption('V'); }
+          await page.reload(); await numeric('vopp',.1235);
+          near(Number(new URL(page.url()).searchParams.get('v')),.123456789012,1e-14);
+          await go('match.html'); await fill('x',50); await numeric('gamma',.4472);
+          await page.locator('.reference-details summary').click();
+          await page.locator('[data-chart="vswr"]').click(); await fill('rl',-20);
+          await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('phase'))).toBeCloseTo(63.434948822922,9);
+        });
+        await check('Preset buttons replace exact values even when their rounded displays match',async()=>{
+          const queryNumber=async key=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get(key));
+          await go('match.html?z0=50.0001&z=50.0002&x=0');
+          await numeric('z0',50); await numeric('z',50);
+          await page.locator('[data-reference="50"]').click();
+          await expect.poll(()=>queryNumber('z0')).toBe(50);
+          await page.locator('[data-load="50"]').click();
+          await expect.poll(()=>queryNumber('z')).toBe(50); await numeric('gamma',0);
+          await go('delay.html?er=2.10001'); await numeric('er',2.1);
+          await page.locator('[data-er="2.1"]').click(); await expect.poll(()=>queryNumber('er')).toBe(2.1);
+          await go('index.html?zd=50.0001'); await numeric('zdut',50);
+          await page.locator('[data-z="50"]').click(); await expect.poll(()=>queryNumber('zd')).toBe(50);
+          await go('large-signal.html?z=50.0001'); await numeric('z0',50);
+          await page.locator('[data-z="50"]').click(); await expect.poll(()=>queryNumber('z')).toBe(50);
+        });
+        await check('Blank neutral inputs mean zero, while required values and omitted measurements stay distinct',async()=>{
+          await go('match.html'); await fill('x',''); await expect.poll(valid).toBe(true); await numeric('gamma',0);
+          await fill('z',''); await fill('x',50); await numeric('gamma',1); await numeric('phase',90);
+          await fill('gamma',.2); await fill('phase',''); await numeric('z',75); await numeric('x',0);
+          await fill('x','-'); await expect.poll(valid).toBe(false); await fill('x',''); await expect.poll(valid).toBe(true);
+          await fill('z0',''); await expect.poll(valid).toBe(false);
+          await go('delay.html'); await fill('length',''); await numeric('delay',0); await expect.poll(valid).toBe(true);
+          await fill('phase-p1',''); await fill('phase-p2',''); await fill('phase-turns',''); await expect.poll(valid).toBe(true);
+          await expect(page.locator('#phase-metrics')).toContainText('0 ns');
+          await fill('freq',''); await expect.poll(valid).toBe(false);
+          await go('chain.html'); await page.locator('.stage').first().locator('[data-key="db"]').fill(''); await expect.poll(valid).toBe(true);
+          await expect(page.locator('#power-rows').locator('tr').first()).toContainText('-20.00 dBm');
+          await page.locator('.stage').first().locator('[data-key="limit"]').fill('');
+          await expect(page.locator('#power-rows').locator('tr').first()).toContainText('Unspecified');
+          await page.locator('.stage').nth(1).locator('[data-key="nf"]').fill(''); await expect.poll(valid).toBe(false);
+          await go('large-signal.html?tab=thd'); await fill('thd-h3',''); await expect(page.locator('#thd-metrics')).toContainText('1 %');
+          await fill('thd-h2',''); await expect.poll(valid).toBe(false);
+          await page.locator('[data-panel="p1db"]').click(); await fill('p1-gain',''); await numeric('p1-pout',-11);
         });
         await check('Unavailable browser storage leaves calculators and copy links usable',async()=>{
           const blocked=await context.newPage();

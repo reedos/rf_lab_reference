@@ -26,6 +26,23 @@ Storage and clipboard failures are reported without preventing calculation.
 Setups stay on the device. There is no account, backend, or measurement upload.
 External font requests are optional; system fonts are used when unavailable.
 
+## Display precision and blank inputs
+
+Linear values display up to four significant figures; dB values and angles use
+hundredths. Decimal places follow the selected unit: the same delay displays as
+0.3336 ns or 333.6 ps. Very small values retain significant figures instead of
+rounding to zero. Inputs compact after editing; calculations and saved links keep
+full precision, including through repeated unit changes. Displayed equations and
+copied results use rounded values.
+
+Blank neutral terms mean zero: load resistance/reactance, reflection and measured
+phase angles, extra phase turns, length/delay/electrical angle, VOPP, and gain/loss.
+Blank gain means 0 dB (unity), so enter the actual gain for an amplifier. Required
+reference impedances, frequencies, dielectric properties, noise figures,
+temperatures, and power measurements must still be supplied. Blank harmonics are
+omitted, and blank output limits mean no limit; neither becomes a 0 dB measurement.
+Invalid text is always rejected.
+
 ## VOPP — dBm ↔ peak-to-peak
 
 dBm ↔ voltage at the reference plane. Default unit is **volts**.
@@ -56,7 +73,8 @@ VOPP_diff  = 2 · VOPP_SE
 - **IMD3:** select whether each tone's dBm is at the DUT input or output.
   IIP3 = P_input,tone + Δ/2; OIP3 = P_output,tone + Δ/2. OIP3 = IIP3 + G.
   Absolute IM3 dBm is always at the **DUT output**; dBc is relative to one output
-  tone. Input tone power with absolute output IM3 requires gain. Changing units
+  tone. Gain defaults to 0 dB when blank; enter the DUT gain to translate between
+  input and output reference planes. Changing units
   or reference plane converts the entered value when enough information is present.
   Thumb: OP1dB ≈ OIP3 − 10 dB, only an approximate cubic-model relationship.
 - **P1dB:** OP1dB = IP1dB + G₀ − 1 dB.

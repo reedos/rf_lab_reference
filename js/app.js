@@ -179,12 +179,12 @@
   }
 
   function readZ(el) {
-    const z = RF.parseNumber(el.value);
+    const z = Bench.read(el);
     return z > 0 ? z : NaN;
   }
 
   function zLabel(name, ohms) {
-    return name + " " + RF.trimFixed(ohms, 4) + " Ω";
+    return name + " " + RF.formatNumber(ohms) + " Ω";
   }
 
   function compute() {
@@ -279,7 +279,7 @@
 
     els.voppUnit.value = state.unit;
     if (document.activeElement !== els.zdut && Number.isFinite(state.zdut)) {
-      els.zdut.value = String(state.zdut);
+      Bench.setNumber(els.zdut, state.zdut);
     }
 
     document.querySelectorAll(".chips[data-target='zdut'] .chip").forEach(function (chip) {
@@ -296,11 +296,11 @@
     if (els.diffLoadZ) els.diffLoadZ.innerHTML = rightZ;
 
     if (document.activeElement !== els.dbm) {
-      els.dbm.value = ok ? (Number.isFinite(state.dbm) ? String(Number(state.dbm.toPrecision(12))) : RF.formatDbm(state.dbm)) : els.dbm.value;
+      if (ok) Bench.setNumber(els.dbm, state.dbm, 'dBm');
     }
     if (document.activeElement !== els.vopp) {
       const shown = RF.voltsToUnit(state.vopp, state.unit);
-      els.vopp.value = ok ? String(Number(shown.toPrecision(12))) : els.vopp.value;
+      if (ok) Bench.setNumber(els.vopp, shown, state.unit);
     }
 
     els.fieldDbm.classList.toggle("invalid", !ok && state.source === "dbm");
@@ -317,7 +317,7 @@
     }
 
     const voppShow = RF.voppOf(r);
-    const gammaTxt = Number.isFinite(r.gamma) ? RF.trimFixed(r.gamma, 3) : "—";
+    const gammaTxt = Number.isFinite(r.gamma) ? RF.formatNumber(r.gamma) : "—";
     if (r.drive === "se") {
       els.metrics.innerHTML = [
         metric("V<sub>rms</sub> at load", RF.formatVoltage(r.vrmsSe)),
@@ -328,7 +328,7 @@
         metric("V<sub>oc</sub> pk-pk", RF.formatVoltage(r.vocVpp))
       ].join("");
       els.seLineDbm.textContent = `${RF.formatDbm(r.dbm)} dBm`;
-      els.seLineZ.innerHTML = `Z<sub>S</sub> ${RF.trimFixed(r.zS, 4)} Ω → Z<sub>L</sub> ${RF.trimFixed(r.zL, 4)} Ω`;
+      els.seLineZ.innerHTML = `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω → Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`;
       els.seNodeVopp.textContent = RF.formatVoltage(voppShow);
       els.seNodePower.textContent = RF.formatPowerWatts(state.path === "rx" ? r.wattsDelivered : r.wattsAvailable);
     } else {
@@ -338,27 +338,27 @@
         metric("Available / port", `${RF.formatDbm(r.dbmAvailable)} dBm`),
         metric("Delivered / port", `${RF.formatDbm(r.dbmDelivered)} dBm`),
         metric("Γ (per side)", gammaTxt),
-        metric("Z<sub>diff</sub> DUT", `${RF.trimFixed(r.zDiffDut, 4)} Ω`)
+        metric("Z<sub>diff</sub> DUT", `${RF.formatNumber(r.zDiffDut)} Ω`)
       ].join("");
       const port = `${RF.formatDbm(r.dbm)} dBm`;
       els.diffP1Dbm.textContent = port;
       els.diffP2Dbm.textContent = port;
-      els.diffP1Z.innerHTML = `Z<sub>S</sub> ${RF.trimFixed(r.zS, 4)} Ω`;
-      els.diffP2Z.innerHTML = `Z<sub>L</sub> ${RF.trimFixed(r.zL, 4)} Ω`;
+      els.diffP1Z.innerHTML = `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω`;
+      els.diffP2Z.innerHTML = `Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`;
       els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
-      els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.trimFixed(r.zDiffDut, 4)} Ω`;
+      els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.formatNumber(r.zDiffDut)} Ω`;
     }
     Bench.update({ valid: true, lines: [
       'CW sinusoid; real positive source/load impedances. Differential drive is two equal complementary signals, 180° apart.',
       `Direction: ${state.path === 'src' ? 'VNA → DUT; dBm is available source power' : 'DUT → VNA; dBm is delivered receiver power'}.`,
-      `Zsource = ${r.zS} Ω; Zload = ${r.zL} Ω (per side for differential).`,
-      `P = 10^(dBm/10)/1000; ${RF.formatDbm(r.dbm)} dBm corresponds to ${state.path === 'src' ? r.wattsAvailable : r.wattsDelivered} W per port.`,
-      state.path === 'src' ? `Voc,rms = 2√(Pavailable × Zsource) = ${RF.formatVoltage(r.vocRms)}; Vrms,load = Voc × ${r.zL}/(${r.zS} + ${r.zL}) = ${RF.formatVoltage(r.vrmsSe)}` :
-        `Vrms,load = √(Pdelivered × ${r.zL}) = ${RF.formatVoltage(r.vrmsSe)}`,
+      `Zsource = ${RF.formatNumber(r.zS)} Ω; Zload = ${RF.formatNumber(r.zL)} Ω (per side for differential).`,
+      `P = 10^(dBm/10)/1000; ${RF.formatDbm(r.dbm)} dBm corresponds to ${RF.formatNumber(state.path === 'src' ? r.wattsAvailable : r.wattsDelivered)} W per port.`,
+      state.path === 'src' ? `Voc,rms = 2√(Pavailable × Zsource) = ${RF.formatVoltage(r.vocRms)}; Vrms,load = Voc × ${RF.formatNumber(r.zL)}/(${RF.formatNumber(r.zS)} + ${RF.formatNumber(r.zL)}) = ${RF.formatVoltage(r.vrmsSe)}` :
+        `Vrms,load = √(Pdelivered × ${RF.formatNumber(r.zL)}) = ${RF.formatVoltage(r.vrmsSe)}`,
       `Vpp,line = 2√2 × Vrms,load = ${RF.formatVoltage(r.vppSe)}`,
       `VOPP${r.drive === 'diff' ? ',diff = 2 × Vpp,line' : ' = Vpp,line'} = ${RF.formatVoltage(RF.voppOf(r))}`,
-      `Pdelivered = Vrms,load²/${r.zL} = ${RF.formatPowerWatts(r.wattsDelivered)} per port`,
-      `Γ = (${r.zL} − ${r.zS})/(${r.zL} + ${r.zS}) = ${RF.trimFixed(r.gamma, 6)}`,
+      `Pdelivered = Vrms,load²/${RF.formatNumber(r.zL)} = ${RF.formatPowerWatts(r.wattsDelivered)} per port`,
+      `Γ = (${RF.formatNumber(r.zL)} − ${RF.formatNumber(r.zS)})/(${RF.formatNumber(r.zL)} + ${RF.formatNumber(r.zS)}) = ${RF.formatNumber(r.gamma)}`,
       r.drive === 'diff' ? 'Total power across both ports is twice per-port power (+3.0103 dB).' : 'The indicated voltage is at the load reference plane.'
     ] });
     renderTable();
@@ -390,7 +390,7 @@
     if (!Number.isFinite(state.dbm)) state.dbm = 0;
     state.source = "dbm";
     state.dbm = Math.round((state.dbm + delta) * 100) / 100;
-    els.dbm.value = String(state.dbm);
+    Bench.setNumber(els.dbm, state.dbm, 'dBm');
     compute();
   }
 
@@ -408,9 +408,9 @@
     if (!r) return "";
     const dir = state.path === "rx" ? "DUT→VNA" : "VNA→DUT";
     if (r.drive === "se") {
-      return `${dir} SE | ${RF.formatDbm(r.dbm)} dBm | ZVNA ${r.zvna} Ω | ZDUT ${r.zdut} Ω | ${RF.formatVoltage(RF.voppOf(r))} pk-pk`;
+      return `${dir} SE | ${RF.formatDbm(r.dbm)} dBm | ZVNA ${RF.formatNumber(r.zvna)} Ω | ZDUT ${RF.formatNumber(r.zdut)} Ω | ${RF.formatVoltage(RF.voppOf(r))} pk-pk`;
     }
-    return `${dir} DIFF | ${RF.formatDbm(r.dbmPort)} dBm/port | ZVNA ${r.zvna} Ω | ZDUT ${r.zdut} Ω | ${RF.formatVoltage(r.vppDiff)} VOPP`;
+    return `${dir} DIFF | ${RF.formatDbm(r.dbmPort)} dBm/port | ZVNA ${RF.formatNumber(r.zvna)} Ω | ZDUT ${RF.formatNumber(r.zdut)} Ω | ${RF.formatVoltage(r.vppDiff)} VOPP`;
   }
 
   function copyText(text, okMessage) {
@@ -457,7 +457,7 @@
 
   els.dbm.addEventListener("input", function () {
     state.source = "dbm";
-    state.dbm = RF.parseNumber(els.dbm.value);
+    state.dbm = Bench.read(els.dbm);
     compute();
   });
   els.dbm.addEventListener("focus", function (event) { event.target.select(); });
@@ -471,7 +471,7 @@
 
   els.vopp.addEventListener("input", function () {
     state.source = "vopp";
-    state.vopp = RF.unitToVolts(RF.parseNumber(els.vopp.value), state.unit);
+    state.vopp = RF.unitToVolts(Bench.read(els.vopp, true), state.unit);
     compute();
   });
   els.vopp.addEventListener("focus", function (event) { event.target.select(); });
@@ -479,7 +479,7 @@
   els.voppUnit.addEventListener("change", function () {
     const next = els.voppUnit.value;
     if (state.source === "vopp") {
-      const typed = RF.parseNumber(els.vopp.value);
+      const typed = Bench.read(els.vopp, true);
       const volts = RF.unitToVolts(typed, state.unit);
       state.unit = next;
       if (Number.isFinite(volts)) state.vopp = volts;
@@ -497,7 +497,7 @@
     if (!chip) return;
     const group = chip.parentElement;
     if (!group || group.getAttribute("data-target") !== "zdut") return;
-    els.zdut.value = chip.getAttribute("data-z");
+    Bench.setNumber(els.zdut, Number(chip.getAttribute("data-z")));
     compute();
   });
 
@@ -517,10 +517,10 @@
   });
 
   readQuery();
-  els.zdut.value = String(state.zdut);
+  Bench.setNumber(els.zdut, state.zdut);
   els.voppUnit.value = state.unit;
   if (state.source === "dbm") {
-    els.dbm.value = String(state.dbm);
+    Bench.setNumber(els.dbm, state.dbm, 'dBm');
   } else {
     els.vopp.value = String(RF.voltsToUnit(state.vopp, state.unit));
   }

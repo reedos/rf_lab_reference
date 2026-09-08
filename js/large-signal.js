@@ -105,14 +105,14 @@
     q.set("z", String(state.z0));
     q.set("t", String(state.toneDbm));
     q.set('p1from', state.p1Source);
-    savedIds.forEach(id => q.set(id, document.getElementById(id).value));
+    savedIds.forEach(id => q.set(id, Bench.raw(id)));
     window.history.replaceState(null, "", `${window.location.pathname}?${q}`);
   }
 
   function computeTwoTone() {
-    const z0 = RF.parseNumber(els.z0.value);
+    const z0 = Bench.read(els.z0);
     state.z0 = z0;
-    state.toneDbm = RF.parseNumber(els.toneDbm.value);
+    state.toneDbm = Bench.read(els.toneDbm);
     els.body.setAttribute("data-drive", state.drive);
     els.btnSe.classList.toggle("is-active", state.drive === "se");
     els.btnDiff.classList.toggle("is-active", state.drive === "diff");
@@ -131,8 +131,8 @@
       return;
     }
     calculation = ['Two equal CW tones, matched real loads, complementary drive when differential.',
-      `Per-tone power = ${state.toneDbm} dBm; Z₀ = ${z0} Ω per port.`,
-      `Vpp,CW = 2√2 × √(10^(${state.toneDbm}/10)/1000 × ${z0})${state.drive === 'diff' ? ' × 2 (differential)' : ''} = ${RF.formatVoltage(tt.vppOne)}`,
+      `Per-tone power = ${RF.formatNumber(state.toneDbm, 'dB')} dBm; Z₀ = ${RF.formatNumber(z0)} Ω per port.`,
+      `Vpp,CW = 2√2 × √(10^(${RF.formatNumber(state.toneDbm, 'dB')}/10)/1000 × ${RF.formatNumber(z0)})${state.drive === 'diff' ? ' × 2 (differential)' : ''} = ${RF.formatVoltage(tt.vppOne)}`,
       `Vpp,envelope = 2 × Vpp,CW = ${RF.formatVoltage(tt.vppEnv)}`,
       `Paverage = Ptone + 10 log₁₀2 = ${RF.formatDbm(tt.dbmPortAvg)} dBm per port`,
       `PEP = Ptone + 10 log₁₀4 = ${RF.formatDbm(tt.dbmPortPep)} dBm per port`,
@@ -152,32 +152,32 @@
   }
 
   function computeImd() {
-    const tone = RF.parseNumber(els.imdTone.value), im3 = RF.parseNumber(els.imdIm3.value), gain = RF.parseNumber(els.imdGain.value);
+    const tone = Bench.read(els.imdTone), im3 = Bench.read(els.imdIm3), gain = Bench.read(els.imdGain, true);
     const plane = els.imdPlane.value, unit = els.imdUnit.value;
     const ip3 = RF.ip3Measurement(tone, im3, gain, plane, unit);
     if (!ip3 || (els.imdGain.value.trim() && !Number.isFinite(gain))) {
-      els.imdMetrics.innerHTML = metric('Status', 'Enter valid tone and IM3 levels (IM3 ≤ tone). Gain is required for input tones with absolute output IM3.');
+      els.imdMetrics.innerHTML = metric('Status', 'Enter valid tone and IM3 levels (IM3 ≤ tone). Blank gain means 0 dB; nonblank gain must be numeric.');
       return;
     }
     const number = v => Number.isFinite(v) ? RF.formatDbm(v) + ' dBm' : 'enter gain';
-    els.imdMetrics.innerHTML = [metric('Δ (output tone − IM3)', RF.trimFixed(ip3.delta, 3) + ' dB'),
+    els.imdMetrics.innerHTML = [metric('Δ (output tone − IM3)', RF.formatNumber(ip3.delta, 'dB') + ' dB'),
       metric('IM3 at output', number(ip3.im3Output)), metric('IIP3', number(ip3.iip3)), metric('OIP3', number(ip3.oip3)),
-      metric('IM3 relative to output tone', RF.trimFixed(ip3.im3Dbc, 3) + ' dBc'),
+      metric('IM3 relative to output tone', RF.formatNumber(ip3.im3Dbc, 'dB') + ' dBc'),
       metric('Approx. OP1dB (cubic model)', number(ip3.oip3 - 10))].join('');
     calculation = ['Small-signal third-order extrapolation; two equal tones, IM3 measured at DUT output.',
-      `Tone reference: DUT ${plane}; each tone = ${tone} dBm. Gain = ${Number.isFinite(gain) ? gain + ' dB' : 'unspecified'}.`,
-      unit === 'dbc' ? `Δ = −IM3(dBc) = −(${im3}) = ${ip3.delta} dB` : `Δ = Pout,tone − Pout,IM3 = ${ip3.outputTone} − (${im3}) = ${ip3.delta} dB`,
-      `${plane === 'input' ? 'IIP3' : 'OIP3'} = Ptone + Δ/2 = ${tone} + ${ip3.delta}/2 = ${tone + ip3.delta / 2} dBm`,
+      `Tone reference: DUT ${plane}; each tone = ${RF.formatNumber(tone, 'dB')} dBm. Gain = ${Number.isFinite(gain) ? RF.formatNumber(gain, 'dB') + ' dB' : 'unspecified'}.`,
+      unit === 'dbc' ? `Δ = −IM3(dBc) = −(${RF.formatNumber(im3, 'dB')}) = ${RF.formatNumber(ip3.delta, 'dB')} dB` : `Δ = Pout,tone − Pout,IM3 = ${RF.formatNumber(ip3.outputTone, 'dB')} − (${RF.formatNumber(im3, 'dB')}) = ${RF.formatNumber(ip3.delta, 'dB')} dB`,
+      `${plane === 'input' ? 'IIP3' : 'OIP3'} = Ptone + Δ/2 = ${RF.formatNumber(tone, 'dB')} + ${RF.formatNumber(ip3.delta, 'dB')}/2 = ${RF.formatNumber(tone + ip3.delta / 2, 'dB')} dBm`,
       `IIP3 = ${number(ip3.iip3)}; OIP3 = IIP3 + gain = ${number(ip3.oip3)}`,
       'OP1dB ≈ OIP3 − 10 dB is only a cubic-model rule of thumb.'];
-    lastLine = `IMD3 | tones at DUT ${plane}: ${tone} dBm | output IM3 ${ip3.im3Dbc} dBc | IIP3 ${number(ip3.iip3)} | OIP3 ${number(ip3.oip3)}`;
+    lastLine = `IMD3 | tones at DUT ${plane}: ${RF.formatNumber(tone, 'dB')} dBm | output IM3 ${RF.formatNumber(ip3.im3Dbc, 'dB')} dBc | IIP3 ${number(ip3.iip3)} | OIP3 ${number(ip3.oip3)}`;
   }
 
   function computeP1() {
-    const gain = RF.parseNumber(els.p1Gain.value);
-    const pin = RF.parseNumber(els.p1Pin.value);
-    const pout = RF.parseNumber(els.p1Pout.value);
-    const meas = RF.parseNumber(els.p1Meas.value);
+    const gain = Bench.read(els.p1Gain, true);
+    const pin = Bench.read(els.p1Pin);
+    const pout = Bench.read(els.p1Pout);
+    const meas = Bench.read(els.p1Meas);
     let p1 = null;
     if (state.p1Source === "pout") p1 = RF.p1dbFromOutput(gain, pout);
     else p1 = RF.p1dbFromInput(gain, pin);
@@ -186,12 +186,12 @@
       lastLine = "";
       return;
     }
-    if (state.p1Source !== 'pin') els.p1Pin.value = String(Number(p1.pin1dB.toPrecision(12)));
-    if (state.p1Source !== 'pout') els.p1Pout.value = String(Number(p1.pout1dB.toPrecision(12)));
+    if (state.p1Source !== 'pin') Bench.setNumber(els.p1Pin, p1.pin1dB, 'dBm');
+    if (state.p1Source !== 'pout') Bench.setNumber(els.p1Pout, p1.pout1dB, 'dBm');
 
     calculation = ['CW compression point; G₀ is small-signal power gain in dB.',
-      `OP1dB = IP1dB + G₀ − 1 = ${p1.pin1dB} + ${gain} − 1 = ${p1.pout1dB} dBm`,
-      `Uncompressed output at IP1dB = ${p1.pin1dB} + ${gain} = ${p1.poutLinear} dBm`,
+      `OP1dB = IP1dB + G₀ − 1 = ${RF.formatNumber(p1.pin1dB, 'dB')} + ${RF.formatNumber(gain, 'dB')} − 1 = ${RF.formatNumber(p1.pout1dB, 'dB')} dBm`,
+      `Uncompressed output at IP1dB = ${RF.formatNumber(p1.pin1dB, 'dB')} + ${RF.formatNumber(gain, 'dB')} = ${RF.formatNumber(p1.poutLinear, 'dB')} dBm`,
       'OIP3 ≈ OP1dB + 10 dB is an estimate, not a measured intercept.'];
     const rows = [
       metric("IP1dB", `${RF.formatDbm(p1.pin1dB)} dBm`),
@@ -201,18 +201,18 @@
     ];
     const cmp = RF.compressionAt(gain, p1.pin1dB, meas);
     if (cmp) {
-      calculation.push(`Compression = Pin + G₀ − Pout,measured = ${p1.pin1dB} + ${gain} − (${meas}) = ${cmp.compression} dB`);
-      rows.push(metric("Measured gain", `${RF.trimFixed(cmp.gainMeas, 2)} dB`));
-      rows.push(metric("Compression", `${RF.trimFixed(cmp.compression, 2)} dB`));
+      calculation.push(`Compression = Pin + G₀ − Pout,measured = ${RF.formatNumber(p1.pin1dB, 'dB')} + ${RF.formatNumber(gain, 'dB')} − (${RF.formatNumber(meas, 'dB')}) = ${RF.formatNumber(cmp.compression, 'dB')} dB`);
+      rows.push(metric("Measured gain", `${RF.formatNumber(cmp.gainMeas, 'dB')} dB`));
+      rows.push(metric("Compression", `${RF.formatNumber(cmp.compression, 'dB')} dB`));
     }
     els.p1Metrics.innerHTML = rows.join("");
-    lastLine = `P1dB | G0 ${RF.trimFixed(p1.gainDb, 2)} dB | IP1dB ${RF.formatDbm(p1.pin1dB)} dBm | OP1dB ${RF.formatDbm(p1.pout1dB)} dBm`;
+    lastLine = `P1dB | G0 ${RF.formatNumber(p1.gainDb, 'dB')} dB | IP1dB ${RF.formatDbm(p1.pin1dB)} dBm | OP1dB ${RF.formatDbm(p1.pout1dB)} dBm`;
   }
 
   function computeThd() {
-    const fund = RF.parseNumber(els.thdFund.value);
+    const fund = Bench.read(els.thdFund);
     const harmonics = [els.thdH2, els.thdH3, els.thdH4, els.thdH5].map(function (el) {
-      return RF.parseNumber(el.value);
+      return Bench.read(el);
     });
     const thd = RF.thdFromDbc(harmonics);
     if (!thd.count || !Number.isFinite(thd.percent) || (els.thdFund.value.trim() && !Number.isFinite(fund)) || harmonics.some((h, i) => [els.thdH2, els.thdH3, els.thdH4, els.thdH5][i].value.trim() && !Number.isFinite(h))) {
@@ -221,21 +221,21 @@
       return;
     }
     calculation = ['Harmonics are power ratios in dBc relative to the fundamental; blank harmonics are omitted.',
-      `THD ratio = √(Σ 10^(Hn/10)) = √(${harmonics.filter(Number.isFinite).map(h => `10^(${h}/10)`).join(' + ')}) = ${thd.ratio}`,
-      `THD % = 100 × ratio = ${thd.percent}%`,
-      `THD dB = 20 log₁₀(ratio) = ${thd.db} dB`,
+      `THD ratio = √(Σ 10^(Hn/10)) = √(${harmonics.filter(Number.isFinite).map(h => `10^(${RF.formatNumber(h, 'dB')}/10)`).join(' + ')}) = ${RF.formatNumber(thd.ratio)}`,
+      `THD % = 100 × ratio = ${RF.formatNumber(thd.percent)}%`,
+      `THD dB = 20 log₁₀(ratio) = ${RF.formatNumber(thd.db, 'dB')} dB`,
       'Harmonic measurements must use a consistent power reference; receiver distortion is not removed.'];
     const h2 = harmonics[0];
     const rows = [
-      metric("THD", `${RF.trimFixed(thd.percent, 3)} %`),
-      metric("THD", Number.isFinite(thd.db) ? `${RF.trimFixed(thd.db, 2)} dB` : "—"),
+      metric("THD", `${RF.formatNumber(thd.percent)} %`),
+      metric("THD", Number.isFinite(thd.db) ? `${RF.formatNumber(thd.db, 'dB')} dB` : "—"),
       metric("Harmonics used", String(thd.count))
     ];
     if (Number.isFinite(fund) && Number.isFinite(h2)) {
       rows.push(metric("H2 absolute", `${RF.formatDbm(fund + h2)} dBm`));
     }
     els.thdMetrics.innerHTML = rows.join("");
-    lastLine = `THD ${RF.trimFixed(thd.percent, 3)} % (${RF.trimFixed(thd.db, 1)} dB) | ${thd.count} harmonic(s)`;
+    lastLine = `THD ${RF.formatNumber(thd.percent)} % (${RF.formatNumber(thd.db, 'dB')} dB) | ${thd.count} harmonic(s)`;
   }
 
   function compute() {
@@ -257,7 +257,7 @@
   els.z0.addEventListener("input", compute);
   els.chips.forEach(function (chip) {
     chip.addEventListener("click", function () {
-      els.z0.value = chip.getAttribute("data-z");
+      Bench.setNumber(els.z0, Number(chip.getAttribute("data-z")));
       compute();
     });
   });
@@ -265,7 +265,7 @@
   function stepTone(delta) {
     if (!Number.isFinite(state.toneDbm)) state.toneDbm = 0;
     state.toneDbm = Math.round((state.toneDbm + delta) * 100) / 100;
-    els.toneDbm.value = RF.formatDbm(state.toneDbm, 2);
+    Bench.setNumber(els.toneDbm, state.toneDbm, 'dBm');
     compute();
   }
   els.toneDec.addEventListener("click", function () { stepTone(-1); });
@@ -277,14 +277,17 @@
   });
 
   els.imdUnit.addEventListener('change', function () {
-    const measurement = RF.ip3Measurement(RF.parseNumber(els.imdTone.value), RF.parseNumber(els.imdIm3.value), RF.parseNumber(els.imdGain.value), els.imdPlane.value, previousImdUnit);
+    const measurement = RF.ip3Measurement(Bench.read(els.imdTone), Bench.read(els.imdIm3), Bench.read(els.imdGain, true), els.imdPlane.value, previousImdUnit);
     const value = measurement && (els.imdUnit.value === 'dbc' ? measurement.im3Dbc : measurement.im3Output);
-    els.imdIm3.value = Number.isFinite(value) ? String(value) : '';
+    if (Number.isFinite(value)) Bench.setNumber(els.imdIm3, value, els.imdUnit.value === 'dbc' ? 'dBc' : 'dBm'); else els.imdIm3.value = '';
     previousImdUnit = els.imdUnit.value; compute();
   });
   els.imdPlane.addEventListener('change', function () {
-    const gain = RF.parseNumber(els.imdGain.value), tone = RF.parseNumber(els.imdTone.value);
-    if (previousImdPlane !== els.imdPlane.value) els.imdTone.value = Number.isFinite(gain) && Number.isFinite(tone) ? String(tone + (els.imdPlane.value === 'output' ? gain : -gain)) : '';
+    const gain = Bench.read(els.imdGain, true), tone = Bench.read(els.imdTone);
+    if (previousImdPlane !== els.imdPlane.value) {
+      if (Number.isFinite(gain) && Number.isFinite(tone)) Bench.setNumber(els.imdTone, tone + (els.imdPlane.value === 'output' ? gain : -gain), 'dBm');
+      else els.imdTone.value = '';
+    }
     previousImdPlane = els.imdPlane.value; compute();
   });
 

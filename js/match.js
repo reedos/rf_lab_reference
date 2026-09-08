@@ -1,7 +1,7 @@
 (function () {
   'use strict';
-  const $ = id => document.getElementById(id), n = id => RF.parseNumber($(id).value);
-  const fmt = v => v === Infinity ? '∞' : v === -Infinity ? '-∞' : Number.isFinite(v) ? String(Number(v.toPrecision(10))) : '—';
+  const $ = id => document.getElementById(id), n = id => Bench.read(id, ['z', 'x', 'phase'].includes(id));
+  const fmt = RF.formatNumber;
   const metric = (k, v) => `<div class="metric"><dt>${k}</dt><dd>${v}</dd></div>`;
   const textNum = id => { const v = $(id).value.trim(); return ['∞', 'Infinity'].includes(v) ? Infinity : ['-∞','-Infinity'].includes(v) ? -Infinity : n(id); };
   let source = 'z', chart = 'rl', result = null;
@@ -73,14 +73,14 @@
     $('match-status').textContent = m.gamma === 0 ? 'Perfect match. Reflection phase is undefined; 0° is used as the editing convention.' : m.r === Infinity ? 'Open circuit: Γ = +1.' : '';
     $('match-status').className = '';
     const values = {z:m.r, x:m.x, gamma:m.gamma, phase:m.phase, rl:-m.rl, vswr:m.vswr, mloss:m.mloss};
-    for (const [id, value] of Object.entries(values)) if (!(source === 'z' && ['z','x'].includes(id)) && document.activeElement !== $(id)) $(id).value = fmt(value);
+    for (const [id, value] of Object.entries(values)) if (!(source === 'z' && ['z','x'].includes(id)) && document.activeElement !== $(id)) Bench.setNumber(id, value, id === 'phase' ? 'deg' : ['rl','mloss'].includes(id) ? 'dB' : '');
     for (const id of ['smith-marker','smith-vector']) $(id).setAttribute('visibility', 'visible');
     $('smith-marker').setAttribute('cx', 220 + re * 190); $('smith-marker').setAttribute('cy', 220 - im * 190);
     $('smith-vector').setAttribute('x2', 220 + re * 190); $('smith-vector').setAttribute('y2', 220 - im * 190);
-    const zText = m.r === Infinity ? 'Open' : `${RF.trimFixed(m.r, 4)} ${m.x < 0 ? '−' : '+'} j${RF.trimFixed(Math.abs(m.x), 4)} Ω`;
+    const zText = m.r === Infinity ? 'Open' : `${fmt(m.r)} ${m.x < 0 ? '−' : '+'} j${fmt(Math.abs(m.x))} Ω`;
     $('real-solutions').textContent = `For this |Γ|, the two purely real solutions are Z₀ × VSWR = ${fmt(z0 * m.vswr)} Ω and Z₀ / VSWR = ${fmt(z0 / m.vswr)} Ω. These assume X = 0.`;
-    $('metrics').innerHTML = metric('Load impedance', zText) + metric('Return loss', `${fmt(m.rl)} dB`) + metric('VSWR', fmt(m.vswr)) +
-      metric('Delivered fraction', `${RF.trimFixed(m.delivered * 100, 4)} %`) + metric('Γ real', RF.trimFixed(re, 5)) + metric('Γ imaginary', RF.trimFixed(im, 5));
+    $('metrics').innerHTML = metric('Load impedance', zText) + metric('Return loss', `${fmt(m.rl, 'dB')} dB`) + metric('VSWR', fmt(m.vswr)) +
+      metric('Delivered fraction', `${fmt(m.delivered * 100)} %`) + metric('Γ real', fmt(re)) + metric('Γ imaginary', fmt(im));
     const q = new URLSearchParams({ z0: String(z0), from: source, re: String(re), im: String(im), chart,
       z: String(m.r), x: String(m.x), g: String(m.gamma), phase: String(m.phase),
       rl: String(-m.rl), vswr: String(m.vswr), ml: String(m.mloss) });
@@ -88,11 +88,11 @@
     Bench.update({ valid: true, lines: ['Passive load, real positive reference Z₀; matched source at the reference plane.',
       `Z = ${zText}; Z₀ = ${fmt(z0)} Ω`,
       `Γ = (Z − Z₀)/(Z + Z₀) = ${fmt(re)} + j(${fmt(im)})`,
-      `|Γ| = √(ReΓ² + ImΓ²) = ${fmt(m.gamma)}; phase = ${m.gamma === 0 ? 'undefined at match' : fmt(m.phase) + '°'}`,
-      `S11 = 20 log₁₀(${fmt(m.gamma)}) = ${fmt(-m.rl)} dB; return loss = ${fmt(m.rl)} dB`,
+      `|Γ| = √(ReΓ² + ImΓ²) = ${fmt(m.gamma)}; phase = ${m.gamma === 0 ? 'undefined at match' : fmt(m.phase, 'deg') + '°'}`,
+      `S11 = 20 log₁₀(${fmt(m.gamma)}) = ${fmt(-m.rl, 'dB')} dB; return loss = ${fmt(m.rl, 'dB')} dB`,
       `VSWR = (1 + ${fmt(m.gamma)})/(1 − ${fmt(m.gamma)}) = ${fmt(m.vswr)}`,
       `Delivered fraction = 1 − ${fmt(m.gamma)}² = ${fmt(m.delivered)}`,
-      `Mismatch loss = −10 log₁₀(${fmt(m.delivered)}) = ${fmt(m.mloss)} dB`,
+      `Mismatch loss = −10 log₁₀(${fmt(m.delivered)}) = ${fmt(m.mloss, 'dB')} dB`,
       'Magnitude edits retain the selected phase. The reference curve below the Smith chart is the X = 0 slice.'] });
   }
   function readQuery() {
@@ -108,8 +108,8 @@
   ['z', 'x'].forEach(id => $(id).addEventListener('input', () => { source = 'z'; compute(); }));
   ['gamma','phase','rl','vswr','mloss'].forEach(id => $(id).addEventListener('input', () => { source = id === 'phase' ? 'gamma' : id; compute(); }));
   $('z0').addEventListener('input', compute);
-  document.querySelectorAll('[data-reference]').forEach(b => b.addEventListener('click', () => { $('z0').value = b.dataset.reference; compute(); }));
-  document.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => { source = 'z'; $('z').value = b.dataset.load; $('x').value = '0'; compute(); }));
+  document.querySelectorAll('[data-reference]').forEach(b => b.addEventListener('click', () => { Bench.setNumber('z0', Number(b.dataset.reference)); compute(); }));
+  document.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => { source = 'z'; Bench.setNumber('z', Number(b.dataset.load)); Bench.setNumber('x', 0); compute(); }));
   document.querySelectorAll('[data-special]').forEach(b => b.addEventListener('click', () => { source = 'point'; re = b.dataset.special === 'open' ? 1 : b.dataset.special === 'short' ? -1 : 0; im = 0; compute(); }));
   document.querySelectorAll('[data-chart]').forEach(b => b.addEventListener('click', () => { chart = b.dataset.chart; compute(); }));
   function move(reNext, imNext) {
@@ -134,9 +134,9 @@
     const p = $('chart').createSVGPoint(); p.x=event.clientX; p.y=event.clientY;
     const x=p.matrixTransform($('chart').getScreenCTM().inverse()).x;
     if (x < 52 || x > 696 || !(n('z0') > 0)) return;
-    source = 'z'; $('z').value = fmt(n('z0') / 20 * 400 ** ((x - 52)/644)); $('x').value = '0'; compute();
+    source = 'z'; Bench.setNumber('z', n('z0') / 20 * 400 ** ((x - 52)/644)); Bench.setNumber('x', 0); compute();
   });
   $('copy-link').addEventListener('click', () => { if (result) Bench.copy(location.href); });
-  $('copy-result').addEventListener('click', () => { if (result) Bench.copy(`Z₀ ${fmt(result.z0)} Ω | Z ${fmt(result.r)} + j(${fmt(result.x)}) Ω | Γ ${fmt(result.gamma)} ∠ ${result.gamma ? fmt(result.phase) : 'undefined'}° | S11 ${fmt(-result.rl)} dB | VSWR ${fmt(result.vswr)}`); });
+  $('copy-result').addEventListener('click', () => { if (result) Bench.copy(`Z₀ ${fmt(result.z0)} Ω | Z ${fmt(result.r)} + j(${fmt(result.x)}) Ω | Γ ${fmt(result.gamma)} ∠ ${result.gamma ? fmt(result.phase, 'deg') : 'undefined'}° | S11 ${fmt(-result.rl, 'dB')} dB | VSWR ${fmt(result.vswr)}`); });
   buildSmith(); readQuery(); compute();
 })();

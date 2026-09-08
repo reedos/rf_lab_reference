@@ -137,11 +137,29 @@
     return rounded.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   }
 
+  // Presentation only: four significant figures for linear quantities, and
+  // hundredths for logarithmic levels/angles. Preserve tiny nonzero values.
+  function formatNumber(value, unit) {
+    if (value === Infinity) return '∞';
+    if (value === -Infinity) return '-∞';
+    if (!Number.isFinite(value)) return '—';
+    if (value === 0) return '0';
+    const mag = Math.abs(value);
+    if (['dB', 'dBm', 'dBc', 'deg'].includes(unit) && mag >= .01 && mag < 1e6) return String(Number(value.toFixed(2)));
+    const rounded = Number(value.toPrecision(4));
+    return Math.abs(rounded) >= 1e6 || Math.abs(rounded) < 1e-3 ? rounded.toExponential().replace('e+', 'e') : String(rounded);
+  }
+
+  function parseZero(raw) {
+    return raw != null && String(raw).trim() === '' ? 0 : parseNumber(raw);
+  }
+
   function formatDbm(dbm, digits) {
     if (dbm === -Infinity) return "−∞";
     if (!Number.isFinite(dbm)) return "—";
-    const n = digits == null ? (Math.abs(dbm) >= 100 ? 1 : 2) : digits;
-    return Number(dbm).toFixed(n);
+    if (dbm !== 0 && Math.abs(dbm) < .01) return formatNumber(dbm, 'dBm');
+    const n = digits == null ? 2 : digits;
+    return Number(dbm.toFixed(n)).toFixed(n);
   }
 
   function splitVoltage(volts) {
@@ -150,17 +168,17 @@
     if (mag === 0) return { value: 0, unit: "V", text: "0 V" };
     if (mag < 1e-6) {
       const n = volts * 1e9;
-      return { value: n, unit: "nV", text: `${trimFixed(n, 3)} nV` };
+      return { value: n, unit: "nV", text: `${formatNumber(n)} nV` };
     }
     if (mag < 1e-3) {
       const n = volts * 1e6;
-      return { value: n, unit: "µV", text: `${trimFixed(n, 3)} µV` };
+      return { value: n, unit: "µV", text: `${formatNumber(n)} µV` };
     }
     if (mag < 1) {
       const n = volts * 1e3;
-      return { value: n, unit: "mV", text: `${trimFixed(n, 3)} mV` };
+      return { value: n, unit: "mV", text: `${formatNumber(n)} mV` };
     }
-    return { value: volts, unit: "V", text: `${trimFixed(volts, 4)} V` };
+    return { value: volts, unit: "V", text: `${formatNumber(volts)} V` };
   }
 
   function formatVoltage(volts) {
@@ -171,21 +189,21 @@
     if (!Number.isFinite(watts) || watts < 0) return "—";
     if (watts === 0) return "0 W";
     const mw = watts * 1000;
-    if (mw < 1e-6) return `${trimFixed(mw * 1e9, 3)} pW`;
-    if (mw < 1e-3) return `${trimFixed(mw * 1e6, 3)} nW`;
-    if (mw < 1) return `${trimFixed(mw * 1e3, 3)} µW`;
-    if (mw < 1000) return `${trimFixed(mw, 3)} mW`;
-    return `${trimFixed(watts, 4)} W`;
+    if (mw < 1e-6) return `${formatNumber(mw * 1e9)} pW`;
+    if (mw < 1e-3) return `${formatNumber(mw * 1e6)} nW`;
+    if (mw < 1) return `${formatNumber(mw * 1e3)} µW`;
+    if (mw < 1000) return `${formatNumber(mw)} mW`;
+    return `${formatNumber(watts)} W`;
   }
 
   function formatCurrent(amps) {
     if (!Number.isFinite(amps)) return "—";
     const mag = Math.abs(amps);
     if (mag === 0) return "0 A";
-    if (mag < 1e-6) return `${trimFixed(amps * 1e9, 3)} nA`;
-    if (mag < 1e-3) return `${trimFixed(amps * 1e6, 3)} µA`;
-    if (mag < 1) return `${trimFixed(amps * 1e3, 3)} mA`;
-    return `${trimFixed(amps, 4)} A`;
+    if (mag < 1e-6) return `${formatNumber(amps * 1e9)} nA`;
+    if (mag < 1e-3) return `${formatNumber(amps * 1e6)} µA`;
+    if (mag < 1) return `${formatNumber(amps * 1e3)} mA`;
+    return `${formatNumber(amps)} A`;
   }
 
   function voltsToUnit(volts, unit) {
@@ -550,6 +568,7 @@
   }
 
   const RF = {
+    formatNumber, parseZero,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,

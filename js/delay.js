@@ -1,9 +1,9 @@
 (function () {
   'use strict';
-  const $ = id => document.getElementById(id), n = id => RF.parseNumber($(id).value);
+  const $ = id => document.getElementById(id), n = id => Bench.read(id, ['length','delay','degrees','phase-p1','phase-p2','phase-turns'].includes(id));
   const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9, m: 1, cm: .01, mm: .001, in: .0254, ns: 1e-9, ps: 1e-12, 'µs': 1e-6 };
-  const fmt = v => Number.isFinite(v) ? String(Number(v.toPrecision(12))) : '';
-  const show = (v, unit) => RF.trimFixed(v, 5) + ' ' + unit;
+  const fmt = RF.formatNumber;
+  const show = (v, unit) => fmt(v, unit) + ' ' + unit;
   const metric = (key, value) => `<div class="metric"><dt>${key}</dt><dd>${value}</dd></div>`;
   let source = 'length', dielectric = 'er', current = null, slope = null;
   let units = { 'freq-unit': $('freq-unit').value, 'len-unit': $('len-unit').value, 'delay-unit': $('delay-unit').value };
@@ -25,10 +25,10 @@
     Object.keys(units).forEach(id => units[id] = $(id).value);
   }
   function writeQuery() {
-    const q = new URLSearchParams({ er: fmt(current.er), f: $('freq').value, fu: $('freq-unit').value,
-      from: source, L: $('length').value, lu: $('len-unit').value,
-      t: $('delay').value, tu: $('delay-unit').value, a: $('degrees').value });
-    phaseIds.forEach(id => q.set(id, $(id).value));
+    const q = new URLSearchParams({ er: String(current.er), f: Bench.raw('freq'), fu: $('freq-unit').value,
+      from: source, L: Bench.raw('length'), lu: $('len-unit').value,
+      t: Bench.raw('delay'), tu: $('delay-unit').value, a: Bench.raw('degrees') });
+    phaseIds.forEach(id => q.set(id, Bench.raw(id)));
     history.replaceState(null, '', location.pathname + '?' + q);
   }
   function compute() {
@@ -51,15 +51,15 @@
       return;
     }
     current = { er, f, length, delay, degrees, lambda };
-    if (dielectric === 'er') $('vf').value = fmt(RF.vfFromEr(er)); else $('er').value = fmt(er);
-    if (source !== 'length') $('length').value = fmt(length / scales[$('len-unit').value]);
-    if (source !== 'delay') $('delay').value = fmt(delay / scales[$('delay-unit').value]);
-    if (source !== 'degrees') $('degrees').value = fmt(degrees);
+    if (dielectric === 'er') Bench.setNumber('vf', RF.vfFromEr(er)); else Bench.setNumber('er', er);
+    if (source !== 'length') Bench.setNumber('length', length / scales[$('len-unit').value], $('len-unit').value);
+    if (source !== 'delay') Bench.setNumber('delay', delay / scales[$('delay-unit').value], $('delay-unit').value);
+    if (source !== 'degrees') Bench.setNumber('degrees', degrees, 'deg');
     document.querySelectorAll('[data-er]').forEach(b => b.classList.toggle('is-active', Math.abs(Number(b.dataset.er) - er) < 1e-9));
     $('metrics').innerHTML = metric('Guided wavelength', show(lambda * 1000, 'mm')) + metric('Half wavelength', show(lambda * 500, 'mm')) + metric('Quarter wavelength', show(lambda * 250, 'mm')) +
       metric('Propagation velocity', show(RF.C_LIGHT * RF.vfFromEr(er) / 1e8, '× 10⁸ m/s')) +
       metric('One-way delay', show(delay * 1e9, 'ns')) + metric('Reflection trace delay', show(delay * 2e9, 'ns'));
-    $('delay-interpretation').textContent = `At ${fmt(f / 1e6)} MHz, transmission phase is ${RF.trimFixed(-degrees, 3)}° and reflection phase is ${RF.trimFixed(-2 * degrees, 3)}° (unwrapped propagation phase). Physical one-way port extension: ${RF.trimFixed(delay * 1e9, 5)} ns.`;
+    $('delay-interpretation').textContent = `At ${fmt(f / 1e6)} MHz, transmission phase is ${fmt(-degrees, 'deg')}° and reflection phase is ${fmt(-2 * degrees, 'deg')}° (unwrapped propagation phase). Physical one-way port extension: ${fmt(delay * 1e9)} ns.`;
     slope = RF.phaseDelay(n('phase-f1') * 1e6, n('phase-f2') * 1e6, n('phase-p1'), n('phase-p2'), n('phase-turns'), $('phase-mode').value, RF.vfFromEr(er));
     const slopeOk = slope && [slope.traceDelay, slope.length].every(Number.isFinite);
     $('phase-metrics').innerHTML = slopeOk ? metric('Unwrapped phase change', show(slope.deltaPhase, 'deg')) + metric('Measured trace delay', show(slope.traceDelay * 1e9, 'ns')) +
@@ -72,11 +72,11 @@
       `VF = 1/√${fmt(er)} = ${fmt(RF.vfFromEr(er))}`,
       `λg = c/(f√εeff) = 299792458/(${fmt(f)} × √${fmt(er)}) = ${fmt(lambda)} m`,
       `τ = ℓ√εeff/c = ${fmt(length)} × √${fmt(er)}/299792458 = ${fmt(delay * 1e9)} ns`,
-      `θ = 360 f τ = 360 × ${fmt(f)} × ${fmt(delay)} = ${fmt(degrees)}°`,
-      `S21 propagation phase = −θ = ${fmt(-degrees)}°; S11 round-trip phase = −2θ = ${fmt(-2 * degrees)}°`
+      `θ = 360 f τ = 360 × ${fmt(f)} × ${fmt(delay)} = ${fmt(degrees, 'deg')}°`,
+      `S21 propagation phase = −θ = ${fmt(-degrees, 'deg')}°; S11 round-trip phase = −2θ = ${fmt(-2 * degrees, 'deg')}°`
     ];
-    if (slopeOk) lines.push('', `Measured Δφ = ${n('phase-p2')} − (${n('phase-p1')}) + 360 × ${n('phase-turns')} = ${fmt(slope.deltaPhase)}°`,
-      `τtrace = −Δφ/(360 Δf) = −(${fmt(slope.deltaPhase)})/(360 × ${fmt((n('phase-f2') - n('phase-f1')) * 1e6)}) = ${fmt(slope.traceDelay * 1e9)} ns`,
+    if (slopeOk) lines.push('', `Measured Δφ = ${fmt(n('phase-p2'), 'deg')} − (${fmt(n('phase-p1'), 'deg')}) + 360 × ${n('phase-turns')} = ${fmt(slope.deltaPhase, 'deg')}°`,
+      `τtrace = −Δφ/(360 Δf) = −(${fmt(slope.deltaPhase, 'deg')})/(360 × ${fmt((n('phase-f2') - n('phase-f1')) * 1e6)}) = ${fmt(slope.traceDelay * 1e9)} ns`,
       `τone-way = τtrace / ${$('phase-mode').value === 'reflection' ? 2 : 1} = ${fmt(slope.oneWayDelay * 1e9)} ns`,
       `Estimated ℓ = c × VF × τone-way = ${fmt(slope.length * 1000)} mm; extra turns are user supplied.`);
     else lines.push('', 'Phase-slope inputs are invalid. Correct them before saving the setup.');
@@ -89,19 +89,19 @@
   const fields = { 'freq-unit': 'freq', 'len-unit': 'length', 'delay-unit': 'delay' };
   Object.keys(fields).forEach(id => $(id).addEventListener('change', () => {
     const field = fields[id], value = n(field);
-    if (Number.isFinite(value)) $(field).value = fmt(value * scales[units[id]] / scales[$(id).value]);
+    if (Number.isFinite(value)) Bench.setNumber(field, value * scales[units[id]] / scales[$(id).value], $(id).value);
     units[id] = $(id).value;
     compute();
   }));
   phaseIds.forEach(id => $(id).addEventListener(id === 'phase-mode' ? 'change' : 'input', compute));
-  document.querySelectorAll('[data-er]').forEach(b => b.addEventListener('click', () => { dielectric = 'er'; $('er').value = b.dataset.er; compute(); }));
+  document.querySelectorAll('[data-er]').forEach(b => b.addEventListener('click', () => { dielectric = 'er'; Bench.setNumber('er', Number(b.dataset.er)); compute(); }));
   $('phase-use').addEventListener('click', () => {
     if (!slope || slope.length < 0) return;
-    source = 'length'; $('length').value = fmt(slope.length / scales[$('len-unit').value]); compute();
+    source = 'length'; Bench.setNumber('length', slope.length / scales[$('len-unit').value], $('len-unit').value); compute();
   });
   $('copy-link').addEventListener('click', () => { if (Bench.valid) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => {
-    if (current && Bench.valid) Bench.copy(`${fmt(current.f / 1e6)} MHz | εeff ${fmt(current.er)} | ${fmt(current.length * 1000)} mm | one-way ${fmt(current.delay * 1e9)} ns | ${fmt(current.degrees)}°\nPhase slope (${$('phase-mode').value}): ${fmt(slope.deltaPhase)}° | trace ${fmt(slope.traceDelay * 1e9)} ns | estimated one-way length ${fmt(slope.length * 1000)} mm`);
+    if (current && Bench.valid) Bench.copy(`${fmt(current.f / 1e6)} MHz | εeff ${fmt(current.er)} | ${fmt(current.length * 1000)} mm | one-way ${fmt(current.delay * 1e9)} ns | ${fmt(current.degrees)}°\nPhase slope (${$('phase-mode').value}): ${fmt(slope.deltaPhase, 'deg')}° | trace ${fmt(slope.traceDelay * 1e9)} ns | estimated one-way length ${fmt(slope.length * 1000)} mm`);
   });
   readQuery(); compute();
 })();

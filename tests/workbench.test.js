@@ -4,6 +4,25 @@ const RF = require('../js/rf.js');
 const near = (actual, expected, tol = 1e-10) => assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= tol, `${actual} != ${expected}`);
 const pad = (loss, temperature = 290) => ({kind:'passive',db:loss,temperature,limit:null});
 const amp = (gain, nf) => ({kind:'active',db:gain,nf,limit:null});
+test('display precision follows value and unit without erasing tiny values', () => {
+  assert.equal(RF.formatNumber(.333564095,'ns'),'0.3336');
+  assert.equal(RF.formatNumber(333.564095,'ps'),'333.6');
+  assert.equal(RF.formatNumber(.632455532,'V'),'0.6325');
+  assert.equal(RF.formatNumber(632.455532,'mV'),'632.5');
+  assert.equal(RF.formatNumber(120.083074,'deg'),'120.08');
+  assert.equal(RF.formatNumber(5.008895,'dB'),'5.01');
+  assert.equal(RF.formatNumber(1.23456e-12,'s'),'1.235e-12');
+  assert.equal(RF.formatNumber(-0),'0');
+  assert.equal(RF.formatNumber(999999.9),'1e6');
+  assert.equal(RF.formatNumber(Infinity),'∞');
+  assert.equal(RF.formatNumber(NaN),'—');
+});
+test('blank-as-zero parser changes only empty input, not invalid input', () => {
+  assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
+  assert.equal(RF.parseZero('0,25'),.25);
+  for (const value of ['-','bad','.',null,Infinity]) assert.ok(Number.isNaN(RF.parseZero(value)));
+  assert.ok(Number.isNaN(RF.parseNumber('')));
+});
 test('complex reflection has known matched, short, open, and reactive limits', () => {
   near(RF.complexMatch(50,0,50).gamma,0);
   near(RF.complexMatch(0,0,50).re,-1);

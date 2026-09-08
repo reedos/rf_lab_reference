@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260908"><link rel="stylesheet" href="css/workbench.css?v=20260908">
+  <link rel="stylesheet" href="css/app.css?v=20260908-2"><link rel="stylesheet" href="css/workbench.css?v=20260908-2">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -111,23 +111,23 @@
             </div>
           </div>
           <div class="field compact">
-            <div class="field-label"><span>Gain</span><span>optional</span></div>
+            <div class="field-label"><span>Gain</span><span>blank = 0 dB</span></div>
             <div class="field-row">
-              <input id="imd-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
+              <input placeholder="0" title="Blank is treated as zero" id="imd-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
               <span class="unit">dB</span>
             </div>
           </div>
         </div>
         <dl class="metrics" id="imd-metrics"></dl>
-        <p class="hint">dBc is relative to one output tone; absolute IM3 dBm is measured at the DUT output. Input tone power gives IIP3 = P<sub>in,tone</sub> + Δ/2; output tone power gives OIP3 = P<sub>out,tone</sub> + Δ/2. OIP3 = IIP3 + G. Gain is required to compare input tones with absolute output IM3. Use the small-signal cubic region, below compression. <a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Swept_IMD_and_IM_Spectrum_Concepts.htm">Measurement reference</a>.</p>
+        <p class="hint">dBc is relative to one output tone; absolute IM3 dBm is measured at the DUT output. Input tone power gives IIP3 = P<sub>in,tone</sub> + Δ/2; output tone power gives OIP3 = P<sub>out,tone</sub> + Δ/2. OIP3 = IIP3 + G. Blank gain means 0 dB (unity); enter the actual gain for an amplifier. Use the small-signal cubic region, below compression. <a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Swept_IMD_and_IM_Spectrum_Concepts.htm">Measurement reference</a>.</p>
       </div>
 
       <div class="ls-panel" id="panel-p1db" hidden>
         <div class="fields">
           <div class="field compact">
-            <div class="field-label"><span>Small-signal gain</span><span>G<sub>0</sub></span></div>
+            <div class="field-label"><span>Small-signal gain</span><span>blank = 0 dB</span></div>
             <div class="field-row">
-              <input id="p1-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
+              <input placeholder="0" title="Blank is treated as zero" id="p1-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
               <span class="unit">dB</span>
             </div>
           </div>
@@ -240,7 +240,7 @@
     <p class="foot">Static page. Works offline once loaded.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/bench.js?v=20260908"></script><script src="js/rf.js?v=20260908"></script>
-  <script src="js/large-signal.js?v=20260908"></script>
+  <script src="js/bench.js?v=20260908-2"></script><script src="js/rf.js?v=20260908-2"></script>
+  <script src="js/large-signal.js?v=20260908-2"></script>
 </body>
 </html>
