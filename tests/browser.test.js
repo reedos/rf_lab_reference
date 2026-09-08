@@ -109,7 +109,10 @@ let checks=0;
         await check('Smith chart responds to keyboard and pointer interaction',async()=>{
           await go('match.html'); const smith=page.locator('#smith'); await smith.focus(); await page.keyboard.press('ArrowUp');
           near(await num('gamma'),.01); near(await num('phase'),90);
-          const box=await smith.boundingBox(); await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+          await smith.scrollIntoViewIfNeeded();
+          const box=await smith.boundingBox();
+          // Locator click scrolls and waits for actionability on Linux as well as Windows.
+          await smith.click({position:{x:box.width/2,y:box.height/2}});
           // Firefox rounds pointer coordinates to device pixels; allow one chart pixel.
           near(await num('gamma'),0,.006);
           await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.down();
