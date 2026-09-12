@@ -13,7 +13,7 @@ No build step. Classic scripts, no bundler.
 | --- | --- |
 | [VOPP](https://reedos.github.io/rf_lab_reference/) | CW dBm ↔ peak-to-peak voltage, single-ended and true differential |
 | [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
-| [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, IMD3 / IP3, P1dB, THD |
+| [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
 | [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, and phase-slope length estimates |
 | [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
@@ -84,8 +84,32 @@ VOPP_diff  = 2 · VOPP_SE
   input and output reference planes. Changing units
   or reference plane converts the entered value when enough information is present.
   Thumb: OP1dB ≈ OIP3 − 10 dB, only an approximate cubic-model relationship.
+- **Tone plan:** enter f₁ with either f₂ or the spacing Δ. Odd-order products land on a
+  uniform grid: order 2k+1 sits at f₁ − kΔ and f₂ + kΔ, so the IM3 pair spans 3Δ. Even-order
+  products fall near DC and near the second harmonic. Resolution bandwidth should be Δ/10 or
+  less. With optional analyzer entries the measurable IM3 floor is the highest of three:
+  noise floor plus the bandwidth term referred to the tone, phase noise at the Δ offset over
+  that bandwidth, and the analyzer's own products at 2(P_tone − TOI). The envelope beats at Δ,
+  so a bias or video path narrower than several times Δ gives asymmetric IM3 sidebands, which
+  is a memory effect rather than a measurement error.
 - **P1dB:** OP1dB = IP1dB + G₀ − 1 dB.
-- **THD:** RSS of harmonics in dBc. −40 dBc on one harmonic is 1%.
+- **THD:** RSS of harmonics in dBc. −40 dBc on one harmonic is 1%. With a fundamental
+  frequency the harmonics are placed and checked against the analyzer's top frequency and the
+  DUT passband; a harmonic above the analyzer range cannot be measured at all. A device corner
+  frequency estimates how much the DUT's own rolloff hides:
+
+  ```
+  A_n = 10 p log10[ (1 + (f0/fc)^2) / (1 + (n f0/fc)^2) ]
+  H_n,intrinsic = H_n,measured − A_n
+  ```
+
+  The fundamental is attenuated too, so at f₀ = f_c the second harmonic is understated by
+  about 4 dB rather than 3 dB. This holds only when the nonlinearity precedes the band limit
+  and the device is not slewing; a feedback amplifier moves the other way, because loop gain
+  falls with frequency and distortion suppression falls with it. When every harmonic lands
+  outside the DUT passband, THD is the wrong metric and an in-band intermodulation measurement
+  is reported instead. A source or receiver harmonic adds with unknown phase, so a contaminant
+  10 dB below the DUT harmonic puts the reading between 2.4 dB high and 3.3 dB low.
 
 ## Match and Smith chart
 

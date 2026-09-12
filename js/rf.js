@@ -646,8 +646,98 @@
     return segments.length ? segments : null;
   }
 
+  // Two-tone frequency plan. Odd-order products land on a uniform grid of spacing Δ:
+  // order 2k+1 sits at f1 − kΔ and f2 + kΔ, so IM3 is one spacing outside each tone.
+  // Even-order products fall near DC and near the second harmonic.
+  function tonePlan(f1, f2, options) {
+    const opts = options || {};
+    if (!(f1 > 0) || !(f2 > f1)) return null;
+    const delta = f2 - f1, center = (f1 + f2) / 2;
+    const band = opts.band && opts.band.low > 0 && opts.band.high > opts.band.low ? opts.band : null;
+    const maxOrder = Number.isInteger(opts.maxOrder) && opts.maxOrder >= 3 ? Math.min(opts.maxOrder, 15) : 7;
+    const products = [{ order: 1, label: 'f1', frequency: f1 }, { order: 1, label: 'f2', frequency: f2 }];
+    for (let k = 1; 2 * k + 1 <= maxOrder; k++) {
+      products.push({ order: 2 * k + 1, label: `${k + 1}f1−${k}f2`, frequency: f1 - k * delta },
+        { order: 2 * k + 1, label: `${k + 1}f2−${k}f1`, frequency: f2 + k * delta });
+    }
+    products.push({ order: 2, label: 'f2−f1', frequency: delta }, { order: 2, label: 'f1+f2', frequency: f1 + f2 },
+      { order: 2, label: '2f1', frequency: 2 * f1 }, { order: 2, label: '2f2', frequency: 2 * f2 });
+    for (const product of products) {
+      product.valid = product.frequency > 0;
+      product.inBand = band && product.valid ? product.frequency >= band.low && product.frequency <= band.high : null;
+    }
+    products.sort((a, b) => a.frequency - b.frequency);
+    // Whichever floor is highest is the one that limits an IM3 measurement.
+    const rbw = opts.rbw > 0 ? opts.rbw : null, tone = opts.toneLevel;
+    const floors = [];
+    if (rbw !== null && Number.isFinite(opts.danl) && Number.isFinite(tone)) {
+      floors.push({ source: 'Analyzer noise floor', dbc: opts.danl + 10 * Math.log10(rbw) - tone });
+    }
+    if (rbw !== null && Number.isFinite(opts.phaseNoise)) {
+      floors.push({ source: 'Phase noise at Δ offset', dbc: opts.phaseNoise + 10 * Math.log10(rbw) });
+    }
+    if (Number.isFinite(opts.toi) && Number.isFinite(tone)) {
+      floors.push({ source: 'Analyzer third-order products', dbc: 2 * (tone - opts.toi) });
+    }
+    const limit = floors.length ? floors.reduce((a, b) => b.dbc > a.dbc ? b : a) : null;
+    return { f1, f2, delta, center, products, band, maxOrder, floors, limit,
+      im3Lower: f1 - delta, im3Upper: f2 + delta, im3Span: 3 * delta,
+      rbw, rbwMax: delta / 10, resolved: rbw === null ? null : rbw <= delta / 10,
+      envelopeBeat: delta, envelopeBandwidth: 5 * delta,
+      outOfBand: band ? products.filter(p => p.valid && p.order > 1 && p.inBand === false).length : null };
+  }
+
+  // Harmonic frequencies with instrument-range and DUT-passband checks.
+  function harmonicPlan(f0, count, options) {
+    const opts = options || {};
+    if (!(f0 > 0) || !Number.isInteger(count) || count < 2 || count > 20) return null;
+    const band = opts.band && opts.band.low > 0 && opts.band.high > opts.band.low ? opts.band : null;
+    const instrumentMax = opts.instrumentMax > 0 ? opts.instrumentMax : null;
+    const rows = [];
+    for (let n = 1; n <= count; n++) {
+      const frequency = n * f0;
+      rows.push({ n, frequency,
+        aboveInstrument: instrumentMax === null ? null : frequency > instrumentMax,
+        inBand: band ? frequency >= band.low && frequency <= band.high : null });
+    }
+    return { f0, count, rows, band, instrumentMax,
+      highestMeasurable: instrumentMax === null ? null : Math.floor(instrumentMax / f0),
+      maxFundamental: instrumentMax === null ? null : instrumentMax / count };
+  }
+
+  // Attenuation of harmonic n relative to the fundamental through a p-pole rolloff at fc.
+  // Negative: the harmonic is suppressed, so a measured dBc understates the intrinsic one.
+  // Valid only when the nonlinearity precedes the band limit and the device is not slewing.
+  function bandLimitAttenuation(f0, fc, n, poles) {
+    const p = poles == null ? 1 : poles;
+    if (!(f0 > 0) || !(fc > 0) || !(n >= 1) || !(p >= 1) || ![f0, fc, n, p].every(Number.isFinite)) return NaN;
+    return 10 * p * Math.log10((1 + (f0 / fc) ** 2) / (1 + (n * f0 / fc) ** 2));
+  }
+
+  function bandLimitedThd(harmonics, f0, fc, poles) {
+    if (!Array.isArray(harmonics) || !harmonics.length) return null;
+    const rows = [];
+    for (const harmonic of harmonics) {
+      if (!Number.isInteger(harmonic.n) || harmonic.n < 2 || !Number.isFinite(harmonic.dbc)) return null;
+      const attenuation = bandLimitAttenuation(f0, fc, harmonic.n, poles);
+      if (!Number.isFinite(attenuation)) return null;
+      rows.push({ n: harmonic.n, measured: harmonic.dbc, attenuation, intrinsic: harmonic.dbc - attenuation });
+    }
+    return { rows, f0, fc, poles: poles == null ? 1 : poles,
+      measured: thdFromDbc(rows.map(r => r.measured)), intrinsic: thdFromDbc(rows.map(r => r.intrinsic)) };
+  }
+
+  // A contaminant this many dB relative to the DUT harmonic adds with unknown phase.
+  function contaminationRange(relativeDb) {
+    if (!Number.isFinite(relativeDb)) return null;
+    const ratio = 10 ** (relativeDb / 20);
+    return { ratio, high: 20 * Math.log10(1 + ratio),
+      low: ratio === 1 ? -Infinity : 20 * Math.log10(Math.abs(1 - ratio)) };
+  }
+
   const RF = {
     formatNumber, parseZero, parseFrequency, formatFrequency, sweepPoints, sweepStep, segmentedSweep, logTable,
+    tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,

@@ -6,6 +6,7 @@
     tabs: Array.prototype.slice.call(document.querySelectorAll("[data-panel]")),
     panels: {
       twotone: document.getElementById("panel-twotone"),
+      tones: document.getElementById("panel-tones"),
       imd3: document.getElementById("panel-imd3"),
       p1db: document.getElementById("panel-p1db"),
       thd: document.getElementById("panel-thd")
@@ -36,6 +37,32 @@
     thdH4: document.getElementById("thd-h4"),
     thdH5: document.getElementById("thd-h5"),
     thdMetrics: document.getElementById("thd-metrics"),
+    thdUnit: document.getElementById("thd-unit"),
+    thdF0: document.getElementById("thd-f0"),
+    thdFmax: document.getElementById("thd-fmax"),
+    thdBandLow: document.getElementById("thd-band-low"),
+    thdBandHigh: document.getElementById("thd-band-high"),
+    thdFc: document.getElementById("thd-fc"),
+    thdPoles: document.getElementById("thd-poles"),
+    thdContam: document.getElementById("thd-contam"),
+    thdStatus: document.getElementById("thd-status"),
+    thdBandMetrics: document.getElementById("thd-band-metrics"),
+    thdHarmonics: document.getElementById("thd-harmonics"),
+    toneUnit: document.getElementById("tone-unit"),
+    toneF1: document.getElementById("tone-f1"),
+    toneF2: document.getElementById("tone-f2"),
+    toneDelta: document.getElementById("tone-delta"),
+    toneOrder: document.getElementById("tone-order"),
+    toneBandLow: document.getElementById("tone-band-low"),
+    toneBandHigh: document.getElementById("tone-band-high"),
+    toneRbw: document.getElementById("tone-rbw"),
+    toneLevel: document.getElementById("tone-level"),
+    toneToi: document.getElementById("tone-toi"),
+    tonePn: document.getElementById("tone-pn"),
+    toneDanl: document.getElementById("tone-danl"),
+    toneStatus: document.getElementById("tone-status"),
+    toneMetrics: document.getElementById("tone-metrics"),
+    toneRows: document.getElementById("tone-rows"),
     copyResult: document.getElementById("copy-result"),
     copyLink: document.getElementById("copy-link"),
     toast: document.getElementById("toast")
@@ -46,12 +73,25 @@
     drive: "se",
     z0: 50,
     toneDbm: -10,
-    p1Source: "pin"
+    p1Source: "pin",
+    toneSource: "delta"
   };
   let lastLine = "";
   let calculation = [];
   let previousImdUnit = 'dbc', previousImdPlane = 'input';
-  const savedIds = ['imd-tone','imd-im3','imd-unit','imd-plane','imd-gain','p1-gain','p1-pin','p1-pout','p1-meas','thd-fund','thd-h2','thd-h3','thd-h4','thd-h5'];
+  const savedIds = ['imd-tone','imd-im3','imd-unit','imd-plane','imd-gain','p1-gain','p1-pin','p1-pout','p1-meas','thd-fund','thd-h2','thd-h3','thd-h4','thd-h5',
+    'thd-unit','thd-f0','thd-fmax','thd-band-low','thd-band-high','thd-fc','thd-poles','thd-contam',
+    'tone-unit','tone-f1','tone-f2','tone-delta','tone-order','tone-band-low','tone-band-high','tone-rbw','tone-level','tone-toi','tone-pn','tone-danl'];
+  const freqScales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 };
+  const freqText = hz => RF.formatFrequency(hz).text;
+  const yesNo = value => value === null ? '—' : value ? 'Yes' : 'No';
+  // Optional fields: blank is allowed, but text that is present must parse.
+  function optionalField(el, parse) {
+    const text = el.value.trim();
+    if (text === '') return { blank: true, value: null, ok: true };
+    const value = parse(text);
+    return { blank: false, value, ok: Number.isFinite(value) };
+  }
   let toastTimer = 0;
 
   function metric(label, value) {
@@ -90,6 +130,7 @@
     const t = RF.parseNumber(q.get("t"));
     if (Number.isFinite(t)) state.toneDbm = t;
     if (q.get('p1from') === 'pout') state.p1Source = 'pout';
+    if (q.get('tonefrom') === 'f2') state.toneSource = 'f2';
     savedIds.forEach(id => {
       if (!q.has(id)) return;
       const el = document.getElementById(id), value = q.get(id);
@@ -106,6 +147,7 @@
     q.set("z", String(state.z0));
     q.set("t", String(state.toneDbm));
     q.set('p1from', state.p1Source);
+    q.set('tonefrom', state.toneSource);
     savedIds.forEach(id => q.set(id, Bench.raw(id)));
     window.history.replaceState(null, "", `${window.location.pathname}?${q}`);
   }
@@ -152,6 +194,67 @@
     }
     els.ttMetrics.innerHTML = rows.join("");
     lastLine = `2-tone ${state.drive.toUpperCase()} | ${RF.formatDbm(tt.dbmTone)} dBm/tone | env ${RF.formatVoltage(tt.vppEnv)} pk-pk | PEP ${RF.formatDbm(tt.dbmPortPep)} dBm/port`;
+  }
+
+  function computeTones() {
+    const scale = freqScales[els.toneUnit.value];
+    const hz = text => RF.parseFrequency(text, scale);
+    const f1 = hz(els.toneF1.value);
+    const f2 = state.toneSource === 'delta' ? f1 + hz(els.toneDelta.value) : hz(els.toneF2.value);
+    const fields = {
+      bandLow: optionalField(els.toneBandLow, hz), bandHigh: optionalField(els.toneBandHigh, hz),
+      rbw: optionalField(els.toneRbw, hz), level: optionalField(els.toneLevel, RF.parseNumber),
+      toi: optionalField(els.toneToi, RF.parseNumber), pn: optionalField(els.tonePn, RF.parseNumber),
+      danl: optionalField(els.toneDanl, RF.parseNumber)
+    };
+    const list = Object.values(fields);
+    const fail = message => {
+      els.toneStatus.textContent = message; els.toneStatus.className = 'status-error';
+      els.toneMetrics.replaceChildren(); els.toneRows.replaceChildren(); lastLine = '';
+    };
+    if (!list.every(field => field.ok)) return fail('Analyzer and passband entries must be numeric. Leave them blank if unknown.');
+    if (fields.bandLow.blank !== fields.bandHigh.blank) return fail('Enter both passband edges, or leave both blank.');
+    const band = fields.bandLow.blank ? null : { low: fields.bandLow.value, high: fields.bandHigh.value };
+    if (band && !(band.high > band.low)) return fail('The passband high edge must be above the low edge.');
+    const plan = RF.tonePlan(f1, f2, { maxOrder: Number(els.toneOrder.value), band,
+      rbw: fields.rbw.blank ? null : fields.rbw.value,
+      toneLevel: fields.level.blank ? NaN : fields.level.value,
+      toi: fields.toi.blank ? NaN : fields.toi.value,
+      phaseNoise: fields.pn.blank ? NaN : fields.pn.value,
+      danl: fields.danl.blank ? NaN : fields.danl.value });
+    if (!plan) return fail('Enter a positive f₁ and a spacing that puts f₂ above it. Use a unit or SI prefix such as 1G or 100 MHz.');
+    if (state.toneSource === 'delta') { if (document.activeElement !== els.toneF2) els.toneF2.value = freqText(plan.f2); }
+    else if (document.activeElement !== els.toneDelta) els.toneDelta.value = freqText(plan.delta);
+    const dropped = plan.products.filter(p => !p.valid).length;
+    els.toneStatus.className = dropped ? 'over-limit' : '';
+    els.toneStatus.textContent = dropped ? `${dropped} low-side product${dropped === 1 ? '' : 's'} fall at or below zero frequency and are omitted; the spacing is a large fraction of f₁.` :
+      plan.outOfBand ? `${plan.outOfBand} product${plan.outOfBand === 1 ? '' : 's'} fall outside the DUT passband.` : '';
+    els.toneMetrics.innerHTML = [
+      metric('Tone spacing Δ', freqText(plan.delta)),
+      metric('Centre frequency', freqText(plan.center)),
+      metric('IM3 lower · 2f₁−f₂', freqText(plan.im3Lower)),
+      metric('IM3 upper · 2f₂−f₁', freqText(plan.im3Upper)),
+      metric('IM3 pair span', `${freqText(plan.im3Span)} · 3Δ`),
+      metric('Resolution bandwidth', plan.rbw === null ? `Use ≤ ${freqText(plan.rbwMax)}` :
+        `${freqText(plan.rbw)} · ${plan.resolved ? 'resolves Δ' : `<span class="over-limit">too wide, use ≤ ${freqText(plan.rbwMax)}</span>`}`),
+      metric('Envelope beat', `${freqText(plan.envelopeBeat)} · allow ≥ ${freqText(plan.envelopeBandwidth)} of video bandwidth`),
+      metric('Measurable IM3 floor', plan.limit === null ? 'Enter analyzer limits' : `${RF.formatNumber(plan.limit.dbc, 'dBc')} dBc · ${plan.limit.source}`)
+    ].join('');
+    els.toneRows.innerHTML = plan.products.map(p => `<tr class="${p.valid ? (p.inBand === false ? 'over-limit' : '') : 'over-limit'}"><td>${p.order === 1 ? 'Tone' : p.order}</td><td>${p.label}</td><td>${p.valid ? freqText(p.frequency) : 'at or below 0 Hz'}</td><td>${p.valid ? RF.formatNumber((p.frequency - plan.f1) / plan.delta) + 'Δ' : '—'}</td><td>${yesNo(p.inBand)}</td></tr>`).join('');
+    calculation = ['Two equal tones through a memoryless nonlinearity. Odd-order products land on a uniform grid of spacing Δ, so they stay near the tones; even-order products fall near DC and near the second harmonic.',
+      eq('Tone spacing and centre', String.raw`\Delta &= f_2-f_1 = ${tex(plan.delta, 'Hz')} \\ f_{\mathrm c} &= \frac{f_1+f_2}{2} = ${tex(plan.center, 'Hz')}`),
+      eq('Odd-order product grid', String.raw`f_{2k+1} &= f_1-k\Delta \ \text{and}\ f_2+k\Delta`, String.raw`${tex(plan.im3Lower, 'Hz')}\ \text{and}\ ${tex(plan.im3Upper, 'Hz')}\ (k=1)`),
+      eq('IM3 pair span', String.raw`f_{\mathrm{span}} &= 3\Delta`, tex(plan.im3Span, 'Hz')),
+      eq('Resolution bandwidth', String.raw`\mathrm{RBW} &\le \frac{\Delta}{10}`, tex(plan.rbwMax, 'Hz')),
+      ...plan.floors.map(floor => eq(floor.source, floor.source === 'Analyzer third-order products' ?
+        String.raw`\mathrm{IM3}_{\mathrm{SA}} &= 2(P_{\mathrm{tone}}-\mathrm{TOI})` : floor.source === 'Phase noise at Δ offset' ?
+        String.raw`\mathrm{floor} &= \mathcal{L}(\Delta)+10\log_{10}\mathrm{RBW}` :
+        String.raw`\mathrm{floor} &= \mathrm{DANL}+10\log_{10}\mathrm{RBW}-P_{\mathrm{tone}}`, tex(floor.dbc, 'dBc'))),
+      plan.limit === null ? 'Enter a resolution bandwidth with an analyzer intercept, phase noise, or noise floor to estimate the measurable IM3 floor.' :
+        `The highest floor wins: ${plan.limit.source.toLowerCase()} at ${RF.formatNumber(plan.limit.dbc, 'dBc')} dBc.`,
+      'The envelope beats at Δ. A bias or video path narrower than several times Δ produces asymmetric IM3 sidebands, which is a memory effect rather than a measurement error.'];
+    lastLine = `Tone plan | f1 ${freqText(plan.f1)} | f2 ${freqText(plan.f2)} | Δ ${freqText(plan.delta)} | IM3 ${freqText(plan.im3Lower)} and ${freqText(plan.im3Upper)}` +
+      (plan.limit === null ? '' : ` | floor ${RF.formatNumber(plan.limit.dbc, 'dBc')} dBc (${plan.limit.source})`);
   }
 
   function computeImd() {
@@ -217,36 +320,99 @@
 
   function computeThd() {
     const fund = Bench.read(els.thdFund);
-    const harmonics = [els.thdH2, els.thdH3, els.thdH4, els.thdH5].map(function (el) {
-      return Bench.read(el);
-    });
-    const thd = RF.thdFromDbc(harmonics);
-    if (!thd.count || !Number.isFinite(thd.percent) || (els.thdFund.value.trim() && !Number.isFinite(fund)) || harmonics.some((h, i) => [els.thdH2, els.thdH3, els.thdH4, els.thdH5][i].value.trim() && !Number.isFinite(h))) {
-      els.thdMetrics.innerHTML = metric("Status", "Enter at least one harmonic in dBc");
-      lastLine = "";
-      return;
+    const harmonicEls = [els.thdH2, els.thdH3, els.thdH4, els.thdH5];
+    const values = harmonicEls.map(el => Bench.read(el));
+    const thd = RF.thdFromDbc(values);
+    const badHarmonic = harmonicEls.some((el, i) => el.value.trim() && !Number.isFinite(values[i]));
+    const clear = message => {
+      els.thdMetrics.innerHTML = metric('Status', message);
+      els.thdBandMetrics.replaceChildren(); els.thdHarmonics.replaceChildren();
+      els.thdStatus.textContent = ''; lastLine = '';
+    };
+    if (!thd.count || !Number.isFinite(thd.percent) || (els.thdFund.value.trim() && !Number.isFinite(fund)) || badHarmonic) {
+      return clear('Enter at least one harmonic in dBc');
     }
+    const scale = freqScales[els.thdUnit.value];
+    const hz = text => RF.parseFrequency(text, scale);
+    const fields = {
+      f0: optionalField(els.thdF0, hz), fmax: optionalField(els.thdFmax, hz),
+      bandLow: optionalField(els.thdBandLow, hz), bandHigh: optionalField(els.thdBandHigh, hz),
+      fc: optionalField(els.thdFc, hz), poles: optionalField(els.thdPoles, RF.parseNumber),
+      contam: optionalField(els.thdContam, RF.parseNumber)
+    };
+    if (!Object.values(fields).every(field => field.ok)) return clear('Optional frequency and level entries must be numeric. Leave them blank if unknown.');
+    if (fields.bandLow.blank !== fields.bandHigh.blank) return clear('Enter both passband edges, or leave both blank.');
+    if (!fields.poles.blank && !(Number.isInteger(fields.poles.value) && fields.poles.value >= 1)) return clear('Poles must be a whole number of 1 or more.');
+    if (!fields.fc.blank && fields.f0.blank) return clear('Enter the fundamental frequency to use the band-limit correction.');
+    const band = fields.bandLow.blank ? null : { low: fields.bandLow.value, high: fields.bandHigh.value };
+    if (band && !(band.high > band.low)) return clear('The passband high edge must be above the low edge.');
+    const entered = values.map((value, i) => ({ n: i + 2, dbc: value })).filter(h => Number.isFinite(h.dbc));
+    const poles = fields.poles.blank ? 1 : fields.poles.value;
+    const plan = fields.f0.blank ? null : RF.harmonicPlan(fields.f0.value, 5, { instrumentMax: fields.fmax.blank ? null : fields.fmax.value, band });
+    const limited = fields.fc.blank ? null : RF.bandLimitedThd(entered, fields.f0.value, fields.fc.value, poles);
+    const contamination = fields.contam.blank ? null : RF.contaminationRange(fields.contam.value);
+    const h2 = values[0];
+    els.thdMetrics.innerHTML = [
+      metric('THD', `${RF.formatNumber(thd.percent)} %`),
+      metric('THD', Number.isFinite(thd.db) ? `${RF.formatNumber(thd.db, 'dB')} dB` : '—'),
+      metric('Harmonics used', String(thd.count)),
+      ...(Number.isFinite(fund) && Number.isFinite(h2) ? [metric('H2 absolute', `${RF.formatDbm(fund + h2)} dBm`)] : [])
+    ].join('');
+    const notes = [];
+    if (plan) {
+      const unreachable = plan.rows.filter(row => row.aboveInstrument).map(row => row.n);
+      const outside = plan.rows.filter(row => row.n > 1 && row.inBand === false).map(row => row.n);
+      if (unreachable.length) notes.push(`H${unreachable.join(', H')} above the analyzer's top frequency and cannot be measured; keep f₀ at or below ${freqText(plan.maxFundamental)} to reach the 5th.`);
+      if (outside.length === plan.rows.filter(row => row.n > 1).length) notes.push('Every harmonic falls outside the DUT passband, so THD understates the nonlinearity by design. Use an in-band intermodulation measurement instead.');
+      else if (outside.length) notes.push(`H${outside.join(', H')} fall outside the DUT passband.`);
+    }
+    if (limited) {
+      const worst = limited.rows.reduce((a, b) => b.attenuation < a.attenuation ? b : a);
+      notes.push(`The device rolloff hides up to ${RF.formatNumber(-worst.attenuation, 'dB')} dB on H${worst.n}.`);
+    }
+    els.thdStatus.className = notes.length ? 'over-limit' : '';
+    els.thdStatus.textContent = notes.join(' ');
+    els.thdBandMetrics.innerHTML = [
+      ...(limited ? [
+        metric('Measured THD', `${RF.formatNumber(limited.measured.percent)} %`),
+        metric('Estimated intrinsic THD', `${RF.formatNumber(limited.intrinsic.percent)} %`),
+        metric('Understated by', `${RF.formatNumber(limited.intrinsic.db - limited.measured.db, 'dB')} dB`)] : []),
+      ...(contamination ? [metric('Contamination range',
+        `+${RF.formatNumber(contamination.high, 'dB')} / ${contamination.low === -Infinity ? '−∞' : RF.formatNumber(contamination.low, 'dB')} dB`)] : []),
+      ...(plan && !limited ? [metric('Highest harmonic in range', plan.highestMeasurable === null ? 'Enter the analyzer maximum' : `H${Math.max(1, plan.highestMeasurable)}`)] : [])
+    ].join('');
+    els.thdHarmonics.innerHTML = !plan ? '' : plan.rows.map(row => {
+      const corrected = limited ? limited.rows.find(r => r.n === row.n) : null;
+      const measured = entered.find(h => h.n === row.n);
+      const flags = [row.aboveInstrument ? 'Above analyzer range' : '', row.inBand === false ? 'Outside DUT band' : ''].filter(Boolean).join('; ');
+      return `<tr class="${row.aboveInstrument || row.inBand === false ? 'over-limit' : ''}"><td>${row.n === 1 ? 'f₀' : 'H' + row.n}</td><td>${freqText(row.frequency)}</td><td>${measured ? RF.formatNumber(measured.dbc, 'dBc') + ' dBc' : row.n === 1 ? 'reference' : '—'}</td><td>${corrected ? RF.formatNumber(corrected.attenuation, 'dB') + ' dB' : '—'}</td><td>${corrected ? RF.formatNumber(corrected.intrinsic, 'dBc') + ' dBc' : '—'}</td><td>${flags || 'OK'}</td></tr>`;
+    }).join('');
     calculation = ['Harmonics are power ratios in dBc relative to the fundamental. Blank harmonics are omitted.',
-      eq('Root-sum-square harmonic ratio', String.raw`r_{\mathrm{THD}} &= \sqrt{\sum_{n\ge 2}10^{H_n/10}}`, tex(thd.ratio), String.raw`\sqrt{${harmonics.filter(Number.isFinite).map(h => String.raw`10^{${tex(h,'dBc',false)}/10}`).join(' + ')}}`),
-      eq('Total harmonic distortion', String.raw`\mathrm{THD}_{\%} &= 100\,r_{\mathrm{THD}}`, tex(thd.percent,'%')),
-      eq('Distortion level', String.raw`\mathrm{THD}_{\mathrm{dB}} &= 20\log_{10}r_{\mathrm{THD}}`, tex(thd.db,'dB')),
+      eq('Root-sum-square harmonic ratio', String.raw`r_{\mathrm{THD}} &= \sqrt{\sum_{n\ge 2}10^{H_n/10}}`, tex(thd.ratio), String.raw`\sqrt{${values.filter(Number.isFinite).map(h => String.raw`10^{${tex(h, 'dBc', false)}/10}`).join(' + ')}}`),
+      eq('Total harmonic distortion', String.raw`\mathrm{THD}_{\%} &= 100\,r_{\mathrm{THD}}`, tex(thd.percent, '%')),
+      eq('Distortion level', String.raw`\mathrm{THD}_{\mathrm{dB}} &= 20\log_{10}r_{\mathrm{THD}}`, tex(thd.db, 'dB')),
+      ...(plan ? [eq('Harmonic frequencies', String.raw`f_n &= n f_0`, plan.rows.slice(1).map(row => tex(row.frequency, 'Hz')).join(',\\ '))] : []),
+      ...(limited ? [
+        `Band-limit correction for a ${poles}-pole rolloff at ${freqText(limited.fc)}. It assumes the nonlinearity precedes the band limit; a feedback amplifier moves the other way because loop gain also falls with frequency.`,
+        eq('Harmonic attenuation', String.raw`A_n &= 10p\log_{10}\frac{1+(f_0/f_{\mathrm c})^2}{1+(nf_0/f_{\mathrm c})^2}`,
+          limited.rows.map(row => String.raw`A_{${row.n}}=${tex(row.attenuation, 'dB')}`).join(',\\ ')),
+        eq('Intrinsic harmonic level', String.raw`H_{n,\mathrm{intrinsic}} &= H_{n,\mathrm{measured}}-A_n`,
+          limited.rows.map(row => tex(row.intrinsic, 'dBc')).join(',\\ ')),
+        eq('Estimated intrinsic distortion', String.raw`\mathrm{THD}_{\mathrm{intrinsic}} &= ${tex(limited.intrinsic.percent, '%')}`, '', '')] : []),
+      ...(contamination ? [
+        'A source or receiver harmonic adds to the DUT harmonic with unknown phase, so the measured level sits inside this range.',
+        eq('Contamination range', String.raw`\Delta_{\pm} &= 20\log_{10}(1\pm 10^{C/20})`,
+          String.raw`+${tex(contamination.high, 'dB')}\ /\ ${tex(contamination.low, 'dB')}`)] : []),
       'Use a consistent power reference for every harmonic measurement. Receiver distortion is not removed.'];
-    const h2 = harmonics[0];
-    const rows = [
-      metric("THD", `${RF.formatNumber(thd.percent)} %`),
-      metric("THD", Number.isFinite(thd.db) ? `${RF.formatNumber(thd.db, 'dB')} dB` : "—"),
-      metric("Harmonics used", String(thd.count))
-    ];
-    if (Number.isFinite(fund) && Number.isFinite(h2)) {
-      rows.push(metric("H2 absolute", `${RF.formatDbm(fund + h2)} dBm`));
-    }
-    els.thdMetrics.innerHTML = rows.join("");
-    lastLine = `THD ${RF.formatNumber(thd.percent)} % (${RF.formatNumber(thd.db, 'dB')} dB) | ${thd.count} harmonic(s)`;
+    lastLine = `THD ${RF.formatNumber(thd.percent)} % (${RF.formatNumber(thd.db, 'dB')} dB) | ${thd.count} harmonic(s)` +
+      (plan ? ` | f0 ${freqText(plan.f0)}` : '') +
+      (limited ? ` | intrinsic ${RF.formatNumber(limited.intrinsic.percent)} % through a ${poles}-pole ${freqText(limited.fc)} rolloff` : '');
   }
 
   function compute() {
     lastLine = ''; calculation = [];
     if (state.panel === "twotone") computeTwoTone();
+    else if (state.panel === "tones") computeTones();
     else if (state.panel === "imd3") computeImd();
     else if (state.panel === "p1db") computeP1();
     else computeThd();
@@ -302,9 +468,17 @@
   els.p1Pout.addEventListener("input", function () { state.p1Source = "pout"; compute(); });
   els.p1Meas.addEventListener("input", compute);
 
-  [els.thdFund, els.thdH2, els.thdH3, els.thdH4, els.thdH5].forEach(function (el) {
+  [els.thdFund, els.thdH2, els.thdH3, els.thdH4, els.thdH5, els.thdF0, els.thdFmax,
+    els.thdBandLow, els.thdBandHigh, els.thdFc, els.thdPoles, els.thdContam].forEach(function (el) {
     el.addEventListener("input", compute);
   });
+  els.thdUnit.addEventListener("change", compute);
+  [els.toneF1, els.toneBandLow, els.toneBandHigh, els.toneRbw, els.toneLevel, els.toneToi, els.tonePn, els.toneDanl].forEach(function (el) {
+    el.addEventListener("input", compute);
+  });
+  els.toneF2.addEventListener("input", function () { state.toneSource = "f2"; compute(); });
+  els.toneDelta.addEventListener("input", function () { state.toneSource = "delta"; compute(); });
+  [els.toneUnit, els.toneOrder].forEach(function (el) { el.addEventListener("change", compute); });
 
   document.querySelectorAll("input").forEach(function (el) {
     el.addEventListener("focus", function (event) { event.target.select(); });

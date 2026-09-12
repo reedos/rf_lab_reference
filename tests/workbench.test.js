@@ -89,6 +89,67 @@ test('log-style tables generate one round-number segment per decade with an opti
   assert.equal(RF.segmentedSweep(RF.logTable(1e6, 1e9, .1)).problems, 0);
   for (const args of [[0, 1e9, 1], [1e9, 1e9, 1], [1e6, 1e9, 0], [1e6, 1e9, 10], [1e6, 1e9, 1, 1e5, 1e6], [1e6, 1e9, 1, 1e8, 0]]) assert.equal(RF.logTable(...args), null);
 });
+test('two-tone products land on a uniform grid of the tone spacing', () => {
+  const plan = RF.tonePlan(1e9, 1.001e9, { maxOrder: 7, band: { low: .995e9, high: 1.006e9 } });
+  near(plan.delta, 1e6, 1e-3); near(plan.center, 1.0005e9, 1e-3);
+  near(plan.im3Lower, 999e6, 1e-3); near(plan.im3Upper, 1002e6, 1e-3); near(plan.im3Span, 3e6, 1e-3);
+  // Order 2k+1 sits exactly k spacings outside each tone.
+  for (const k of [1, 2, 3]) {
+    const pair = plan.products.filter(p => p.order === 2 * k + 1);
+    assert.equal(pair.length, 2);
+    near(Math.min(...pair.map(p => p.frequency)), 1e9 - k * 1e6, 1e-3);
+    near(Math.max(...pair.map(p => p.frequency)), 1.001e9 + k * 1e6, 1e-3);
+  }
+  assert.ok(plan.products.every(p => p.frequency > 0 === p.valid));
+  assert.equal(plan.outOfBand, plan.products.filter(p => p.order > 1 && p.inBand === false).length);
+  near(plan.rbwMax, 1e5, 1e-6); near(plan.envelopeBandwidth, 5e6, 1e-3);
+  // A spacing wider than the lower tone pushes low-side products to or below zero.
+  assert.ok(RF.tonePlan(1e6, 2.5e6, { maxOrder: 5 }).products.some(p => !p.valid));
+  for (const args of [[0, 1e9], [2e9, 1e9], [1e9, 1e9], [NaN, 1e9]]) assert.equal(RF.tonePlan(...args), null);
+});
+test('the highest analyzer floor is the one that limits an IM3 measurement', () => {
+  const plan = RF.tonePlan(1e9, 1.001e9, { rbw: 100, toneLevel: -20, toi: 15, phaseNoise: -140, danl: -155 });
+  const floor = source => plan.floors.find(f => f.source.includes(source)).dbc;
+  near(floor('noise floor'), -155 + 20 + 20); near(floor('Phase noise'), -140 + 20); near(floor('third-order'), 2 * (-20 - 15));
+  assert.equal(plan.limit.dbc, -70); assert.ok(plan.limit.source.includes('third-order'));
+  assert.equal(plan.resolved, true);
+  assert.equal(RF.tonePlan(1e9, 1.001e9, { rbw: 1e6 }).resolved, false);
+  // Each floor needs its own inputs; none are assumed.
+  assert.deepEqual(RF.tonePlan(1e9, 1.001e9).floors, []);
+  assert.equal(RF.tonePlan(1e9, 1.001e9).limit, null);
+  assert.equal(RF.tonePlan(1e9, 1.001e9, { toneLevel: -20, toi: 15 }).floors.length, 1);
+});
+test('harmonics are placed against the analyzer range and the DUT passband', () => {
+  const plan = RF.harmonicPlan(70e9, 5, { instrumentMax: 10e9 });
+  assert.equal(plan.highestMeasurable, 1); near(plan.maxFundamental, 25e9, 1e-3);
+  assert.deepEqual(plan.rows.map(r => r.aboveInstrument), [false, true, true, true, true]);
+  const band = RF.harmonicPlan(1.5e9, 3, { band: { low: 1e9, high: 2e9 } });
+  assert.deepEqual(band.rows.map(r => r.inBand), [true, false, false]);
+  assert.equal(band.rows[0].aboveInstrument, null);
+  for (const args of [[0, 3], [1e9, 1], [1e9, 2.5], [1e9, 21]]) assert.equal(RF.harmonicPlan(...args), null);
+});
+test('band-limited harmonics show how much a device rolloff hides', () => {
+  // Relative to the fundamental, which is attenuated too, so H2 at the corner is under 3 dB down.
+  near(RF.bandLimitAttenuation(1, 1, 2, 1), -3.9794000867, 1e-9);
+  near(RF.bandLimitAttenuation(.5, 1, 3, 1), -4.1497334797, 1e-9);
+  near(RF.bandLimitAttenuation(.1, 1, 2, 1), -0.1271196552, 1e-9);
+  near(RF.bandLimitAttenuation(1, 1, 3, 3), 3 * RF.bandLimitAttenuation(1, 1, 3, 1), 1e-9);
+  near(RF.bandLimitAttenuation(1e6, 1e12, 3, 1), 0, 1e-6);
+  const limited = RF.bandLimitedThd([{ n: 2, dbc: -40 }, { n: 3, dbc: -50 }], 1e9, 1e9, 1);
+  near(limited.rows[0].intrinsic, -40 - RF.bandLimitAttenuation(1e9, 1e9, 2, 1), 1e-9);
+  assert.ok(limited.intrinsic.percent > limited.measured.percent);
+  near(limited.measured.percent, RF.thdFromDbc([-40, -50]).percent, 1e-12);
+  for (const bad of [[], [{ n: 1, dbc: -40 }], [{ n: 2, dbc: NaN }]]) assert.equal(RF.bandLimitedThd(bad, 1e9, 1e9, 1), null);
+  assert.equal(RF.bandLimitedThd([{ n: 2, dbc: -40 }], 1e9, 0, 1), null);
+});
+test('an unknown-phase contaminant gives an asymmetric measurement range', () => {
+  near(RF.contaminationRange(-10).high, 2.3866209613, 1e-9);
+  near(RF.contaminationRange(-10).low, -3.3017707725, 1e-9);
+  near(RF.contaminationRange(-20).high, 0.8278537032, 1e-9);
+  near(RF.contaminationRange(0).high, 20 * Math.log10(2), 1e-12);
+  assert.equal(RF.contaminationRange(0).low, -Infinity);
+  assert.equal(RF.contaminationRange(NaN), null);
+});
 test('blank-as-zero parser changes only empty input, not invalid input', () => {
   assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
   assert.equal(RF.parseZero('0,25'),.25);

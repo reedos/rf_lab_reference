@@ -104,6 +104,54 @@ let checks=0;
           await fill('imd-tone',-10); await expect.poll(valid).toBe(true);
           await fill('imd-gain',20); await expect.poll(valid).toBe(true);
         });
+        await check('Tone plan grids products on the spacing and reports the limiting analyzer floor',async()=>{
+          await go('large-signal.html?tab=tones');
+          await expect(page.locator('#tone-f2')).toHaveValue('1.001 GHz');
+          await expect(page.locator('#tone-metrics')).toContainText('999 MHz');
+          await expect(page.locator('#tone-metrics')).toContainText('1.002 GHz');
+          await expect(page.locator('#tone-metrics')).toContainText(/Use ≤ 100 kHz/);
+          await fill('tone-f2','1.002 GHz'); await expect(page.locator('#tone-delta')).toHaveValue('2 MHz');
+          await fill('tone-delta','1 MHz'); await expect(page.locator('#tone-f2')).toHaveValue('1.001 GHz');
+          await fill('tone-rbw','100 Hz'); await fill('tone-level',-20); await fill('tone-toi',15);
+          await fill('tone-pn',-140); await fill('tone-danl',-155);
+          await expect(page.locator('#tone-metrics')).toContainText(/-70 dBc · Analyzer third-order/);
+          await fill('tone-rbw','1 MHz'); await expect(page.locator('#tone-metrics')).toContainText(/too wide/);
+          await fill('tone-rbw','100 Hz');
+          await fill('tone-band-low','0.995 GHz'); await expect.poll(valid).toBe(false);
+          await fill('tone-band-high','1.006 GHz'); await expect.poll(valid).toBe(true);
+          await expect(page.locator('#tone-rows tr.over-limit').first()).toBeVisible();
+          await page.reload(); await expect(page.locator('#tone-metrics')).toContainText(/-70 dBc/);
+          await fill('tone-f1','bad'); await expect.poll(valid).toBe(false);
+          await fill('tone-f1','1 GHz'); await fill('tone-delta','2.5 GHz');
+          await expect(page.locator('#tone-status')).toContainText(/below zero frequency/);
+        });
+        await check('THD places harmonics and corrects for a device rolloff',async()=>{
+          await go('large-signal.html?tab=thd');
+          await expect(page.locator('#thd-harmonics')).toBeEmpty();
+          await fill('thd-f0','1 GHz');
+          await expect(page.locator('#thd-harmonics')).toContainText('2 GHz');
+          await fill('thd-fmax','2.5 GHz');
+          await expect(page.locator('#thd-status')).toContainText(/above the analyzer/);
+          await expect(page.locator('#thd-status')).toContainText(/500 MHz to reach the 5th/);
+          await fill('thd-fmax','');
+          await fill('thd-band-low','0.9 GHz'); await expect.poll(valid).toBe(false);
+          await fill('thd-band-high','1.1 GHz'); await expect.poll(valid).toBe(true);
+          await expect(page.locator('#thd-status')).toContainText(/outside the DUT passband/);
+          await expect(page.locator('#thd-status')).toContainText(/in-band intermodulation/);
+          await fill('thd-band-low',''); await fill('thd-band-high','');
+          await fill('thd-fc','1 GHz');
+          await expect(page.locator('#thd-band-metrics')).toContainText(/Estimated intrinsic THD/);
+          await expect(page.locator('#thd-status')).toContainText(/hides up to 6\.99 dB on H3/);
+          await fill('thd-poles','2'); await expect(page.locator('#thd-status')).toContainText(/13\.98 dB on H3/);
+          await fill('thd-poles','0'); await expect.poll(valid).toBe(false);
+          await fill('thd-poles','1');
+          await fill('thd-contam',-10);
+          await expect(page.locator('#thd-band-metrics')).toContainText(/\+2\.39 \/ -3\.3 dB/);
+          await fill('thd-fc',''); await fill('thd-f0','');
+          await expect(page.locator('#thd-harmonics')).toBeEmpty(); await expect.poll(valid).toBe(true);
+          await fill('thd-fc','1 GHz'); await expect.poll(valid).toBe(false);
+          await expect(page.locator('#thd-metrics')).toContainText(/fundamental frequency/);
+        });
         await check('Large-signal saves every tab, P1dB driver and THD data',async()=>{
           await go('large-signal.html?tab=imd3'); await fill('imd-tone',-14); await fill('imd-im3',-46);
           await page.locator('[data-panel="p1db"]').click(); await fill('p1-pout',7);
@@ -327,6 +375,8 @@ let checks=0;
             'large-signal.html?tab=imd3&imd-unit=dbm',
             'large-signal.html?tab=p1db&p1-meas=7',
             'large-signal.html?tab=thd&thd-h4=-60&thd-h5=-70',
+            'large-signal.html?tab=thd&thd-f0=1+GHz&thd-fc=1+GHz&thd-contam=-10&thd-fmax=2+GHz',
+            'large-signal.html?tab=tones&tone-rbw=100+Hz&tone-level=-20&tone-toi=15&tone-pn=-140&tone-danl=-155',
             'chain.html?stages=%5B%5D',
             'sweep.html?p-start=-20&p-stop=-4&p-step=0.1'
           ]) {
