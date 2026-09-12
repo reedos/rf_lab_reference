@@ -14,6 +14,7 @@ No build step. Classic scripts, no bundler.
 | [VOPP](https://reedos.github.io/rf_lab_reference/) | CW dBm ↔ peak-to-peak voltage, single-ended and true differential |
 | [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
+| [Gain](https://reedos.github.io/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
 | [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, and phase-slope length estimates |
 | [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
@@ -133,6 +134,40 @@ VOPP_diff  = 2 · VOPP_SE
   outside the DUT passband, THD is the wrong metric and an in-band intermodulation measurement
   is reported instead. A source or receiver harmonic adds with unknown phase, so a contaminant
   10 dB below the DUT harmonic puts the reading between 2.4 dB high and 3.3 dB low.
+
+## Voltage and power gain
+
+A transmission parameter is a ratio of travelling waves, and each wave is normalised by the
+square root of its port's reference impedance. Squaring the magnitude cancels that
+normalisation, so the power ratio is the same whatever the reference impedances are. The
+voltage ratio is not, and carries the square root with it:
+
+    A_v = S21 · sqrt(Z2 / Z1)
+    20·log10|A_v| = 20·log10|S21| + 10·log10(Z2 / Z1)
+    P2 / P_avs = |S21|^2                      (no impedance term)
+
+The page takes a port topology and the two reference impedances, and renders the conversion
+as algebra with those impedances substituted. There are no level inputs; the output is the
+factor, the decibel offset, and the derivation. A diagram shows which voltage each side
+refers to.
+
+| Topology | Parameter | Z₁ | Z₂ | Voltage factor | Add to dB |
+| --- | --- | --- | --- | --- | --- |
+| Differential in, differential out | Sdd21 | 100 Ω | 100 Ω | 1 | 0.00 dB |
+| Differential in, single-ended out | Ssd21 | 100 Ω | 50 Ω | 0.7071 | −3.01 dB |
+| Single-ended in, differential out | Sds21 | 50 Ω | 100 Ω | 1.414 | +3.01 dB |
+
+Equal references are why Sdd21 is so often treated as a voltage ratio directly: for a
+symmetric pair the impedance doubles on both sides and the factor is exactly one. The ±3.01 dB
+appears as soon as one side is single-ended.
+
+A differential port behaves as an ordinary port with its own differential reference impedance.
+That impedance is twice the per-line value only for an uncoupled pair; a real coupled pair has
+twice its odd-mode impedance, which is lower. The conversion also assumes each port is
+terminated in its own reference impedance, and it describes small-signal behaviour only.
+Renormalising a measurement to different impedances needs the whole S-matrix, not the
+transmission term alone. A form referred to the input terminal voltage, which brings in the
+input reflection, is shown alongside and agrees with the first when the input is matched.
 
 ## Match and Smith chart
 

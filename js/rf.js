@@ -739,9 +739,29 @@
       low: ratio === 1 ? -Infinity : 20 * Math.log10(Math.abs(1 - ratio)) };
   }
 
+  // Voltage gain from a transmission parameter. Waves are normalised by the square root of
+  // each port's reference impedance, so a voltage ratio and a power ratio coincide only when
+  // the two reference impedances are equal. A differential port behaves as an ordinary port
+  // with its own differential reference impedance, which is twice the per-line value when the
+  // two lines are uncoupled.
+  const GAIN_TOPOLOGIES = {
+    dd: { key: 'dd', label: 'Differential in, differential out', parameter: 'S_{dd21}', plain: 'Sdd21', input: 'diff', output: 'diff' },
+    sd: { key: 'sd', label: 'Differential in, single-ended out', parameter: 'S_{sd21}', plain: 'Ssd21', input: 'diff', output: 'se' },
+    ds: { key: 'ds', label: 'Single-ended in, differential out', parameter: 'S_{ds21}', plain: 'Sds21', input: 'se', output: 'diff' }
+  };
+  function gainConversion(topology, z1, z2) {
+    const spec = Object.hasOwn(GAIN_TOPOLOGIES, topology) ? GAIN_TOPOLOGIES[topology] : null;
+    if (!spec || ![z1, z2].every(value => Number.isFinite(value) && value > 0)) return null;
+    const ratio = z2 / z1, factor = Math.sqrt(ratio);
+    return { spec, z1, z2, ratio, factor,
+      db: 10 * Math.log10(ratio),
+      perLine1: spec.input === 'diff' ? z1 / 2 : null,
+      perLine2: spec.output === 'diff' ? z2 / 2 : null };
+  }
+
   const RF = {
     formatNumber, parseZero, parseFrequency, formatFrequency, sweepPoints, sweepStep, segmentedSweep, logTable,
-    tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange,
+    tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,

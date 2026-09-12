@@ -30,6 +30,17 @@ summary { cursor: pointer; font-weight: 500; }
 .segment-index { font: 500 12px var(--font-mono); color: var(--accent); padding-bottom: 14px; min-width: 18px; }
 .segment button { min-height: 42px; }
 .sweep-hint { margin: 6px 0 0; }
+.gain-svg { width: 100%; height: auto; display: block; margin: 4px 0 18px; }
+.gain-svg[hidden] { display: none; }
+.gain-svg .box { fill: var(--bg-inset); stroke: var(--line-strong); stroke-width: 1; }
+.gain-svg .wire { stroke: var(--accent); stroke-width: 2; fill: none; }
+.gain-svg .brace { stroke: var(--cyan); stroke-width: 1.5; fill: none; }
+.gain-svg text { fill: var(--muted); font: 11px var(--font-mono); }
+.gain-svg text.strong { fill: var(--text); font-size: 13px; }
+.gain-svg text.mark { fill: var(--cyan); }
+.gain-result { margin: 18px 0; padding: 18px; border-left: 2px solid var(--cyan); background: var(--bg-inset); border-radius: 0 8px 8px 0; overflow-x: auto; }
+.gain-result .katex { font-size: 1.2em; }
+.gain-note { margin: 14px 0 0; }
 .ls-panel h4 { margin: 20px 0 2px; font: 500 12px var(--font-ui); color: var(--text); }
 .ls-panel h3 { margin: 30px 0 4px; padding-top: 18px; border-top: 1px solid var(--line); font: 500 12px var(--font-display); color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
 .unit-pair { display: flex; gap: 6px; }

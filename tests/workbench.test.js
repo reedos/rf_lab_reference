@@ -157,6 +157,29 @@ test('an unknown-phase contaminant gives an asymmetric measurement range', () =>
   assert.equal(RF.contaminationRange(0).low, -Infinity);
   assert.equal(RF.contaminationRange(NaN), null);
 });
+test('a transmission parameter becomes a voltage gain through the square root of the impedance ratio', () => {
+  // The three standard mixed-mode cases, referenced to 100 ohm differential and 50 ohm single-ended.
+  const standard = { dd: [100, 100, 1, 0], sd: [100, 50, Math.SQRT1_2, -10 * Math.log10(2)], ds: [50, 100, Math.SQRT2, 10 * Math.log10(2)] };
+  for (const [topology, [z1, z2, factor, db]] of Object.entries(standard)) {
+    const r = RF.gainConversion(topology, z1, z2);
+    near(r.factor, factor); near(r.db, db); near(r.ratio, z2 / z1);
+    // 20log10 of the voltage factor and 10log10 of the impedance ratio are the same number.
+    near(20 * Math.log10(r.factor), r.db, 1e-12);
+    assert.equal(r.spec.key, topology);
+  }
+  // A differential port is twice its per-line value only when the pair is uncoupled.
+  assert.deepEqual([RF.gainConversion('dd', 100, 200).perLine1, RF.gainConversion('dd', 100, 200).perLine2], [50, 100]);
+  assert.equal(RF.gainConversion('sd', 100, 50).perLine2, null);
+  assert.equal(RF.gainConversion('ds', 50, 100).perLine1, null);
+  // Converting one way and back is lossless.
+  near(RF.gainConversion('ds', 50, 100).factor * RF.gainConversion('sd', 100, 50).factor, 1);
+  // Non-standard differential impedances scale the same way.
+  near(RF.gainConversion('ds', 50, 200).db, 10 * Math.log10(4));
+  near(RF.gainConversion('dd', 200, 100).factor, Math.SQRT1_2);
+  for (const bad of [['xx', 50, 50], ['dd', 0, 50], ['dd', 50, -1], ['dd', NaN, 50], ['dd', 50, Infinity]]) {
+    assert.equal(RF.gainConversion(...bad), null);
+  }
+});
 test('blank-as-zero parser changes only empty input, not invalid input', () => {
   assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
   assert.equal(RF.parseZero('0,25'),.25);

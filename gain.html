@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090b10">
+  <meta name="description" content="Convert a mixed-mode transmission parameter into a voltage gain when the port reference impedances differ.">
+  <title>Voltage &amp; power gain &middot; RF Lab Reference</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-6">
+  <link rel="stylesheet" href="css/app.css?v=20260912-6"><link rel="stylesheet" href="css/workbench.css?v=20260912-6">
+</head>
+<body>
+  <a class="skip" href="#calc">Skip to calculator</a>
+  <div class="shell">
+    <header class="top">
+      <a class="wordmark" href="./">RF<span>/</span>LAB</a>
+      <nav aria-label="Calculators">
+        <a href="./">VOPP</a>
+        <a href="match.html">Match</a>
+        <a href="large-signal.html">Large-signal</a>
+        <a class="is-active" href="gain.html">Gain</a>
+        <a href="delay.html">Delay</a>
+        <a href="sweep.html">Sweep</a>
+      <a href="chain.html">Power &amp; noise</a></nav>
+    </header>
+
+<section class="lede"><p class="kicker">Small-signal</p><h1>Voltage &amp; power gain</h1><p>A transmission parameter is a wave ratio. Its magnitude squared is a power ratio whatever the port impedances are, but the voltage ratio carries a square root of impedance with it.</p></section>
+
+<section class="board work-board" id="calc">
+<h2>Port topology</h2>
+<div class="seg" role="group" aria-label="Port topology">
+  <button type="button" class="seg-btn is-active" id="btn-dd" data-topology="dd" aria-pressed="true">Diff → Diff</button>
+  <button type="button" class="seg-btn" id="btn-sd" data-topology="sd" aria-pressed="false">Diff → SE</button>
+  <button type="button" class="seg-btn" id="btn-ds" data-topology="ds" aria-pressed="false">SE → Diff</button>
+</div>
+
+<svg class="gain-svg" id="diagram-dd" viewBox="0 0 680 220" role="img" aria-label="Differential source into a differential DUT input, differential DUT output into a differential load">
+  <rect class="box" x="16" y="52" width="104" height="116" rx="10"/>
+  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
+  <rect class="box" x="560" y="52" width="104" height="116" rx="10"/>
+  <text class="strong" x="42" y="100">Source</text><text x="42" y="120">Zd1</text>
+  <text class="strong" x="318" y="104">DUT</text><text x="296" y="126">Sdd21</text>
+  <text class="strong" x="592" y="100">Load</text><text x="592" y="120">Zd2</text>
+  <path class="wire" d="M120 78 H268"/><path class="wire" d="M120 142 H268"/>
+  <path class="wire" d="M412 78 H560"/><path class="wire" d="M412 142 H560"/>
+  <text x="126" y="70">+</text><text x="126" y="160">−</text>
+  <text x="418" y="70">+</text><text x="418" y="160">−</text>
+  <path class="brace" d="M212 78 V142 M206 78 H218 M206 142 H218"/>
+  <text class="mark" x="222" y="114">Vd1</text>
+  <path class="brace" d="M496 78 V142 M490 78 H502 M490 142 H502"/>
+  <text class="mark" x="506" y="114">Vd2</text>
+  <text x="16" y="205">Differential reference impedance at both ports</text>
+</svg>
+
+<svg class="gain-svg" id="diagram-sd" viewBox="0 0 680 220" role="img" aria-label="Differential source into a differential DUT input, single-ended DUT output into a single-ended load" hidden>
+  <rect class="box" x="16" y="52" width="104" height="116" rx="10"/>
+  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
+  <rect class="box" x="560" y="78" width="104" height="64" rx="10"/>
+  <text class="strong" x="42" y="100">Source</text><text x="42" y="120">Zd1</text>
+  <text class="strong" x="318" y="104">DUT</text><text x="296" y="126">Ssd21</text>
+  <text class="strong" x="592" y="106">Load</text><text x="592" y="126">Zs2</text>
+  <path class="wire" d="M120 78 H268"/><path class="wire" d="M120 142 H268"/>
+  <path class="wire" d="M412 110 H560"/>
+  <text x="126" y="70">+</text><text x="126" y="160">−</text>
+  <path class="brace" d="M212 78 V142 M206 78 H218 M206 142 H218"/>
+  <text class="mark" x="222" y="114">Vd1</text>
+  <path class="brace" d="M496 110 V158 M490 110 H502"/>
+  <text class="mark" x="506" y="136">Vs2</text>
+  <path class="wire" d="M478 166 H514 M486 174 H506 M492 182 H500"/>
+  <text x="16" y="205">Differential in, single-ended out: the output reference impedance is the smaller one</text>
+</svg>
+
+<svg class="gain-svg" id="diagram-ds" viewBox="0 0 680 220" role="img" aria-label="Single-ended source into a single-ended DUT input, differential DUT output into a differential load" hidden>
+  <rect class="box" x="16" y="78" width="104" height="64" rx="10"/>
+  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
+  <rect class="box" x="560" y="52" width="104" height="116" rx="10"/>
+  <text class="strong" x="42" y="106">Source</text><text x="42" y="126">Zs1</text>
+  <text class="strong" x="318" y="104">DUT</text><text x="296" y="126">Sds21</text>
+  <text class="strong" x="592" y="100">Load</text><text x="592" y="120">Zd2</text>
+  <path class="wire" d="M120 110 H268"/>
+  <path class="wire" d="M412 78 H560"/><path class="wire" d="M412 142 H560"/>
+  <text x="418" y="70">+</text><text x="418" y="160">−</text>
+  <path class="brace" d="M212 110 V158 M206 110 H218"/>
+  <text class="mark" x="222" y="136">Vs1</text>
+  <path class="wire" d="M194 166 H230 M202 174 H222 M208 182 H216"/>
+  <path class="brace" d="M496 78 V142 M490 78 H502 M490 142 H502"/>
+  <text class="mark" x="506" y="114">Vd2</text>
+  <text x="16" y="205">Single-ended in, differential out: the output reference impedance is the larger one</text>
+</svg>
+
+<h2>Reference impedances</h2>
+<p class="hint">These are the reference impedances of the parameter you already have. If the analyzer measured in its own reference, enter that. Renormalising a measurement to different impedances needs the whole S-matrix, not the transmission term alone.</p>
+<div class="work-fields">
+  <label for="z1"><span id="text-z1">Input reference Z<sub>d1</sub>, differential (Ω)</span><input id="z1" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Input differential reference impedance in ohms"></label>
+  <label for="z2"><span id="text-z2">Output reference Z<sub>d2</sub>, differential (Ω)</span><input id="z2" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Output differential reference impedance in ohms"></label>
+</div>
+<div class="match-controls" aria-label="Impedance presets">
+  <button class="chip" type="button" data-preset="standard">Standard 100 Ω / 50 Ω</button>
+  <button class="chip" type="button" data-preset="200">200 Ω differential</button>
+</div>
+<p id="gain-status" role="status"></p>
+
+<h2>Result</h2>
+<div class="gain-result" id="gain-equation" tabindex="0" role="region" aria-label="Voltage gain conversion"></div>
+<dl class="metrics" id="metrics" aria-live="polite"></dl>
+<p class="hint gain-note" id="gain-note"></p>
+<div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div>
+</section>
+
+<section class="board work-board">
+<h2>Why the two differ</h2>
+<div class="gain-result" id="derivation-waves" tabindex="0" role="region" aria-label="Wave normalisation"></div>
+<p>Each travelling wave is normalised by the square root of its port's reference impedance. That normalisation is the whole reason a voltage ratio and a power ratio separate.</p>
+<div class="gain-result" id="derivation-ratio" tabindex="0" role="region" aria-label="Voltage ratio of the travelling waves"></div>
+<p>With port 2 terminated in its own reference impedance there is no reflected wave, so the total output voltage equals the outgoing wave. With a source of impedance Z<sub>1</sub>, the incident wave equals half the source electromotive force, which is also the actual input voltage when the input is matched.</p>
+<div class="gain-result" id="derivation-gain" tabindex="0" role="region" aria-label="Voltage gain"></div>
+<p>The power ratio has no such factor, because the normalisation cancels when you square the magnitude. That is the asymmetry in one line.</p>
+<div class="gain-result" id="derivation-power" tabindex="0" role="region" aria-label="Power ratio"></div>
+<p>If you need the gain referred to the actual terminal voltage at the input rather than to the incident wave, the input reflection enters as well. The two forms agree when the input is matched.</p>
+<div class="gain-result" id="derivation-terminal" tabindex="0" role="region" aria-label="Terminal voltage gain"></div>
+</section>
+
+<section class="ref">
+  <div class="ref-head"><h2>Standard references</h2><p>100 Ω differential, 50 Ω single-ended</p></div>
+  <table>
+    <thead><tr><th>Topology</th><th>Parameter</th><th>Z<sub>1</sub></th><th>Z<sub>2</sub></th><th>Voltage factor</th><th>Add to dB</th></tr></thead>
+    <tbody>
+      <tr><td>Diff → Diff</td><td class="num">S<sub>dd21</sub></td><td class="num">100 Ω</td><td class="num">100 Ω</td><td class="num">1</td><td class="num">0.00 dB</td></tr>
+      <tr><td>Diff → SE</td><td class="num">S<sub>sd21</sub></td><td class="num">100 Ω</td><td class="num">50 Ω</td><td class="num">0.7071</td><td class="num">−3.01 dB</td></tr>
+      <tr><td>SE → Diff</td><td class="num">S<sub>ds21</sub></td><td class="num">50 Ω</td><td class="num">100 Ω</td><td class="num">1.414</td><td class="num">+3.01 dB</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel"><h2>Model and limits</h2>
+<p>Small-signal linear two-port, real positive reference impedances, each port terminated in its own reference. A differential port behaves as an ordinary port with its own differential reference impedance; that impedance is twice the per-line value only when the two lines are uncoupled. A real coupled pair has a differential impedance of twice its odd-mode impedance, which is lower.</p>
+<p>The conversion depends only on the ratio of the two reference impedances, so it is a fixed offset for a given topology, not a frequency-dependent correction. It does not describe a DUT terminated in something other than its reference impedance, and it says nothing about compression or distortion, which depend on the load the device physically sees.</p>
+<p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="js/bench.js?v=20260912-6"></script><script src="js/rf.js?v=20260912-6"></script><script src="js/gain.js?v=20260912-6"></script>
+</body>
+</html>
