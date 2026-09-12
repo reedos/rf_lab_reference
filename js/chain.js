@@ -39,11 +39,12 @@
       <button class="ghost" type="button" data-action="down" aria-label="Move stage ${i + 1} down" ${i === stages.length - 1 ? 'disabled' : ''}>↓</button>
       <button class="ghost" type="button" data-action="remove" aria-label="Remove stage ${i + 1}">Remove</button></div></div><div class="work-fields">
       <label>Output connection<input data-key="name" maxlength="80" value="${escape(s.name)}" aria-label="Stage ${i + 1} output connection"></label>
-      <label>${s.kind === 'passive' ? 'Loss (positive dB)' : 'Gain (dB)'}<input placeholder="0" title="Blank is treated as zero dB" data-key="db" inputmode="decimal" value="${escape(s.db)}" aria-label="Stage ${i + 1} ${s.kind === 'passive' ? 'loss' : 'gain'}"></label>
+      <label>${s.kind === 'passive' ? 'Loss (positive dB)' : 'Gain (dB)'}<input ${s.kind === 'passive' ? '' : 'data-signed '}placeholder="0" title="Blank is treated as zero dB" data-key="db" inputmode="decimal" value="${escape(s.db)}" aria-label="Stage ${i + 1} ${s.kind === 'passive' ? 'loss' : 'gain'}"></label>
       ${s.kind === 'passive' ? `<label>Physical temperature (K)<input data-key="temperature" inputmode="decimal" value="${escape(s.temperature)}" aria-label="Stage ${i + 1} temperature"></label>` : `<label>Noise figure (dB)<input data-key="nf" inputmode="decimal" value="${escape(s.nf)}" aria-label="Stage ${i + 1} noise figure"></label>`}
-      <label>Limit at output (dBm, optional)<input data-key="limit" inputmode="decimal" value="${escape(s.limit)}" placeholder="No limit specified" aria-label="Stage ${i + 1} output limit"></label>
+      <label>Limit at output (dBm, optional)<input data-signed data-key="limit" inputmode="decimal" value="${escape(s.limit)}" placeholder="No limit specified" aria-label="Stage ${i + 1} output limit"></label>
       </div></section>`).join('');
     $('add-active').disabled = $('add-passive').disabled = stages.length >= 24;
+    Bench.enhance($('stages'));
   }
   function invalid(message) {
     result = null;

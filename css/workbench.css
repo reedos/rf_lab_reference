@@ -30,11 +30,23 @@ summary { cursor: pointer; font-weight: 500; }
 .segment-index { font: 500 12px var(--font-mono); color: var(--accent); padding-bottom: 14px; min-width: 18px; }
 .segment button { min-height: 42px; }
 .sweep-hint { margin: 6px 0 0; }
+.ls-panel h4 { margin: 20px 0 2px; font: 500 12px var(--font-ui); color: var(--text); }
 .ls-panel h3 { margin: 30px 0 4px; padding-top: 18px; border-top: 1px solid var(--line); font: 500 12px var(--font-display); color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
-.work-fields .unit-pair { display: flex; gap: 6px; }
-.work-fields .unit-pair input { flex: 1; width: 60%; }
-.work-fields .unit-pair select { width: 88px; }
+.unit-pair { display: flex; gap: 6px; }
+.unit-pair input { flex: 1; width: 60%; min-width: 0; }
+.unit-pair select { width: 88px; flex: 0 0 88px; }
 .quantity-field { min-width: 0; }
+.signed-field { display: flex; align-items: stretch; gap: 6px; flex: 1; min-width: 0; }
+.signed-field > input { flex: 1; min-width: 0; }
+.work-fields .signed-field > input, .stage .signed-field > input { margin-top: 0; }
+.work-fields .signed-field, .stage .signed-field { margin-top: 7px; }
+button.sign {
+  flex: 0 0 44px; width: 44px; min-height: 42px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--bg-well); color: var(--muted); font: 1rem var(--font-mono); cursor: pointer;
+}
+button.sign:hover { color: var(--text); border-color: var(--accent); }
+.field-row .signed-field { gap: 8px; }
+.field-row button.sign { flex: 0 0 36px; width: 36px; min-height: 36px; height: 36px; }
 .delay-page .work-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .work-board hr { border: 0; border-top: 1px solid var(--line-strong); margin: 28px 0; }
 .work-board { padding: 24px; }
@@ -82,5 +94,9 @@ button:disabled { opacity: .45; cursor: default; }
   nav a { padding: 8px; }
   .setup-controls button { min-height: 42px; }
 }
-@media (max-width: 700px) { .segment { grid-template-columns: auto repeat(3, minmax(0, 1fr)); } .segment button { grid-column: 2 / -1; } }
+@media (max-width: 700px) {
+  .segment { grid-template-columns: auto minmax(0, 1fr); }
+  .segment-index { grid-row: 1 / span 4; align-self: center; padding-bottom: 0; }
+  .segment > .quantity-field, .segment button { grid-column: 2; }
+}
 @media (max-width: 360px) { .work-fields { grid-template-columns: minmax(0, 1fr); } }

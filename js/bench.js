@@ -30,6 +30,35 @@
     numbers.set(el, { exact, shown });
   }
   document.addEventListener('input', event => numbers.delete(event.target), true);
+  // Mobile decimal keypads have no minus key, so signed fields get their own toggle.
+  function flipSign(el) {
+    const text = el.value.trim();
+    el.value = text === '' ? '-' : text.startsWith('-') ? text.slice(1) : '-' + text.replace(/^\+/, '');
+    numbers.delete(el);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.focus();
+    // Pages select the whole field on focus, which would make the next keystroke
+    // replace the sign we just applied. Put the caret after it instead.
+    try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) { /* not a text input */ }
+  }
+  function enhance(root) {
+    (root || document).querySelectorAll('input[data-signed]').forEach(el => {
+      if (el.dataset.signed === 'ready') return;
+      el.dataset.signed = 'ready';
+      const wrap = document.createElement('span');
+      wrap.className = 'signed-field';
+      el.replaceWith(wrap);
+      wrap.append(el);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sign';
+      button.textContent = '±';
+      button.tabIndex = -1;
+      button.setAttribute('aria-label', 'Make ' + (el.getAttribute('aria-label') || 'this value') + ' positive or negative');
+      button.addEventListener('click', () => flipSign(el));
+      wrap.append(button);
+    });
+  }
   // Keep authored equations separate from prose and user-supplied labels.
   function tex(value, unit = '', withUnit = true) {
     let number = RF.formatNumber(value, unit).replace(/(-?)∞/, '$1\\infty').replace('—', '\\text{undefined}');
@@ -95,10 +124,11 @@
       say('Copied.');
     } catch (_) { say('Clipboard unavailable. Select and copy the address or calculation text.'); }
   }
-  window.Bench = { update, copy, read, raw, setNumber, tex, voltage, equation, get valid() { return latest.valid; } };
+  window.Bench = { update, copy, read, raw, setNumber, enhance, tex, voltage, equation, get valid() { return latest.valid; } };
   document.addEventListener('DOMContentLoaded', function () {
     const calc = document.getElementById('calc');
     if (!calc) return;
+    enhance(document);
     const area = document.createElement('section');
     area.className = 'bench-tools';
     area.setAttribute('aria-label', 'Calculation and saved setups');

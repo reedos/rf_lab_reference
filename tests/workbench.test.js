@@ -135,6 +135,13 @@ test('band-limited harmonics show how much a device rolloff hides', () => {
   near(RF.bandLimitAttenuation(.1, 1, 2, 1), -0.1271196552, 1e-9);
   near(RF.bandLimitAttenuation(1, 1, 3, 3), 3 * RF.bandLimitAttenuation(1, 1, 3, 1), 1e-9);
   near(RF.bandLimitAttenuation(1e6, 1e12, 3, 1), 0, 1e-6);
+  // Relative attenuation saturates at 20p*log10(n), so one pole never explains more than 6 dB on H2.
+  near(RF.bandLimitAttenuation(1e6, 1, 2, 1), -20 * Math.log10(2), 1e-6);
+  near(RF.bandLimitAttenuation(1e6, 1, 3, 4), -80 * Math.log10(3), 1e-6);
+  const far = RF.bandLimitedThd([{ n: 2, dbc: -40 }], 1e9, 1e3, 1);
+  near(far.rows[0].asymptote, -20 * Math.log10(2), 1e-12);
+  assert.equal(far.rows[0].saturated, true);
+  assert.equal(RF.bandLimitedThd([{ n: 2, dbc: -40 }], 1e9, 4e9, 1).rows[0].saturated, false);
   const limited = RF.bandLimitedThd([{ n: 2, dbc: -40 }, { n: 3, dbc: -50 }], 1e9, 1e9, 1);
   near(limited.rows[0].intrinsic, -40 - RF.bandLimitAttenuation(1e9, 1e9, 2, 1), 1e-9);
   assert.ok(limited.intrinsic.percent > limited.measured.percent);

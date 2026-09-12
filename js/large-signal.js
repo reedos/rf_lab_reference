@@ -34,7 +34,6 @@
     thdH4: document.getElementById("thd-h4"),
     thdH5: document.getElementById("thd-h5"),
     thdMetrics: document.getElementById("thd-metrics"),
-    thdUnit: document.getElementById("thd-unit"),
     thdF0: document.getElementById("thd-f0"),
     thdFmax: document.getElementById("thd-fmax"),
     thdBandLow: document.getElementById("thd-band-low"),
@@ -45,7 +44,6 @@
     thdStatus: document.getElementById("thd-status"),
     thdBandMetrics: document.getElementById("thd-band-metrics"),
     thdHarmonics: document.getElementById("thd-harmonics"),
-    toneUnit: document.getElementById("tone-unit"),
     toneF1: document.getElementById("tone-f1"),
     toneF2: document.getElementById("tone-f2"),
     toneDelta: document.getElementById("tone-delta"),
@@ -76,10 +74,30 @@
   let lastLine = "";
   let calculation = [];
   let previousImdUnit = 'dbc', previousImdPlane = 'input';
+  const frequencyIds = ['tone-f1','tone-f2','tone-delta','tone-band-low','tone-band-high','tone-rbw',
+    'thd-f0','thd-fmax','thd-band-low','thd-band-high','thd-fc'];
   const savedIds = ['imd-im3','imd-unit','ls-plane','imd-gain','p1-gain','p1-pin','p1-pout','p1-meas','thd-fund','thd-h2','thd-h3','thd-h4','thd-h5',
-    'thd-unit','thd-f0','thd-fmax','thd-band-low','thd-band-high','thd-fc','thd-poles','thd-contam',
-    'tone-unit','tone-f1','tone-f2','tone-delta','tone-order','tone-band-low','tone-band-high','tone-rbw','tone-level','tone-toi','tone-pn','tone-danl'];
+    'thd-poles','thd-contam','tone-order','tone-level','tone-toi','tone-pn','tone-danl']
+    .concat(frequencyIds, frequencyIds.map(id => id + '-unit'));
   const freqScales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 };
+  // Every frequency field carries its own unit, so a corner in kHz sits beside a tone in GHz.
+  const unitScale = el => freqScales[document.getElementById(el.id + '-unit').value];
+  const readHz = el => RF.parseFrequency(el.value, unitScale(el));
+  const optionalHz = el => optionalField(el, () => readHz(el));
+  function writeHz(el, hz) {
+    el.value = Number.isFinite(hz) ? String(Number((hz / unitScale(el)).toPrecision(12))) : '';
+  }
+  // Changing a unit keeps the physical value and normalises the field to a bare number.
+  function bindUnit(id) {
+    const el = document.getElementById(id), select = document.getElementById(id + '-unit');
+    let previous = select.value;
+    select.addEventListener('change', function () {
+      const hz = RF.parseFrequency(el.value, freqScales[previous]);
+      previous = select.value;
+      if (Number.isFinite(hz)) writeHz(el, hz);
+      compute();
+    });
+  }
   const freqText = hz => RF.formatFrequency(hz).text;
   const yesNo = value => value === null ? '—' : value ? 'Yes' : 'No';
   // Optional fields: blank is allowed, but text that is present must parse.
@@ -195,13 +213,11 @@
   }
 
   function computeTones() {
-    const scale = freqScales[els.toneUnit.value];
-    const hz = text => RF.parseFrequency(text, scale);
-    const f1 = hz(els.toneF1.value);
-    const f2 = state.toneSource === 'delta' ? f1 + hz(els.toneDelta.value) : hz(els.toneF2.value);
+    const f1 = readHz(els.toneF1);
+    const f2 = state.toneSource === 'delta' ? f1 + readHz(els.toneDelta) : readHz(els.toneF2);
     const fields = {
-      bandLow: optionalField(els.toneBandLow, hz), bandHigh: optionalField(els.toneBandHigh, hz),
-      rbw: optionalField(els.toneRbw, hz), level: optionalField(els.toneLevel, RF.parseNumber),
+      bandLow: optionalHz(els.toneBandLow), bandHigh: optionalHz(els.toneBandHigh),
+      rbw: optionalHz(els.toneRbw), level: optionalField(els.toneLevel, RF.parseNumber),
       toi: optionalField(els.toneToi, RF.parseNumber), pn: optionalField(els.tonePn, RF.parseNumber),
       danl: optionalField(els.toneDanl, RF.parseNumber)
     };
@@ -222,8 +238,8 @@
       phaseNoise: fields.pn.blank ? NaN : fields.pn.value,
       danl: fields.danl.blank ? NaN : fields.danl.value });
     if (!plan) return fail('Enter a positive f₁ and a spacing that puts f₂ above it. Use a unit or SI prefix such as 1G or 100 MHz.');
-    if (state.toneSource === 'delta') { if (document.activeElement !== els.toneF2) els.toneF2.value = freqText(plan.f2); }
-    else if (document.activeElement !== els.toneDelta) els.toneDelta.value = freqText(plan.delta);
+    if (state.toneSource === 'delta') { if (document.activeElement !== els.toneF2) writeHz(els.toneF2, plan.f2); }
+    else if (document.activeElement !== els.toneDelta) writeHz(els.toneDelta, plan.delta);
     const dropped = plan.products.filter(p => !p.valid).length;
     els.toneStatus.className = dropped ? 'over-limit' : '';
     els.toneStatus.textContent = dropped ? `${dropped} low-side product${dropped === 1 ? '' : 's'} fall at or below zero frequency and are omitted; the spacing is a large fraction of f₁.` :
@@ -331,12 +347,10 @@
     if (!thd.count || !Number.isFinite(thd.percent) || (els.thdFund.value.trim() && !Number.isFinite(fund)) || badHarmonic) {
       return clear('Enter at least one harmonic in dBc');
     }
-    const scale = freqScales[els.thdUnit.value];
-    const hz = text => RF.parseFrequency(text, scale);
     const fields = {
-      f0: optionalField(els.thdF0, hz), fmax: optionalField(els.thdFmax, hz),
-      bandLow: optionalField(els.thdBandLow, hz), bandHigh: optionalField(els.thdBandHigh, hz),
-      fc: optionalField(els.thdFc, hz), poles: optionalField(els.thdPoles, RF.parseNumber),
+      f0: optionalHz(els.thdF0), fmax: optionalHz(els.thdFmax),
+      bandLow: optionalHz(els.thdBandLow), bandHigh: optionalHz(els.thdBandHigh),
+      fc: optionalHz(els.thdFc), poles: optionalField(els.thdPoles, RF.parseNumber),
       contam: optionalField(els.thdContam, RF.parseNumber)
     };
     if (!Object.values(fields).every(field => field.ok)) return clear('Optional frequency and level entries must be numeric. Leave them blank if unknown.');
@@ -368,6 +382,8 @@
     if (limited) {
       const worst = limited.rows.reduce((a, b) => b.attenuation < a.attenuation ? b : a);
       notes.push(`The device rolloff hides up to ${RF.formatNumber(-worst.attenuation, 'dB')} dB on H${worst.n}.`);
+      const pinned = limited.rows.filter(row => row.saturated);
+      if (pinned.length) notes.push(`With ${poles} pole${poles === 1 ? '' : 's'} the correction is at its limit of ${RF.formatNumber(-pinned[0].asymptote, 'dB')} dB on H${pinned[0].n}; a device that rejects more than that needs more poles, and a stopband that deep is better described by the passband.`);
     }
     els.thdStatus.className = notes.length ? 'over-limit' : '';
     els.thdStatus.textContent = notes.join(' ');
@@ -472,13 +488,13 @@
     els.thdBandLow, els.thdBandHigh, els.thdFc, els.thdPoles, els.thdContam].forEach(function (el) {
     el.addEventListener("input", compute);
   });
-  els.thdUnit.addEventListener("change", compute);
+  frequencyIds.forEach(bindUnit);
   [els.toneF1, els.toneBandLow, els.toneBandHigh, els.toneRbw, els.toneLevel, els.toneToi, els.tonePn, els.toneDanl].forEach(function (el) {
     el.addEventListener("input", compute);
   });
   els.toneF2.addEventListener("input", function () { state.toneSource = "f2"; compute(); });
   els.toneDelta.addEventListener("input", function () { state.toneSource = "delta"; compute(); });
-  [els.toneUnit, els.toneOrder].forEach(function (el) { el.addEventListener("change", compute); });
+  els.toneOrder.addEventListener("change", compute);
 
   document.querySelectorAll("input").forEach(function (el) {
     el.addEventListener("focus", function (event) { event.target.select(); });
