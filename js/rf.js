@@ -721,7 +721,11 @@
       if (!Number.isInteger(harmonic.n) || harmonic.n < 2 || !Number.isFinite(harmonic.dbc)) return null;
       const attenuation = bandLimitAttenuation(f0, fc, harmonic.n, poles);
       if (!Number.isFinite(attenuation)) return null;
-      rows.push({ n: harmonic.n, measured: harmonic.dbc, attenuation, intrinsic: harmonic.dbc - attenuation });
+      // Far above the corner the fundamental and the harmonic roll off together, so the
+      // relative attenuation stops at 20p*log10(n) however high f0 goes.
+      const asymptote = -20 * (poles == null ? 1 : poles) * Math.log10(harmonic.n);
+      rows.push({ n: harmonic.n, measured: harmonic.dbc, attenuation, asymptote,
+        saturated: attenuation - asymptote < 0.5, intrinsic: harmonic.dbc - attenuation });
     }
     return { rows, f0, fc, poles: poles == null ? 1 : poles,
       measured: thdFromDbc(rows.map(r => r.measured)), intrinsic: thdFromDbc(rows.map(r => r.intrinsic)) };

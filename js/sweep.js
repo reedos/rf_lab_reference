@@ -6,14 +6,31 @@
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const metric = (label, value) => `<div class="metric"><dt>${label}</dt><dd>${value}</dd></div>`;
   const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 };
+  const segment = (start, startUnit, stop, stopUnit, step, stepUnit) => ({ start, startUnit, stop, stopUnit, step, stepUnit });
   const PRESETS = {
-    wide: [{ start: '100 MHz', stop: '125 GHz', step: '10 MHz' }],
+    wide: [segment('100', 'MHz', '125', 'GHz', '10', 'MHz')],
     decades: [
-      { start: '10 kHz', stop: '90 kHz', step: '10 kHz' }, { start: '100 kHz', stop: '900 kHz', step: '100 kHz' },
-      { start: '1 MHz', stop: '9 MHz', step: '1 MHz' }, { start: '10 MHz', stop: '90 MHz', step: '10 MHz' },
-      { start: '100 MHz', stop: '125 GHz', step: '100 MHz' }]
+      segment('10', 'kHz', '90', 'kHz', '10', 'kHz'), segment('100', 'kHz', '900', 'kHz', '100', 'kHz'),
+      segment('1', 'MHz', '9', 'MHz', '1', 'MHz'), segment('10', 'MHz', '90', 'MHz', '10', 'MHz'),
+      segment('100', 'MHz', '125', 'GHz', '100', 'MHz')]
   };
-  const optionIds = ['unit', 'mode', 'limit', 'ifbw', 'jump', 'g-start', 'g-stop', 'g-mult', 'g-tail', 'g-tail-step', 'p-start', 'p-stop', 'p-step', 'p-points'];
+  const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step'];
+  const optionIds = ['mode', 'limit', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points']
+    .concat(frequencyIds, frequencyIds.map(id => id + '-unit'));
+  // Every frequency field carries its own unit; changing it keeps the physical value.
+  const unitScale = el => scales[document.getElementById(el.id + '-unit').value];
+  const readHz = el => RF.parseFrequency(el.value, unitScale(el));
+  function bindUnit(id) {
+    const el = $(id), select = $(id + '-unit');
+    let previous = select.value;
+    select.addEventListener('change', function () {
+      const hz = RF.parseFrequency(el.value, scales[previous]);
+      previous = select.value;
+      if (Number.isFinite(hz)) el.value = String(Number((hz / scales[select.value]).toPrecision(12)));
+      compute();
+    });
+  }
+  const segmentUnit = (s, key) => Object.hasOwn(scales, s[key]) ? s[key] : 'MHz';
   let segments = PRESETS.wide.map(s => ({ ...s })), powerSource = 'step', result = null, power = null, loadError = '';
   function readQuery() {
     const q = new URLSearchParams(location.search);
@@ -26,7 +43,8 @@
       try {
         const data = JSON.parse(q.get('segments'));
         if (!Array.isArray(data) || !data.length || data.length > 100 ||
-            !data.every(s => s && ['start', 'stop', 'step'].every(key => typeof s[key] === 'string' && s[key].length <= 40))) throw new Error();
+            !data.every(s => s && ['start', 'stop', 'step'].every(key => typeof s[key] === 'string' && s[key].length <= 40) &&
+              ['startUnit', 'stopUnit', 'stepUnit'].every(key => s[key] === undefined || Object.hasOwn(scales, s[key])))) throw new Error();
         segments = data;
       } catch (_) { loadError = 'This sweep link could not be read. The example sweep is shown; edit a value to start a new setup.'; }
     }
@@ -38,10 +56,15 @@
     history.replaceState(null, '', location.pathname + '?' + q);
   }
   function renderSegments() {
+    const field = (s, i, key, label) => {
+      const id = `seg${i}-${key}`, unit = segmentUnit(s, key + 'Unit');
+      const options = Object.keys(scales).map(u => `<option value="${u}"${u === unit ? ' selected' : ''}>${u}</option>`).join('');
+      return `<div class="quantity-field"><label for="${id}">${label}</label><div class="unit-pair">` +
+        `<input id="${id}" data-key="${key}" value="${escape(s[key])}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Segment ${i + 1} ${label.toLowerCase()}">` +
+        `<select data-key="${key}Unit" aria-label="Segment ${i + 1} ${label.toLowerCase()} unit">${options}</select></div></div>`;
+    };
     $('segments').innerHTML = segments.map((s, i) => `<div class="segment" data-index="${i}" role="group" aria-label="Segment ${i + 1}"><span class="segment-index">${i + 1}</span>
-      <label>Start<input data-key="start" value="${escape(s.start)}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Segment ${i + 1} start frequency"></label>
-      <label>Stop<input data-key="stop" value="${escape(s.stop)}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Segment ${i + 1} stop frequency"></label>
-      <label>Step<input data-key="step" value="${escape(s.step)}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Segment ${i + 1} step"></label>
+      ${field(s, i, 'start', 'Start')}${field(s, i, 'stop', 'Stop')}${field(s, i, 'step', 'Step')}
       <button class="ghost" type="button" data-action="remove" aria-label="Remove segment ${i + 1}" ${segments.length === 1 ? 'disabled' : ''}>Remove</button></div>`).join('');
     $('add-segment').disabled = segments.length >= 100;
   }
@@ -62,15 +85,15 @@
   }
   function computeSweep() {
     if (loadError) return invalidSweep(loadError);
-    const scale = scales[$('unit').value];
-    const parsed = segments.map(s => ({ start: RF.parseFrequency(s.start, scale), stop: RF.parseFrequency(s.stop, scale), step: RF.parseFrequency(s.step, scale) }));
+    const parsed = segments.map(s => ({ start: RF.parseFrequency(s.start, scales[segmentUnit(s, 'startUnit')]),
+      stop: RF.parseFrequency(s.stop, scales[segmentUnit(s, 'stopUnit')]), step: RF.parseFrequency(s.step, scales[segmentUnit(s, 'stepUnit')]) }));
     const limitBlank = $('limit').value.trim() === '', ifbwBlank = $('ifbw').value.trim() === '';
-    const maxPoints = limitBlank ? null : Bench.read('limit'), ifbw = ifbwBlank ? null : RF.parseFrequency($('ifbw').value, 1), jumpLimit = Bench.read('jump'), mode = $('mode').value;
+    const maxPoints = limitBlank ? null : Bench.read('limit'), ifbw = ifbwBlank ? null : readHz($('ifbw')), jumpLimit = Bench.read('jump'), mode = $('mode').value;
     if ((maxPoints !== null && !(Number.isInteger(maxPoints) && maxPoints > 0)) || (ifbw !== null && !(ifbw > 0)) || !(jumpLimit > 1)) {
       return invalidSweep('Point limit must be a positive whole number, IF bandwidth positive, and the step-ratio flag above 1.');
     }
     result = RF.segmentedSweep(parsed, { maxPoints, ifbw, jumpLimit, mode });
-    if (!result) return invalidSweep('Each segment needs a positive start, a stop at or above it, and a positive step. Use a unit or SI prefix such as 10k, 100 MHz, or 2.4G.');
+    if (!result) return invalidSweep('Each segment needs a positive start, a stop at or above it, and a positive step. Pick each unit beside its field.');
     const sharp = result.boundaries.filter(b => b.sharp).length, broken = result.boundaries.filter(b => b.kind !== 'contiguous').length;
     const notes = [];
     if (result.inexact) notes.push(`${result.inexact} segment${result.inexact === 1 ? '' : 's'} do not land on the stop frequency`);
@@ -128,7 +151,20 @@
   $('segments').addEventListener('input', event => {
     const key = event.target.dataset.key, el = event.target.closest('[data-index]');
     if (!key || !el) return;
-    segments[Number(el.dataset.index)][key] = event.target.value; loadError = ''; compute();
+    const s = segments[Number(el.dataset.index)];
+    if (key.endsWith('Unit')) {
+      // Changing a unit keeps the physical value, the same as every other unit control here.
+      const base = key.slice(0, -4), hz = RF.parseFrequency(s[base], scales[segmentUnit(s, key)]);
+      s[key] = event.target.value;
+      if (Number.isFinite(hz)) {
+        s[base] = String(Number((hz / scales[s[key]]).toPrecision(12)));
+        const input = el.querySelector('[data-key="' + base + '"]');
+        if (input) input.value = s[base];
+      }
+    } else {
+      s[key] = event.target.value;
+    }
+    loadError = ''; compute();
   });
   $('segments').addEventListener('click', event => {
     const el = event.target.closest('[data-index]');
@@ -138,20 +174,24 @@
   $('add-segment').addEventListener('click', () => {
     if (segments.length >= 100) return;
     const last = segments[segments.length - 1];
-    segments.push({ start: last.stop, stop: '', step: last.step }); loadError = ''; renderSegments(); compute();
+    segments.push(segment(last.stop, segmentUnit(last, 'stopUnit'), '', segmentUnit(last, 'stopUnit'), last.step, segmentUnit(last, 'stepUnit'))); loadError = ''; renderSegments(); compute();
     const added = $('segments').lastElementChild.querySelector('[data-key="stop"]'); if (added) added.focus();
   });
   document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     segments = PRESETS[b.dataset.preset].map(s => ({ ...s })); loadError = ''; renderSegments(); compute();
   }));
-  ['unit', 'mode', 'limit', 'ifbw', 'jump'].forEach(id => $(id).addEventListener(['unit', 'mode'].includes(id) ? 'change' : 'input', () => { loadError = ''; compute(); }));
+  ['mode', 'limit', 'ifbw', 'jump'].forEach(id => $(id).addEventListener(id === 'mode' ? 'change' : 'input', () => { loadError = ''; compute(); }));
+  frequencyIds.forEach(bindUnit);
   ['g-start', 'g-stop', 'g-mult', 'g-tail', 'g-tail-step'].forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { $('generate-status').textContent = ''; if (Bench.valid) writeQuery(); }));
   $('generate').addEventListener('click', () => {
-    const scale = scales[$('unit').value], tailBlank = $('g-tail').value.trim() === '';
-    const table = RF.logTable(RF.parseFrequency($('g-start').value, scale), RF.parseFrequency($('g-stop').value, scale), Number($('g-mult').value),
-      tailBlank ? NaN : RF.parseFrequency($('g-tail').value, scale), tailBlank ? NaN : RF.parseFrequency($('g-tail-step').value, scale));
+    const tailBlank = $('g-tail').value.trim() === '';
+    const table = RF.logTable(readHz($('g-start')), readHz($('g-stop')), Number($('g-mult').value),
+      tailBlank ? NaN : readHz($('g-tail')), tailBlank ? NaN : readHz($('g-tail-step')));
     if (!table) { $('generate-status').textContent = 'Enter start < stop, and if a tail is used, a tail start between them with a positive tail step.'; $('generate-status').className = 'status-error'; return; }
-    segments = table.map(s => ({ start: freq(s.start), stop: freq(s.stop), step: freq(s.step) })); loadError = '';
+    segments = table.map(row => {
+      const parts = ['start', 'stop', 'step'].map(key => RF.formatFrequency(row[key]));
+      return segment(String(parts[0].value), parts[0].unit, String(parts[1].value), parts[1].unit, String(parts[2].value), parts[2].unit);
+    }); loadError = '';
     $('generate-status').className = ''; $('generate-status').textContent = `Generated ${table.length} segment${table.length === 1 ? '' : 's'}.`;
     renderSegments(); compute();
   });

@@ -8,8 +8,8 @@
   <title>Large-signal · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-4">
-  <link rel="stylesheet" href="css/app.css?v=20260912-4"><link rel="stylesheet" href="css/workbench.css?v=20260912-4">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-5">
+  <link rel="stylesheet" href="css/app.css?v=20260912-5"><link rel="stylesheet" href="css/workbench.css?v=20260912-5">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -69,7 +69,7 @@
             <div class="field-label"><span>Per-tone power</span><span id="tone-scope">into Z₀</span></div>
             <div class="field-row">
               <button type="button" class="step" id="tone-dec" aria-label="Decrease 1 dB">−</button>
-              <input id="tone-dbm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Per-tone power in dBm">
+              <input data-signed id="tone-dbm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Per-tone power in dBm">
               <span class="unit">dBm</span>
               <button type="button" class="step" id="tone-inc" aria-label="Increase 1 dB">+</button>
             </div>
@@ -83,7 +83,7 @@
           <div class="field compact">
             <div class="field-label"><span>Gain</span><span>blank = 0 dB</span></div>
             <div class="field-row">
-              <input placeholder="0" title="Blank is treated as zero" id="imd-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
+              <input data-signed placeholder="0" title="Blank is treated as zero" id="imd-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
               <span class="unit">dB</span>
             </div>
           </div>
@@ -96,22 +96,21 @@
         <h3>Product spectrum</h3>
         <p class="hint">Odd-order products sit on a uniform grid of spacing Δ: order 2k+1 lands at f<sub>1</sub> − kΔ and f<sub>2</sub> + kΔ. Type frequencies with a unit or SI prefix (1G, 100 MHz); bare numbers use the default unit. Edit f<sub>2</sub> or Δ and the other follows.</p>
         <div class="work-fields">
-          <label>Default unit for bare numbers<select id="tone-unit" aria-label="Default frequency unit"><option value="MHz">MHz</option><option value="GHz">GHz</option><option value="kHz">kHz</option><option value="Hz">Hz</option></select></label>
-          <label>f<sub>1</sub><input id="tone-f1" value="1 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="First tone frequency"></label>
-          <label>f<sub>2</sub><input id="tone-f2" value="" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Second tone frequency"></label>
-          <label>Tone spacing Δ<input id="tone-delta" value="1 MHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Tone spacing"></label>
+          <div class="quantity-field"><label for="tone-f1">f<sub>1</sub></label><div class="unit-pair"><input id="tone-f1" value="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="First tone frequency"><select id="tone-f1-unit" aria-label="First tone frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+          <div class="quantity-field"><label for="tone-f2">f<sub>2</sub></label><div class="unit-pair"><input id="tone-f2" value="" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Second tone frequency"><select id="tone-f2-unit" aria-label="Second tone frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+          <div class="quantity-field"><label for="tone-delta">Tone spacing Δ</label><div class="unit-pair"><input id="tone-delta" value="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Tone spacing"><select id="tone-delta-unit" aria-label="Tone spacing unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz" selected>MHz</option><option value="GHz">GHz</option></select></div></div>
           <label>Highest product order<select id="tone-order" aria-label="Highest product order"><option value="3">3rd</option><option value="5">5th</option><option value="7" selected>7th</option><option value="9">9th</option></select></label>
-          <label>DUT passband low (optional)<input id="tone-band-low" value="" placeholder="e.g. 0.9 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband low"></label>
-          <label>DUT passband high (optional)<input id="tone-band-high" value="" placeholder="e.g. 1.1 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband high"></label>
+          <div class="quantity-field"><label for="tone-band-low">DUT passband low (optional)</label><div class="unit-pair"><input id="tone-band-low" value="" placeholder="0.9" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband low"><select id="tone-band-low-unit" aria-label="DUT passband low unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+          <div class="quantity-field"><label for="tone-band-high">DUT passband high (optional)</label><div class="unit-pair"><input id="tone-band-high" value="" placeholder="1.1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband high"><select id="tone-band-high-unit" aria-label="DUT passband high unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
         </div>
         <details class="reference-details" open><summary>Analyzer limits</summary>
           <p class="hint">Optional. Whichever floor is highest is the one that limits the IM3 measurement; the analyzer's own third-order products usually dominate, which is why input attenuation changes the answer. The tone level here is at the analyzer, after whatever loss sits between it and the DUT.</p>
           <div class="work-fields">
-            <label>Resolution bandwidth<input id="tone-rbw" value="" placeholder="e.g. 100 Hz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Resolution bandwidth"></label>
-            <label>Tone level at analyzer (dBm)<input id="tone-level" value="" placeholder="e.g. -20" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Tone level at the analyzer"></label>
-            <label>Analyzer TOI (dBm)<input id="tone-toi" value="" placeholder="e.g. 15" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer third-order intercept"></label>
-            <label>Phase noise at Δ (dBc/Hz)<input id="tone-pn" value="" placeholder="e.g. -140" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Phase noise at the tone spacing offset"></label>
-            <label>Analyzer noise floor (dBm/Hz)<input id="tone-danl" value="" placeholder="e.g. -155" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer displayed average noise level"></label>
+            <div class="quantity-field"><label for="tone-rbw">Resolution bandwidth</label><div class="unit-pair"><input id="tone-rbw" value="" placeholder="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Resolution bandwidth"><select id="tone-rbw-unit" aria-label="Resolution bandwidth unit"><option value="Hz" selected>Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div>
+            <label>Tone level at analyzer (dBm)<input data-signed id="tone-level" value="" placeholder="e.g. -20" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Tone level at the analyzer"></label>
+            <label>Analyzer TOI (dBm)<input data-signed id="tone-toi" value="" placeholder="e.g. 15" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer third-order intercept"></label>
+            <label>Phase noise at Δ (dBc/Hz)<input data-signed id="tone-pn" value="" placeholder="e.g. -140" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Phase noise at the tone spacing offset"></label>
+            <label>Analyzer noise floor (dBm/Hz)<input data-signed id="tone-danl" value="" placeholder="e.g. -155" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer displayed average noise level"></label>
           </div>
         </details>
         <p id="tone-status" role="status"></p>
@@ -140,7 +139,7 @@
               </select>
             </div>
             <div class="field-row">
-              <input id="imd-im3" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-40" aria-label="IM3 level">
+              <input data-signed id="imd-im3" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-40" aria-label="IM3 level">
             </div>
           </div>
         </div>
@@ -153,28 +152,28 @@
           <div class="field compact">
             <div class="field-label"><span>Small-signal gain</span><span>blank = 0 dB</span></div>
             <div class="field-row">
-              <input placeholder="0" title="Blank is treated as zero" id="p1-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
+              <input data-signed placeholder="0" title="Blank is treated as zero" id="p1-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
               <span class="unit">dB</span>
             </div>
           </div>
           <div class="field compact">
             <div class="field-label"><span>Input P1dB</span></div>
             <div class="field-row">
-              <input id="p1-pin" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Input-referred P1dB">
+              <input data-signed id="p1-pin" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Input-referred P1dB">
               <span class="unit">dBm</span>
             </div>
           </div>
           <div class="field compact">
             <div class="field-label"><span>Output P1dB</span></div>
             <div class="field-row">
-              <input id="p1-pout" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Output-referred P1dB">
+              <input data-signed id="p1-pout" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Output-referred P1dB">
               <span class="unit">dBm</span>
             </div>
           </div>
           <div class="field compact">
             <div class="field-label"><span>Measured P<sub>out</sub></span><span>optional</span></div>
             <div class="field-row">
-              <input id="p1-meas" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Measured output power">
+              <input data-signed id="p1-meas" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Measured output power">
               <span class="unit">dBm</span>
             </div>
           </div>
@@ -188,44 +187,49 @@
           <div class="field compact">
             <div class="field-label"><span>Fundamental</span></div>
             <div class="field-row">
-              <input id="thd-fund" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="0" aria-label="Fundamental power">
+              <input data-signed id="thd-fund" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="0" aria-label="Fundamental power">
               <span class="unit">dBm</span>
             </div>
           </div>
           <div class="field compact">
             <div class="field-label"><span>H2</span><span>dBc</span></div>
             <div class="field-row">
-              <input id="thd-h2" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-40" aria-label="Second harmonic dBc">
+              <input data-signed id="thd-h2" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-40" aria-label="Second harmonic dBc">
               <span class="unit">dBc</span>
             </div>
           </div>
           <div class="field compact">
             <div class="field-label"><span>H3</span><span>dBc</span></div>
             <div class="field-row">
-              <input id="thd-h3" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-50" aria-label="Third harmonic dBc">
+              <input data-signed id="thd-h3" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-50" aria-label="Third harmonic dBc">
               <span class="unit">dBc</span>
             </div>
           </div>
           <div class="field compact">
             <div class="field-label"><span>H4 / H5</span><span>optional</span></div>
             <div class="field-row">
-              <input id="thd-h4" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="H4" aria-label="Fourth harmonic dBc">
-              <input id="thd-h5" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="H5" aria-label="Fifth harmonic dBc">
+              <input data-signed id="thd-h4" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="H4" aria-label="Fourth harmonic dBc">
+              <input data-signed id="thd-h5" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="H5" aria-label="Fifth harmonic dBc">
               <span class="unit">dBc</span>
             </div>
           </div>
         </div>
         <dl class="metrics" id="thd-metrics"></dl>
         <p class="hint">Optional. Enter the fundamental frequency to place the harmonics, and a device corner frequency to estimate how much the DUT's own rolloff hides. The correction assumes the nonlinearity comes before the band limit and the device is not slewing; a feedback amplifier moves the other way, because loop gain falls with frequency too.</p>
+        <h4>Where the harmonics land</h4>
+        <p class="hint">The fundamental places every harmonic at n·f<sub>0</sub>. The analyzer maximum flags harmonics you physically cannot reach, and the passband flags harmonics the device was never meant to pass.</p>
         <div class="work-fields">
-          <label>Default unit for bare numbers<select id="thd-unit" aria-label="Default frequency unit"><option value="MHz">MHz</option><option value="GHz">GHz</option><option value="kHz">kHz</option><option value="Hz">Hz</option></select></label>
-          <label>Fundamental f<sub>0</sub> (optional)<input id="thd-f0" value="" placeholder="e.g. 1 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Fundamental frequency"></label>
-          <label>Analyzer max frequency (optional)<input id="thd-fmax" value="" placeholder="e.g. 125 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer maximum frequency"></label>
-          <label>DUT passband low (optional)<input id="thd-band-low" value="" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband low"></label>
-          <label>DUT passband high (optional)<input id="thd-band-high" value="" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband high"></label>
-          <label>Device corner f<sub>c</sub> (optional)<input id="thd-fc" value="" placeholder="e.g. 2 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Device corner frequency"></label>
+          <div class="quantity-field"><label for="thd-f0">Fundamental f<sub>0</sub> (optional)</label><div class="unit-pair"><input id="thd-f0" value="" placeholder="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Fundamental frequency"><select id="thd-f0-unit" aria-label="Fundamental frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+          <div class="quantity-field"><label for="thd-fmax">Analyzer max frequency (optional)</label><div class="unit-pair"><input id="thd-fmax" value="" placeholder="125" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer maximum frequency"><select id="thd-fmax-unit" aria-label="Analyzer maximum frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+          <div class="quantity-field"><label for="thd-band-low">DUT passband low (optional)</label><div class="unit-pair"><input id="thd-band-low" value="" placeholder="0.9" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband low"><select id="thd-band-low-unit" aria-label="DUT passband low unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+          <div class="quantity-field"><label for="thd-band-high">DUT passband high (optional)</label><div class="unit-pair"><input id="thd-band-high" value="" placeholder="1.1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband high"><select id="thd-band-high-unit" aria-label="DUT passband high unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+        </div>
+        <h4>How the device rolls off</h4>
+        <p class="hint">The corner and pole count are a model of the response shape, and they convert a measured harmonic into an estimated intrinsic one. They cannot replace the passband: relative attenuation saturates at 20p·log₁₀(n), so one pole can never account for more than 6 dB on H2 however far above the corner you drive.</p>
+        <div class="work-fields">
+          <div class="quantity-field"><label for="thd-fc">Device corner f<sub>c</sub> (optional)</label><div class="unit-pair"><input id="thd-fc" value="" placeholder="2" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Device corner frequency"><select id="thd-fc-unit" aria-label="Device corner frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
           <label>Poles<input id="thd-poles" value="1" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Number of poles"></label>
-          <label>Contaminant vs harmonic (dB)<input id="thd-contam" value="" placeholder="e.g. -10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Source or receiver harmonic relative to the DUT harmonic"></label>
+          <label>Contaminant vs harmonic (dB)<input data-signed id="thd-contam" value="" placeholder="e.g. -10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Source or receiver harmonic relative to the DUT harmonic"></label>
         </div>
         <p id="thd-status" role="status"></p>
         <dl class="metrics" id="thd-band-metrics"></dl>
@@ -280,7 +284,7 @@
     <p class="foot">Static page. Calculations stay in your browser.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/bench.js?v=20260912-4"></script><script src="js/rf.js?v=20260912-4"></script>
-  <script src="js/large-signal.js?v=20260912-4"></script>
+  <script src="js/bench.js?v=20260912-5"></script><script src="js/rf.js?v=20260912-5"></script>
+  <script src="js/large-signal.js?v=20260912-5"></script>
 </body>
 </html>

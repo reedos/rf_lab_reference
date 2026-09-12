@@ -114,12 +114,17 @@ let checks=0;
         });
         await check('Tone plan grids products on the spacing and reports the limiting analyzer floor',async()=>{
           await go('large-signal.html?tab=twotone');
-          await expect(page.locator('#tone-f2')).toHaveValue('1.001 GHz');
+          await expect(page.locator('#tone-f2')).toHaveValue('1.001');
           await expect(page.locator('#tone-metrics')).toContainText('999 MHz');
           await expect(page.locator('#tone-metrics')).toContainText('1.002 GHz');
           await expect(page.locator('#tone-metrics')).toContainText(/Use ≤ 100 kHz/);
-          await fill('tone-f2','1.002 GHz'); await expect(page.locator('#tone-delta')).toHaveValue('2 MHz');
-          await fill('tone-delta','1 MHz'); await expect(page.locator('#tone-f2')).toHaveValue('1.001 GHz');
+          await fill('tone-f2','1.002 GHz'); await expect(page.locator('#tone-delta')).toHaveValue('2');
+          await fill('tone-delta','1 MHz'); await expect(page.locator('#tone-f2')).toHaveValue('1.001');
+          // Each frequency field carries its own unit, and switching it keeps the physical value.
+          await page.locator('#tone-delta-unit').selectOption('kHz'); await expect(page.locator('#tone-delta')).toHaveValue('1000');
+          await expect(page.locator('#tone-metrics')).toContainText('1.0005 GHz');
+          await expect(page.locator('#tone-metrics')).toContainText('1.002 GHz');
+          await page.locator('#tone-delta-unit').selectOption('MHz'); await expect(page.locator('#tone-delta')).toHaveValue('1');
           await fill('tone-rbw','100 Hz'); await fill('tone-level',-20); await fill('tone-toi',15);
           await fill('tone-pn',-140); await fill('tone-danl',-155);
           await expect(page.locator('#tone-metrics')).toContainText(/-70 dBc · Analyzer third-order/);
@@ -150,6 +155,14 @@ let checks=0;
           await fill('thd-band-low',''); await fill('thd-band-high','');
           await fill('thd-fc','1 GHz');
           await expect(page.locator('#thd-band-metrics')).toContainText(/Estimated intrinsic THD/);
+          // A corner far below the fundamental pins the correction at its asymptote.
+          await page.locator('#thd-fc-unit').selectOption('kHz');
+          // Switching a unit converts the value rather than reinterpreting the digits.
+          await expect(page.locator('#thd-fc')).toHaveValue('1000000');
+          await fill('thd-fc',1);
+          await expect(page.locator('#thd-status')).toContainText(/correction is at its limit of 6\.02 dB on H2/);
+          await page.locator('#thd-fc-unit').selectOption('GHz'); await expect(page.locator('#thd-fc')).toHaveValue('0.000001');
+          await fill('thd-fc','1');
           await expect(page.locator('#thd-status')).toContainText(/hides up to 6\.99 dB on H3/);
           await fill('thd-poles','2'); await expect(page.locator('#thd-status')).toContainText(/13\.98 dB on H3/);
           await fill('thd-poles','0'); await expect.poll(valid).toBe(false);
@@ -294,6 +307,32 @@ let checks=0;
           await go('index.html?d=-10.123456789&from=dbm'); assert.equal(await page.locator('#dbm').inputValue(),'-10.123456789');
           await numeric('vopp',0.1972);
         });
+        await check('Signed fields can be made negative without a minus key',async()=>{
+          await go('large-signal.html?tab=thd');
+          const toggle=id=>page.locator('#'+id).locator('xpath=following-sibling::button');
+          await fill('thd-h2','40'); await toggle('thd-h2').click();
+          assert.equal(await page.locator('#thd-h2').inputValue(),'-40');
+          await expect.poll(valid).toBe(true);
+          await expect(page.locator('#thd-metrics')).toContainText('1.049 %');
+          await toggle('thd-h2').click(); assert.equal(await page.locator('#thd-h2').inputValue(),'40');
+          await toggle('thd-h2').click();
+          // A blank field starts a negative entry rather than reading as zero.
+          assert.equal(await page.locator('#thd-contam').inputValue(),'');
+          await toggle('thd-contam').click();
+          assert.equal(await page.locator('#thd-contam').inputValue(),'-');
+          await page.locator('#thd-contam').type('10');
+          assert.equal(await page.locator('#thd-contam').inputValue(),'-10');
+          await expect(page.locator('#thd-band-metrics')).toContainText('+2.39');
+          // Unsigned fields get no toggle.
+          assert.equal(await page.locator('#thd-poles').locator('xpath=following-sibling::button').count(),0);
+          await go('chain.html');
+          // Stage rows are rebuilt on every edit and keep their toggles.
+          await page.locator('#add-active').click();
+          const gain=page.locator('.stage').last().locator('[data-key="db"]');
+          await gain.fill('10'); await gain.locator('xpath=following-sibling::button').click();
+          assert.equal(await gain.inputValue(),'-10');
+          await expect.poll(valid).toBe(true);
+        });
         await check('Sweep segments count points, flag step jumps and gaps, and size power sweeps',async()=>{
           await go('sweep.html'); await expect(page.locator('#sweep-rows')).toContainText('12491');
           await expect(page.locator('#sweep-metrics')).toContainText('12491');
@@ -312,6 +351,14 @@ let checks=0;
           await page.locator('.segment').nth(1).locator('[data-key="start"]').fill('200 kHz');
           await expect(page.locator('#boundary-rows')).toContainText(/Gap/);
           await page.locator('.segment').nth(1).locator('[data-key="start"]').fill('100 kHz');
+          // Each segment field carries its own unit, and switching one converts rather than reinterprets.
+          const firstStep=page.locator('.segment').first().locator('[data-key="step"]');
+          await expect(page.locator('.segment').first().locator('[data-key="stepUnit"]')).toHaveValue('kHz');
+          await page.locator('.segment').first().locator('[data-key="stepUnit"]').selectOption('MHz');
+          await expect(firstStep).toHaveValue('0.01');
+          await expect(page.locator('#sweep-metrics')).toContainText('1286');
+          await page.locator('.segment').first().locator('[data-key="stepUnit"]').selectOption('kHz');
+          await expect(firstStep).toHaveValue('10');
           await fill('limit','1001'); await expect(page.locator('#sweep-status')).toContainText(/exceeds/);
           await fill('limit',''); await fill('ifbw','1 kHz'); await expect(page.locator('#sweep-metrics')).toContainText(/1\.286 s/);
           await page.locator('.segment').last().locator('[data-action="remove"]').click(); assert.equal(await page.locator('.segment').count(),4);

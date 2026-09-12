@@ -50,6 +50,19 @@ omitted, and blank output limits mean no limit; neither becomes a 0 dB measureme
 Invalid text is always rejected, including hex or binary forms. A comma is read as a
 decimal mark (0,25) or as a thousands separator (1,000 or 1,000.5).
 
+## Signs and units on a phone
+
+Mobile decimal keypads have no minus key, so every field that can hold a negative value
+carries a **±** button beside it. It flips the sign of what is there, and on a blank field it
+starts a negative entry so the next digits land after the minus. Fields that must be positive,
+such as impedances, frequencies, temperatures and point counts, have no button.
+
+Every frequency field carries **its own unit**, so a corner in kilohertz sits beside a
+fundamental in gigahertz and a kilohertz step beside a gigahertz stop. Changing a unit keeps
+the physical value and rewrites the number, so 1 GHz becomes 1000000 kHz rather than 1 kHz.
+Typing a unit or SI prefix still works where a keyboard allows it (10k, 100 MHz, 2.4G) and
+overrides the selector for that entry.
+
 ## VOPP — dBm ↔ peak-to-peak
 
 dBm ↔ voltage at the reference plane. Default unit is **volts**.
@@ -108,7 +121,13 @@ VOPP_diff  = 2 · VOPP_SE
   ```
 
   The fundamental is attenuated too, so at f₀ = f_c the second harmonic is understated by
-  about 4 dB rather than 3 dB. This holds only when the nonlinearity precedes the band limit
+  about 4 dB rather than 3 dB. The relative attenuation saturates at 20p·log₁₀(n), because far
+  above the corner the fundamental and the harmonic roll off together: one pole can never
+  account for more than 6.02 dB on H2, and a stopband 60 dB deep would need ten poles. The
+  panel says when the correction has reached that limit, which is why the passband flags are
+  kept alongside the corner rather than replaced by it. The passband answers whether a harmonic
+  is inside the band the device is specified for, at any rejection depth; the corner quantifies
+  partial attenuation near the edge. This holds only when the nonlinearity precedes the band limit
   and the device is not slewing; a feedback amplifier moves the other way, because loop gain
   falls with frequency and distortion suppression falls with it. When every harmonic lands
   outside the DUT passband, THD is the wrong metric and an in-band intermodulation measurement
@@ -145,9 +164,9 @@ links to instrument documentation for the control conventions.
 
 Each segment is a linear sweep: N = (f_stop − f_start)/Δf + 1, counting both ends. One
 segment is a plain linear sweep; 100 MHz to 125 GHz in 10 MHz steps is 12 491 points.
-Frequencies accept a unit or SI prefix (10k, 100 MHz, 2.4G); bare numbers use the selected
-default unit. A step that does not divide the span is flagged with the step that would land
-on the stop frequency.
+Each of a segment's start, stop and step carries its own unit, so one row can run from
+100 MHz to 125 GHz in 10 MHz steps without retyping anything in a common unit. A step that
+does not divide the span is flagged with the step that would land on the stop frequency.
 
 **Log-style tables** put points at 1, 1+k, 1+2k … times each decade as one linear segment
 per decade, so every frequency is a round number; the generator builds that table from start,
