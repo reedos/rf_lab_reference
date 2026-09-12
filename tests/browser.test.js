@@ -404,6 +404,26 @@ let checks=0;
           await expect(page.locator('#calculation-text')).toContainText(stageName);
           assert.equal(await page.locator('#calculation-text img').count(),0); await rendered();
         });
+        await check('Schematic wire runs between the two port nubs at every width',async()=>{
+          // The nub is a 10px circle with a 3px ring, so its visible edge is 3px past the box.
+          const RING=3, edges=async s=>{const b=await page.locator(s).boundingBox(); return {y:b.y+b.height/2,x1:b.x,x2:b.x+b.width};};
+          for (const width of [390,768,1440]) {
+            await page.setViewportSize({width,height:900});
+            for (const [url,block,rails] of [['index.html','.blk-se',['']],['index.html?dir=rx','.blk-se',['']],['index.html?m=diff','.blk-diff',['.plus','.minus']]]) {
+              await go(url);
+              for (const rail of rails) {
+                const where=`${url}${rail} at ${width}px`;
+                const src=await edges(`${block} .src-port${rail} .nub`), dut=await edges(`${block} .dut-port${rail} .nub`);
+                const wire=await edges(`${block} .blk-bus${rail} .wire`), arrow=await edges(`${block} .blk-bus${rail} .arrow`);
+                assert.ok(Math.abs(wire.y-src.y)<=1,`${where}: wire centre ${wire.y} is off the source nub centre ${src.y}`);
+                assert.ok(Math.abs(wire.y-dut.y)<=1,`${where}: wire centre ${wire.y} is off the load nub centre ${dut.y}`);
+                assert.ok(wire.x1>=src.x1 && wire.x1-src.x2<=RING+.5,`${where}: wire starts at ${wire.x1}, source nub ends at ${src.x2}`);
+                assert.ok(arrow.x2<=dut.x2 && dut.x1-arrow.x2<=RING+.5,`${where}: arrow ends at ${arrow.x2}, load nub starts at ${dut.x1}`);
+              }
+            }
+          }
+          await page.setViewportSize({width:1280,height:900});
+        });
         await check('Every page has working navigation, calculation detail, and responsive layout',async()=>{
           for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','delay.html','sweep.html','chain.html']) {
             await page.setViewportSize({width,height:900}); await go(file);

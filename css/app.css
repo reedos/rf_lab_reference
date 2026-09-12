@@ -437,6 +437,7 @@ h1 {
 
 .blk-port {
   display: flex;
+  z-index: 2;
   align-items: center;
   gap: 8px;
   padding: 0 14px;
@@ -496,11 +497,13 @@ h1 {
 
 .blk-bus {
   display: grid;
-  grid-template-rows: 1fr auto 1fr;
+  /* minmax(0, 1fr) keeps the outer rows equal so the wire stays on the nub centre line. */
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   justify-items: center;
   min-width: 0;
-  padding: 0 10px;
+  /* 8px is the nub radius plus its ring, so the wire meets each nub exactly. */
+  padding: 0 8px;
   grid-column: 2;
 }
 

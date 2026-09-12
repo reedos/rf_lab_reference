@@ -8,8 +8,8 @@
   <title>Power &amp; noise · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-3">
-  <link rel="stylesheet" href="css/app.css?v=20260912-3"><link rel="stylesheet" href="css/workbench.css?v=20260912-3">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-4">
+  <link rel="stylesheet" href="css/app.css?v=20260912-4"><link rel="stylesheet" href="css/workbench.css?v=20260912-4">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -36,4 +36,4 @@
 <div class="chain-results"><table><thead><tr><th>Stage output</th><th>Stage NF</th><th>Cumulative NF</th><th>Output noise</th></tr></thead><tbody id="noise-rows"></tbody></table></div>
 <h2 style="margin-top:24px">Added noise referred to the chain input</h2><div id="noise-bars" class="noise-bars"></div><div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
 <section class="panel"><h2>Model and reference</h2><p>Friis cascade: F = 1 + Σ (Fᵢ − 1)/Gbeforeᵢ, using linear power gain and noise factor. A passive loss L at temperature T has F = 1 + (L − 1)T/290 K. Noise output = kB[Tsource + 290 K(F − 1)]Gtotal.</p><p>Assumes matched stages, independent noise, and gain/noise figure constant over the chosen bandwidth. Coupler loss refers to the selected branch with other ports terminated. A filter's nominal bandwidth may differ from its equivalent noise bandwidth.</p><p><a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Noise_Figure.htm">Keysight: noise figure measurements</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260912-3"></script><script src="js/rf.js?v=20260912-3"></script><script src="js/chain.js?v=20260912-3"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260912-4"></script><script src="js/rf.js?v=20260912-4"></script><script src="js/chain.js?v=20260912-4"></script></body></html>
