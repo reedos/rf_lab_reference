@@ -240,7 +240,7 @@ let checks=0;
           assert.equal(await page.locator('#setup-list option').count(),1);
         });
         await check('Copied links and results reflect current inputs; clipboard failures are reported',async()=>{
-          for (const file of ['index.html','match.html','large-signal.html','delay.html','sweep.html','chain.html']) {
+          for (const file of ['index.html','match.html','large-signal.html','gain.html','delay.html','sweep.html','chain.html']) {
             await go(file); await page.locator('#copy-link').click();
             assert.equal(await page.evaluate(()=>window.copiedText),page.url());
             await page.locator('#copy-result').click();
@@ -434,7 +434,8 @@ let checks=0;
             'large-signal.html?tab=thd&thd-f0=1+GHz&thd-fc=1+GHz&thd-contam=-10&thd-fmax=2+GHz',
             'large-signal.html?tab=twotone&tone-rbw=100+Hz&tone-level=-20&tone-toi=15&tone-pn=-140&tone-danl=-155',
             'chain.html?stages=%5B%5D',
-            'sweep.html?p-start=-20&p-stop=-4&p-step=0.1'
+            'sweep.html?p-start=-20&p-stop=-4&p-step=0.1',
+            'gain.html?t=ds&s1=50&d2=200'
           ]) {
             await go(file); await page.locator('.calculation summary').click(); await rendered();
           }
@@ -450,6 +451,42 @@ let checks=0;
           await page.locator('.stage').first().locator('[data-key="name"]').fill(stageName);
           await expect(page.locator('#calculation-text')).toContainText(stageName);
           assert.equal(await page.locator('#calculation-text img').count(),0); await rendered();
+        });
+        await check('Mixed-mode gain converts through the impedance ratio and keeps power gain fixed',async()=>{
+          await go('gain.html');
+          const shown=async()=>{await expect(page.locator('#gain-equation .katex').first()).toBeVisible();
+            assert.equal(await page.locator('.equation-error').count(),0,page.url());};
+          await shown();
+          // Equal references: the parameter is already the voltage ratio.
+          await expect(page.locator('#metrics')).toContainText('Differential in, differential out');
+          await expect(page.locator('#metrics')).toContainText('0 dB');
+          await expect(page.locator('#gain-note')).toContainText(/already the voltage ratio/);
+          // Differential in, single-ended out loses 3.01 dB of voltage and no power.
+          await page.locator('[data-topology="sd"]').click();
+          await expect(page.locator('#z2')).toHaveValue('50');
+          await expect(page.locator('#text-z2')).toContainText('single-ended');
+          await expect(page.locator('#metrics')).toContainText('0.7071');
+          await expect(page.locator('#metrics')).toContainText('−3.01 dB');
+          await expect(page.locator('#metrics')).toContainText('unchanged by the impedances');
+          assert.equal(await page.locator('#diagram-sd').isVisible(),true);
+          assert.equal(await page.locator('#diagram-dd').isVisible(),false);
+          // Single-ended in, differential out gains it back.
+          await page.locator('[data-topology="ds"]').click();
+          await expect(page.locator('#z1')).toHaveValue('50');
+          await expect(page.locator('#metrics')).toContainText('+3.01 dB');
+          await shown();
+          // Each side remembers its own differential and single-ended value.
+          await fill('z2',200); await expect(page.locator('#metrics')).toContainText('+6.02 dB');
+          await page.locator('[data-topology="dd"]').click();
+          await expect(page.locator('#z1')).toHaveValue('100'); await expect(page.locator('#z2')).toHaveValue('200');
+          await expect(page.locator('#metrics')).toContainText('+3.01 dB');
+          await page.reload(); await expect(page.locator('#z2')).toHaveValue('200');
+          await expect(page.locator('#metrics')).toContainText('+3.01 dB');
+          // Input still recomputes after the labels were swapped.
+          await fill('z2',100); await expect(page.locator('#metrics')).toContainText('0 dB');
+          await fill('z1',0); await expect.poll(valid).toBe(false);
+          await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
+          await fill('z1',100); await expect.poll(valid).toBe(true);
         });
         await check('Schematic wire runs between the two port nubs at every width',async()=>{
           // The nub is a 10px circle with a 3px ring, so its visible edge is 3px past the box.
@@ -472,7 +509,7 @@ let checks=0;
           await page.setViewportSize({width:1280,height:900});
         });
         await check('Every page has working navigation, calculation detail, and responsive layout',async()=>{
-          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','delay.html','sweep.html','chain.html']) {
+          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','gain.html','delay.html','sweep.html','chain.html']) {
             await page.setViewportSize({width,height:900}); await go(file);
             assert.equal(await valid(),true,`${file} default invalid`);
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);

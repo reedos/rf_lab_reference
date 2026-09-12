@@ -87,6 +87,13 @@
     });
     return katexLoading;
   }
+  // Pages whose subject is the algebra itself render equations in the body, not only
+  // inside the calculation panel, so KaTeX is fetched on demand for those too.
+  function math(el, latex, displayMode) {
+    return loadKatex().then(function () {
+      katex.render(latex, el, { displayMode: Boolean(displayMode), output: 'htmlAndMathml', throwOnError: true, trust: false, strict: 'error' });
+    }).catch(function () { el.classList.add('equation-error'); el.textContent = 'Equation unavailable.'; });
+  }
   function renderCalculation() {
     clearTimeout(renderTimer);
     if (!detail || !detail.closest('details').open) return;
@@ -124,7 +131,7 @@
       say('Copied.');
     } catch (_) { say('Clipboard unavailable. Select and copy the address or calculation text.'); }
   }
-  window.Bench = { update, copy, read, raw, setNumber, enhance, tex, voltage, equation, get valid() { return latest.valid; } };
+  window.Bench = { update, copy, read, raw, setNumber, enhance, math, tex, voltage, equation, get valid() { return latest.valid; } };
   document.addEventListener('DOMContentLoaded', function () {
     const calc = document.getElementById('calc');
     if (!calc) return;
