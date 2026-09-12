@@ -30,6 +30,7 @@ summary { cursor: pointer; font-weight: 500; }
 .segment-index { font: 500 12px var(--font-mono); color: var(--accent); padding-bottom: 14px; min-width: 18px; }
 .segment button { min-height: 42px; }
 .sweep-hint { margin: 6px 0 0; }
+.ls-panel h3 { margin: 30px 0 4px; padding-top: 18px; border-top: 1px solid var(--line); font: 500 12px var(--font-display); color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
 .work-fields .unit-pair { display: flex; gap: 6px; }
 .work-fields .unit-pair input { flex: 1; width: 60%; }
 .work-fields .unit-pair select { width: 88px; }

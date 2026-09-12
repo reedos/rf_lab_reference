@@ -8,8 +8,8 @@
   <title>Large-signal · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-2">
-  <link rel="stylesheet" href="css/app.css?v=20260912-2"><link rel="stylesheet" href="css/workbench.css?v=20260912-2">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-3">
+  <link rel="stylesheet" href="css/app.css?v=20260912-3"><link rel="stylesheet" href="css/workbench.css?v=20260912-3">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -35,7 +35,7 @@
       <div class="board-toolbar">
         <div class="seg" role="tablist" aria-label="Large-signal tool">
           <button type="button" class="seg-btn is-active" role="tab" id="tab-twotone" aria-controls="panel-twotone" aria-selected="true" data-panel="twotone">Two-tone</button>
-          <button type="button" class="seg-btn" role="tab" id="tab-tones" aria-controls="panel-tones" aria-selected="false" data-panel="tones">Tone plan</button><button type="button" class="seg-btn" role="tab" id="tab-imd3" aria-controls="panel-imd3" aria-selected="false" data-panel="imd3">IMD3</button>
+          
           <button type="button" class="seg-btn" role="tab" id="tab-p1db" aria-controls="panel-p1db" aria-selected="false" data-panel="p1db">P1dB</button>
           <button type="button" class="seg-btn" role="tab" id="tab-thd" aria-controls="panel-thd" aria-selected="false" data-panel="thd">THD</button>
         </div>
@@ -63,22 +63,37 @@
             </div>
           </div>
         </div>
+        <p class="hint">One setup feeds all three sections below. The per-tone level and impedance give the envelope, the frequencies give the product spectrum, and the measured IM3 gives the intercepts. Changing the reference plane converts the tone level by the gain.</p>
         <div class="fields">
           <div class="field compact">
-            <div class="field-label"><span>Per-tone power</span><span id="tone-scope">per port</span></div>
+            <div class="field-label"><span>Per-tone power</span><span id="tone-scope">into Z₀</span></div>
             <div class="field-row">
-              <button type="button" class="step" id="tone-dec">−</button>
+              <button type="button" class="step" id="tone-dec" aria-label="Decrease 1 dB">−</button>
               <input id="tone-dbm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Per-tone power in dBm">
               <span class="unit">dBm</span>
-              <button type="button" class="step" id="tone-inc">+</button>
+              <button type="button" class="step" id="tone-inc" aria-label="Increase 1 dB">+</button>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>Reference plane</span><span>for the tone level</span></div>
+            <div class="field-row">
+              <select id="ls-plane" class="unit-select" aria-label="Tone reference plane"><option value="input">DUT input</option><option value="output">DUT output</option></select>
+            </div>
+          </div>
+          <div class="field compact">
+            <div class="field-label"><span>Gain</span><span>blank = 0 dB</span></div>
+            <div class="field-row">
+              <input placeholder="0" title="Blank is treated as zero" id="imd-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
+              <span class="unit">dB</span>
             </div>
           </div>
         </div>
+
+        <h3>Envelope</h3>
         <dl class="metrics" id="tt-metrics"></dl>
         <p class="hint">Two equal CW tones add in voltage at envelope peaks. Peak envelope power is <strong>+6.02 dB</strong> vs one tone — the DUT sees twice the CW VOPP you would calculate from a single tone at that dBm. That is why a two-tone IMD sweep compresses sooner than a CW P1dB sweep at the same per-tone power.</p>
-      </div>
 
-      <div class="ls-panel" id="panel-tones" role="tabpanel" aria-labelledby="tab-tones" hidden>
+        <h3>Product spectrum</h3>
         <p class="hint">Odd-order products sit on a uniform grid of spacing Δ: order 2k+1 lands at f<sub>1</sub> − kΔ and f<sub>2</sub> + kΔ. Type frequencies with a unit or SI prefix (1G, 100 MHz); bare numbers use the default unit. Edit f<sub>2</sub> or Δ and the other follows.</p>
         <div class="work-fields">
           <label>Default unit for bare numbers<select id="tone-unit" aria-label="Default frequency unit"><option value="MHz">MHz</option><option value="GHz">GHz</option><option value="kHz">kHz</option><option value="Hz">Hz</option></select></label>
@@ -89,21 +104,22 @@
           <label>DUT passband low (optional)<input id="tone-band-low" value="" placeholder="e.g. 0.9 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband low"></label>
           <label>DUT passband high (optional)<input id="tone-band-high" value="" placeholder="e.g. 1.1 GHz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband high"></label>
         </div>
-        <p class="hint">Analyzer limits are optional. Whichever floor is highest is the one that limits the IM3 measurement; the analyzer's own third-order products usually dominate, which is why input attenuation changes the answer.</p>
-        <div class="work-fields">
-          <label>Resolution bandwidth<input id="tone-rbw" value="" placeholder="e.g. 100 Hz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Resolution bandwidth"></label>
-          <label>Tone level at analyzer (dBm)<input id="tone-level" value="" placeholder="e.g. -20" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Tone level at the analyzer"></label>
-          <label>Analyzer TOI (dBm)<input id="tone-toi" value="" placeholder="e.g. 15" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer third-order intercept"></label>
-          <label>Phase noise at Δ (dBc/Hz)<input id="tone-pn" value="" placeholder="e.g. -140" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Phase noise at the tone spacing offset"></label>
-          <label>Analyzer noise floor (dBm/Hz)<input id="tone-danl" value="" placeholder="e.g. -155" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer displayed average noise level"></label>
-        </div>
+        <details class="reference-details" open><summary>Analyzer limits</summary>
+          <p class="hint">Optional. Whichever floor is highest is the one that limits the IM3 measurement; the analyzer's own third-order products usually dominate, which is why input attenuation changes the answer. The tone level here is at the analyzer, after whatever loss sits between it and the DUT.</p>
+          <div class="work-fields">
+            <label>Resolution bandwidth<input id="tone-rbw" value="" placeholder="e.g. 100 Hz" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Resolution bandwidth"></label>
+            <label>Tone level at analyzer (dBm)<input id="tone-level" value="" placeholder="e.g. -20" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Tone level at the analyzer"></label>
+            <label>Analyzer TOI (dBm)<input id="tone-toi" value="" placeholder="e.g. 15" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer third-order intercept"></label>
+            <label>Phase noise at Δ (dBc/Hz)<input id="tone-pn" value="" placeholder="e.g. -140" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Phase noise at the tone spacing offset"></label>
+            <label>Analyzer noise floor (dBm/Hz)<input id="tone-danl" value="" placeholder="e.g. -155" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer displayed average noise level"></label>
+          </div>
+        </details>
         <p id="tone-status" role="status"></p>
         <dl class="metrics" id="tone-metrics"></dl>
         <div class="chain-results"><table><thead><tr><th>Order</th><th>Product</th><th>Frequency</th><th>Offset from f<sub>1</sub></th><th>In DUT band</th></tr></thead><tbody id="tone-rows"></tbody></table></div>
         <p class="hint">The envelope beats at Δ, so bias and video paths need several times Δ of bandwidth. If the upper and lower IM3 products differ, sweep Δ and watch the asymmetry: that is a memory effect, not a measurement error.</p>
-      </div>
 
-      <div class="ls-panel" id="panel-imd3" role="tabpanel" aria-labelledby="tab-imd3" hidden>
+        <h3>Intermodulation</h3>
         <svg class="spec-svg" viewBox="0 0 640 88" aria-hidden="true">
           <text x="86" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">2f1−f2</text>
           <text x="220" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">f1</text>
@@ -117,13 +133,6 @@
         </svg>
         <div class="fields">
           <div class="field compact">
-            <div class="field-label"><span>Each tone</span><select id="imd-plane" class="unit-select" aria-label="Tone reference plane"><option value="input">DUT input</option><option value="output">DUT output</option></select></div>
-            <div class="field-row">
-              <input id="imd-tone" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-10" aria-label="Per-tone power">
-              <span class="unit">dBm</span>
-            </div>
-          </div>
-          <div class="field compact">
             <div class="field-label"><span>IM3 at DUT output</span>
               <select id="imd-unit" class="unit-select" aria-label="IM3 unit">
                 <option value="dbc" selected>dBc</option>
@@ -134,16 +143,9 @@
               <input id="imd-im3" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="-40" aria-label="IM3 level">
             </div>
           </div>
-          <div class="field compact">
-            <div class="field-label"><span>Gain</span><span>blank = 0 dB</span></div>
-            <div class="field-row">
-              <input placeholder="0" title="Blank is treated as zero" id="imd-gain" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="20" aria-label="Small-signal gain">
-              <span class="unit">dB</span>
-            </div>
-          </div>
         </div>
         <dl class="metrics" id="imd-metrics"></dl>
-        <p class="hint">dBc is relative to one output tone; absolute IM3 dBm is measured at the DUT output. Input tone power gives IIP3 = P<sub>in,tone</sub> + Δ/2; output tone power gives OIP3 = P<sub>out,tone</sub> + Δ/2. OIP3 = IIP3 + G. Blank gain means 0 dB (unity); enter the actual gain for an amplifier. Use the small-signal cubic region, below compression. <a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Swept_IMD_and_IM_Spectrum_Concepts.htm">Measurement reference</a>.</p>
+        <p class="hint">dBc is relative to one output tone; absolute IM3 dBm is measured at the DUT output. With the tone level at the DUT input, IIP3 = P<sub>in,tone</sub> + Δ/2; at the output, OIP3 = P<sub>out,tone</sub> + Δ/2. OIP3 = IIP3 + G. Use the small-signal cubic region, below compression. <a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Swept_IMD_and_IM_Spectrum_Concepts.htm">Measurement reference</a>.</p>
       </div>
 
       <div class="ls-panel" id="panel-p1db" role="tabpanel" aria-labelledby="tab-p1db" hidden>
@@ -278,7 +280,7 @@
     <p class="foot">Static page. Calculations stay in your browser.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/bench.js?v=20260912-2"></script><script src="js/rf.js?v=20260912-2"></script>
-  <script src="js/large-signal.js?v=20260912-2"></script>
+  <script src="js/bench.js?v=20260912-3"></script><script src="js/rf.js?v=20260912-3"></script>
+  <script src="js/large-signal.js?v=20260912-3"></script>
 </body>
 </html>

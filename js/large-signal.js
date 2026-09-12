@@ -6,8 +6,6 @@
     tabs: Array.prototype.slice.call(document.querySelectorAll("[data-panel]")),
     panels: {
       twotone: document.getElementById("panel-twotone"),
-      tones: document.getElementById("panel-tones"),
-      imd3: document.getElementById("panel-imd3"),
       p1db: document.getElementById("panel-p1db"),
       thd: document.getElementById("panel-thd")
     },
@@ -20,8 +18,7 @@
     toneDec: document.getElementById("tone-dec"),
     toneInc: document.getElementById("tone-inc"),
     ttMetrics: document.getElementById("tt-metrics"),
-    imdTone: document.getElementById("imd-tone"),
-    imdPlane: document.getElementById("imd-plane"),
+    lsPlane: document.getElementById("ls-plane"),
     imdIm3: document.getElementById("imd-im3"),
     imdUnit: document.getElementById("imd-unit"),
     imdGain: document.getElementById("imd-gain"),
@@ -79,7 +76,7 @@
   let lastLine = "";
   let calculation = [];
   let previousImdUnit = 'dbc', previousImdPlane = 'input';
-  const savedIds = ['imd-tone','imd-im3','imd-unit','imd-plane','imd-gain','p1-gain','p1-pin','p1-pout','p1-meas','thd-fund','thd-h2','thd-h3','thd-h4','thd-h5',
+  const savedIds = ['imd-im3','imd-unit','ls-plane','imd-gain','p1-gain','p1-pin','p1-pout','p1-meas','thd-fund','thd-h2','thd-h3','thd-h4','thd-h5',
     'thd-unit','thd-f0','thd-fmax','thd-band-low','thd-band-high','thd-fc','thd-poles','thd-contam',
     'tone-unit','tone-f1','tone-f2','tone-delta','tone-order','tone-band-low','tone-band-high','tone-rbw','tone-level','tone-toi','tone-pn','tone-danl'];
   const freqScales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 };
@@ -122,13 +119,14 @@
 
   function readQuery() {
     const q = new URLSearchParams(window.location.search);
-    const panel = q.get("tab");
+    const requested = q.get("tab"), panel = requested === 'tones' || requested === 'imd3' ? 'twotone' : requested;
     if (panel && els.panels[panel]) state.panel = panel;
     if (q.get("m") === "diff" || q.get("m") === "se") state.drive = q.get("m");
     const z = RF.parseNumber(q.get("z"));
     if (z > 0) state.z0 = z;
-    const t = RF.parseNumber(q.get("t"));
+    const t = RF.parseNumber(q.get("t")), legacyTone = RF.parseNumber(q.get("imd-tone"));
     if (Number.isFinite(t)) state.toneDbm = t;
+    else if (Number.isFinite(legacyTone)) state.toneDbm = legacyTone;
     if (q.get('p1from') === 'pout') state.p1Source = 'pout';
     if (q.get('tonefrom') === 'f2') state.toneSource = 'f2';
     savedIds.forEach(id => {
@@ -136,8 +134,9 @@
       const el = document.getElementById(id), value = q.get(id);
       if (el.tagName !== 'SELECT' || Array.from(el.options).some(o => o.value === value)) el.value = value;
     });
+    if (!q.has('ls-plane') && ['input', 'output'].includes(q.get('imd-plane'))) els.lsPlane.value = q.get('imd-plane');
     previousImdUnit = els.imdUnit.value;
-    previousImdPlane = els.imdPlane.value;
+    previousImdPlane = els.lsPlane.value;
   }
 
   function writeQuery() {
@@ -161,27 +160,26 @@
     els.btnDiff.classList.toggle("is-active", state.drive === "diff");
     els.btnSe.setAttribute("aria-pressed", String(state.drive === "se"));
     els.btnDiff.setAttribute("aria-pressed", String(state.drive === "diff"));
-    els.toneScope.textContent = state.drive === "diff" ? "per port" : "into Z₀";
+    els.toneScope.textContent = (state.drive === "diff" ? "per port" : "into Z₀") + ", at the DUT " + els.lsPlane.value;
     els.chips.forEach(function (chip) {
       chip.classList.toggle("is-active", Number(chip.getAttribute("data-z")) === z0);
     });
     if (!(z0 > 0) || !Number.isFinite(state.toneDbm)) {
       els.ttMetrics.innerHTML = metric("Status", "Enter per-tone dBm and Z₀");
-      lastLine = "";
-      return;
+      return '';
     }
     const tt = RF.twoToneFromToneDbm(state.toneDbm, z0, state.drive);
     if (!(tt.vppOne > 0) || !Number.isFinite(tt.vppEnv)) {
       els.ttMetrics.innerHTML = metric('Status', 'Power is outside the supported numeric range.');
-      return;
+      return '';
     }
-    calculation = ['Two equal CW tones with matched real loads. Differential drive is complementary; voltage doubles relative to one line.',
+    calculation.push('Two equal CW tones with matched real loads. Differential drive is complementary; voltage doubles relative to one line.',
       eq('Per-tone input and impedance', String.raw`P_{\mathrm{tone}} &= ${tex(state.toneDbm, 'dBm')} \\ Z_0 &= ${tex(z0, 'Ω')}`),
       eq('CW peak-to-peak voltage', String.raw`V_{\mathrm{pp,CW}} &= ${state.drive === 'diff' ? 4 : 2}\sqrt{2}\sqrt{10^{P_{\mathrm{tone}}/10}\times 10^{-3}Z_0}`, volts(tt.vppOne)),
       eq('Two-tone envelope voltage', String.raw`V_{\mathrm{pp,env}} &= 2V_{\mathrm{pp,CW}}`, volts(tt.vppEnv)),
       eq('Average power per port', String.raw`P_{\mathrm{avg}} &= P_{\mathrm{tone}}+10\log_{10}2`, tex(tt.dbmPortAvg, 'dBm'), String.raw`${tex(state.toneDbm, 'dBm', false)}+10\log_{10}2\,\mathrm{dBm}`),
       eq('Peak envelope power per port', String.raw`P_{\mathrm{PEP}} &= P_{\mathrm{tone}}+10\log_{10}4`, tex(tt.dbmPortPep, 'dBm')),
-      'Peak envelope power is 3.01 dB above two-tone average power.'];
+      'Peak envelope power is 3.01 dB above two-tone average power.');
     const rows = [
       metric("CW VOPP, one tone", RF.formatVoltage(tt.vppOne)),
       metric("Envelope VOPP", RF.formatVoltage(tt.vppEnv)),
@@ -193,7 +191,7 @@
       rows.push(metric("Total average", `${RF.formatDbm(tt.dbmTotalAvg)} dBm`));
     }
     els.ttMetrics.innerHTML = rows.join("");
-    lastLine = `2-tone ${state.drive.toUpperCase()} | ${RF.formatDbm(tt.dbmTone)} dBm/tone | env ${RF.formatVoltage(tt.vppEnv)} pk-pk | PEP ${RF.formatDbm(tt.dbmPortPep)} dBm/port`;
+    return `2-tone ${state.drive.toUpperCase()} | ${RF.formatDbm(tt.dbmTone)} dBm/tone at DUT ${els.lsPlane.value} | env ${RF.formatVoltage(tt.vppEnv)} pk-pk | PEP ${RF.formatDbm(tt.dbmPortPep)} dBm/port`;
   }
 
   function computeTones() {
@@ -210,7 +208,8 @@
     const list = Object.values(fields);
     const fail = message => {
       els.toneStatus.textContent = message; els.toneStatus.className = 'status-error';
-      els.toneMetrics.replaceChildren(); els.toneRows.replaceChildren(); lastLine = '';
+      els.toneMetrics.replaceChildren(); els.toneRows.replaceChildren();
+      return '';
     };
     if (!list.every(field => field.ok)) return fail('Analyzer and passband entries must be numeric. Leave them blank if unknown.');
     if (fields.bandLow.blank !== fields.bandHigh.blank) return fail('Enter both passband edges, or leave both blank.');
@@ -241,7 +240,7 @@
       metric('Measurable IM3 floor', plan.limit === null ? 'Enter analyzer limits' : `${RF.formatNumber(plan.limit.dbc, 'dBc')} dBc · ${plan.limit.source}`)
     ].join('');
     els.toneRows.innerHTML = plan.products.map(p => `<tr class="${p.valid ? (p.inBand === false ? 'over-limit' : '') : 'over-limit'}"><td>${p.order === 1 ? 'Tone' : p.order}</td><td>${p.label}</td><td>${p.valid ? freqText(p.frequency) : 'at or below 0 Hz'}</td><td>${p.valid ? RF.formatNumber((p.frequency - plan.f1) / plan.delta) + 'Δ' : '—'}</td><td>${yesNo(p.inBand)}</td></tr>`).join('');
-    calculation = ['Two equal tones through a memoryless nonlinearity. Odd-order products land on a uniform grid of spacing Δ, so they stay near the tones; even-order products fall near DC and near the second harmonic.',
+    calculation.push('Two equal tones through a memoryless nonlinearity. Odd-order products land on a uniform grid of spacing Δ, so they stay near the tones; even-order products fall near DC and near the second harmonic.',
       eq('Tone spacing and centre', String.raw`\Delta &= f_2-f_1 = ${tex(plan.delta, 'Hz')} \\ f_{\mathrm c} &= \frac{f_1+f_2}{2} = ${tex(plan.center, 'Hz')}`),
       eq('Odd-order product grid', String.raw`f_{2k+1} &= f_1-k\Delta \ \text{and}\ f_2+k\Delta`, String.raw`${tex(plan.im3Lower, 'Hz')}\ \text{and}\ ${tex(plan.im3Upper, 'Hz')}\ (k=1)`),
       eq('IM3 pair span', String.raw`f_{\mathrm{span}} &= 3\Delta`, tex(plan.im3Span, 'Hz')),
@@ -252,33 +251,33 @@
         String.raw`\mathrm{floor} &= \mathrm{DANL}+10\log_{10}\mathrm{RBW}-P_{\mathrm{tone}}`, tex(floor.dbc, 'dBc'))),
       plan.limit === null ? 'Enter a resolution bandwidth with an analyzer intercept, phase noise, or noise floor to estimate the measurable IM3 floor.' :
         `The highest floor wins: ${plan.limit.source.toLowerCase()} at ${RF.formatNumber(plan.limit.dbc, 'dBc')} dBc.`,
-      'The envelope beats at Δ. A bias or video path narrower than several times Δ produces asymmetric IM3 sidebands, which is a memory effect rather than a measurement error.'];
-    lastLine = `Tone plan | f1 ${freqText(plan.f1)} | f2 ${freqText(plan.f2)} | Δ ${freqText(plan.delta)} | IM3 ${freqText(plan.im3Lower)} and ${freqText(plan.im3Upper)}` +
+      'The envelope beats at Δ. A bias or video path narrower than several times Δ produces asymmetric IM3 sidebands, which is a memory effect rather than a measurement error.');
+    return `Tone plan | f1 ${freqText(plan.f1)} | f2 ${freqText(plan.f2)} | Δ ${freqText(plan.delta)} | IM3 ${freqText(plan.im3Lower)} and ${freqText(plan.im3Upper)}` +
       (plan.limit === null ? '' : ` | floor ${RF.formatNumber(plan.limit.dbc, 'dBc')} dBc (${plan.limit.source})`);
   }
 
   function computeImd() {
-    const tone = Bench.read(els.imdTone), im3 = Bench.read(els.imdIm3), gain = Bench.read(els.imdGain, true);
-    const plane = els.imdPlane.value, unit = els.imdUnit.value;
+    const tone = state.toneDbm, im3 = Bench.read(els.imdIm3), gain = Bench.read(els.imdGain, true);
+    const plane = els.lsPlane.value, unit = els.imdUnit.value;
     const ip3 = RF.ip3Measurement(tone, im3, gain, plane, unit);
     if (!ip3 || (els.imdGain.value.trim() && !Number.isFinite(gain))) {
       els.imdMetrics.innerHTML = metric('Status', 'Enter valid tone and IM3 levels (IM3 ≤ tone). Blank gain means 0 dB; nonblank gain must be numeric.');
-      return;
+      return '';
     }
     const number = v => Number.isFinite(v) ? RF.formatDbm(v) + ' dBm' : 'enter gain';
     els.imdMetrics.innerHTML = [metric('Δ (output tone − IM3)', RF.formatNumber(ip3.delta, 'dB') + ' dB'),
       metric('IM3 at output', number(ip3.im3Output)), metric('IIP3', number(ip3.iip3)), metric('OIP3', number(ip3.oip3)),
       metric('IM3 relative to output tone', RF.formatNumber(ip3.im3Dbc, 'dB') + ' dBc'),
       metric('Approx. OP1dB (cubic model)', number(ip3.oip3 - 10))].join('');
-    calculation = ['Small-signal third-order extrapolation with two equal tones; IM3 is measured at the DUT output.',
+    calculation.push('Small-signal third-order extrapolation with two equal tones; IM3 is measured at the DUT output.',
       `Tone reference: DUT ${plane}. Absolute IM3 is output dBm; relative IM3 is dBc relative to one output tone.`,
       eq('Measured tone and gain', String.raw`P_{\mathrm{tone}} &= ${tex(tone, 'dBm')} \\ G &= ${tex(gain, 'dB')}`),
       eq('Tone-to-IM3 separation', unit === 'dbc' ? String.raw`\Delta &= -\mathrm{IM3}_{\mathrm{dBc}}` : String.raw`\Delta &= P_{\mathrm{out,tone}}-P_{\mathrm{out,IM3}}`, tex(ip3.delta, 'dB'), unit === 'dbc' ? String.raw`-(${tex(im3, 'dBc')})` : String.raw`${tex(ip3.outputTone,'dBm',false)}-(${tex(im3,'dBm',false)})\,\mathrm{dB}`),
       eq('Input third-order intercept', String.raw`\mathrm{IIP3} &= P_{\mathrm{in,tone}}+\frac{\Delta}{2}`, tex(ip3.iip3, 'dBm'), String.raw`${tex(plane === 'input' ? tone : tone-gain,'dBm',false)}+\frac{${tex(ip3.delta,'dB',false)}}{2}\,\mathrm{dBm}`),
       eq('Output third-order intercept', String.raw`\mathrm{OIP3} &= \mathrm{IIP3}+G`, tex(ip3.oip3, 'dBm')),
       eq('Approximate compression point', String.raw`\mathrm{OP1dB} &\approx \mathrm{OIP3}-10\,\mathrm{dB}`, tex(ip3.oip3-10, 'dBm')),
-      'The compression-point estimate is a cubic-model rule of thumb, not a measurement.'];
-    lastLine = `IMD3 | tones at DUT ${plane}: ${RF.formatNumber(tone, 'dB')} dBm | output IM3 ${RF.formatNumber(ip3.im3Dbc, 'dB')} dBc | IIP3 ${number(ip3.iip3)} | OIP3 ${number(ip3.oip3)}`;
+      'The compression-point estimate is a cubic-model rule of thumb, not a measurement.');
+    return `IMD3 | tones at DUT ${plane}: ${RF.formatNumber(tone, 'dB')} dBm | output IM3 ${RF.formatNumber(ip3.im3Dbc, 'dB')} dBc | IIP3 ${number(ip3.iip3)} | OIP3 ${number(ip3.oip3)}`;
   }
 
   function computeP1() {
@@ -411,9 +410,10 @@
 
   function compute() {
     lastLine = ''; calculation = [];
-    if (state.panel === "twotone") computeTwoTone();
-    else if (state.panel === "tones") computeTones();
-    else if (state.panel === "imd3") computeImd();
+    if (state.panel === "twotone") {
+      const parts = [computeTwoTone(), computeTones(), computeImd()];
+      lastLine = parts.every(Boolean) ? parts.join('\n') : '';
+    }
     else if (state.panel === "p1db") computeP1();
     else computeThd();
     Bench.update({ valid: Boolean(lastLine), lines: lastLine ? calculation : ['Correct the active calculator inputs before saving or copying.'] });
@@ -443,24 +443,24 @@
   els.toneDec.addEventListener("click", function () { stepTone(-1); });
   els.toneInc.addEventListener("click", function () { stepTone(1); });
 
-  [els.imdTone, els.imdIm3, els.imdGain].forEach(function (el) {
+  [els.imdIm3, els.imdGain].forEach(function (el) {
     el.addEventListener("input", compute);
     el.addEventListener("change", compute);
   });
 
   els.imdUnit.addEventListener('change', function () {
-    const measurement = RF.ip3Measurement(Bench.read(els.imdTone), Bench.read(els.imdIm3), Bench.read(els.imdGain, true), els.imdPlane.value, previousImdUnit);
+    const measurement = RF.ip3Measurement(Bench.read(els.toneDbm), Bench.read(els.imdIm3), Bench.read(els.imdGain, true), els.lsPlane.value, previousImdUnit);
     const value = measurement && (els.imdUnit.value === 'dbc' ? measurement.im3Dbc : measurement.im3Output);
     if (Number.isFinite(value)) Bench.setNumber(els.imdIm3, value, els.imdUnit.value === 'dbc' ? 'dBc' : 'dBm', true); else els.imdIm3.value = '';
     previousImdUnit = els.imdUnit.value; compute();
   });
-  els.imdPlane.addEventListener('change', function () {
-    const gain = Bench.read(els.imdGain, true), tone = Bench.read(els.imdTone);
-    if (previousImdPlane !== els.imdPlane.value) {
-      if (Number.isFinite(gain) && Number.isFinite(tone)) Bench.setNumber(els.imdTone, tone + (els.imdPlane.value === 'output' ? gain : -gain), 'dBm', true);
-      else els.imdTone.value = '';
+  els.lsPlane.addEventListener('change', function () {
+    const gain = Bench.read(els.imdGain, true), tone = Bench.read(els.toneDbm);
+    if (previousImdPlane !== els.lsPlane.value) {
+      if (Number.isFinite(gain) && Number.isFinite(tone)) Bench.setNumber(els.toneDbm, tone + (els.lsPlane.value === 'output' ? gain : -gain), 'dBm', true);
+      else els.toneDbm.value = '';
     }
-    previousImdPlane = els.imdPlane.value; compute();
+    previousImdPlane = els.lsPlane.value; compute();
   });
 
   els.p1Gain.addEventListener("input", compute);
