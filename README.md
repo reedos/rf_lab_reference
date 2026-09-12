@@ -15,18 +15,20 @@ No build step. Classic scripts, no bundler.
 | [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, IMD3 / IP3, P1dB, THD |
 | [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, and phase-slope length estimates |
+| [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
 
 Every calculator has **Show calculation**, with rendered LaTeX equations, substituted
 numbers, units, and model assumptions. Equations update with the inputs; long equations
-scroll within their own panel on small screens. KaTeX and its fonts are bundled locally,
-with MathML included for assistive technology. **Copy link** preserves the setup,
+scroll within their own panel on small screens. KaTeX loads the first time a calculation
+panel opens; it, its fonts, and the page fonts are bundled locally, with MathML included
+for assistive technology. **Copy link** preserves the setup,
 including the input used to solve the other fields. **Named setups** stores up to 50 setups per calculator in this browser;
 saving an existing name updates it. Use a copied link to move a setup to another device.
 Storage and clipboard failures are reported without preventing calculation.
 
-Setups stay on the device. There is no account, backend, or measurement upload.
-External font requests are optional; system fonts are used when unavailable.
+Setups stay on the device. There is no account, backend, or measurement upload, and the
+pages make no external requests.
 
 ## Display precision and blank inputs
 
@@ -35,8 +37,9 @@ hundredths. Decimal places follow the selected unit: the same delay displays as
 0.3336 ns or 333.6 ps. Very small linear values retain significant figures instead of
 rounding to zero. Logarithmic levels and angles round to hundredths even near
 zero, so floating-point residue displays as 0 rather than scientific notation.
-Inputs compact after editing; calculations and saved links keep full precision, including through repeated unit changes. Displayed equations and
-copied results use rounded values.
+Values you type, or restore from a link, stay exactly as written; only solved fields show
+rounded values. Calculations and saved links keep full precision, including through repeated
+unit changes. Displayed equations and copied results use rounded values.
 
 Blank neutral terms mean zero: load resistance/reactance, reflection and measured
 phase angles, extra phase turns, length/delay/electrical angle, VOPP, and gain/loss.
@@ -44,7 +47,8 @@ Blank gain means 0 dB (unity), so enter the actual gain for an amplifier. Requir
 reference impedances, frequencies, dielectric properties, noise figures,
 temperatures, and power measurements must still be supplied. Blank harmonics are
 omitted, and blank output limits mean no limit; neither becomes a 0 dB measurement.
-Invalid text is always rejected.
+Invalid text is always rejected, including hex or binary forms. A comma is read as a
+decimal mark (0,25) or as a thousands separator (1,000 or 1,000.5).
 
 ## VOPP — dBm ↔ peak-to-peak
 
@@ -109,6 +113,33 @@ Negative estimates remain visible but cannot be applied as physical cable length
 The page distinguishes physical port extension from trace electrical delay and
 links to instrument documentation for the control conventions.
 
+## Sweep setup
+
+Each segment is a linear sweep: N = (f_stop − f_start)/Δf + 1, counting both ends. One
+segment is a plain linear sweep; 100 MHz to 10 GHz in 10 MHz steps is 991 points.
+Frequencies accept a unit or SI prefix (10k, 100 MHz, 2.4G); bare numbers use the selected
+default unit. A step that does not divide the span is flagged with the step that would land
+on the stop frequency.
+
+**Log-style tables** put points at 1, 1+k, 1+2k … times each decade as one linear segment
+per decade, so every frequency is a round number; the generator builds that table from start,
+stop, and k, with an optional linear tail where the DUT lives (for example decades from 10 kHz,
+then 100 MHz to 10 GHz in 100 MHz steps).
+
+Boundary checks compare each segment's last point with the next start (contiguous, gap,
+overlap, or duplicate point) and a ratio beyond the configurable threshold (default 3×) is
+marked. The relative comparison (default) uses Δf/f at adjacent segment starts, so a decade
+table that repeats its pattern is smooth even though its absolute step jumps 10×; the absolute
+comparison uses step size for tables meant to be linear throughout. Per-segment Δf/f, average
+points per decade, and instantaneous points per decade show the relative resolution, and a
+log-sweep equivalent gives the point count that would match the finest or coarsest relative
+spacing over the whole span. Optional inputs report headroom
+against an instrument point limit and a minimum sweep time of about N/IFBW, which excludes
+band crossings, settling, and dwell.
+
+Power sweeps use the same count: −20 dBm to −4 dBm in 0.1 dB steps is 161 points. Enter the
+step or the number of points; the other updates.
+
 ## Power and noise chain
 
 Add, remove, or reorder up to 24 passive or amplifier stages. Passive stages take
@@ -153,14 +184,16 @@ In PowerShell, set `$env:BROWSERS='chromium,firefox'` before running the test.
 `SCREENSHOTS=1` writes screenshots under ignored `tmp/screenshots`.
 The tests start their own local server under a GitHub Pages-style subpath.
 They exercise inputs, reference planes, units, saved links/setups, clipboard and
-storage failures, chart interactions, stage order/limits, and phone/tablet/desktop
-layout. Mathematical tests include known values, inverse conversions, conservation
+storage failures, chart interactions, stage order/limits, sweep segments and boundaries,
+typed-value display, and phone/tablet/desktop layout. Mathematical tests include known values, inverse conversions, conservation
 checks, thermal equilibrium, and invalid-input boundaries. CI runs both engines.
 
 Shared math is in `js/rf.js`; each page has a separate controller. `js/bench.js`
 provides equation rendering, calculation details, clipboard handling, and local setups.
 To refresh the committed KaTeX assets from the pinned dependency, run
-`npm run vendor:katex`. Normal use and GitHub Pages deployment need no build step.
+`npm run vendor:katex`; `npm run vendor:fonts` re-downloads the bundled latin font subsets
+(IBM Plex and Sora, SIL Open Font License). Normal use and GitHub Pages deployment need
+no build step.
 
 ## GitHub Pages
 

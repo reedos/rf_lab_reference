@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
+  const eq = Bench.equation, tex = Bench.tex;
   const $ = id => document.getElementById(id), n = id => Bench.read(id, ['z', 'x', 'phase'].includes(id));
   const fmt = RF.formatNumber;
   const metric = (k, v) => `<div class="metric"><dt>${k}</dt><dd>${v}</dd></div>`;
@@ -74,7 +74,7 @@
     $('match-status').textContent = m.gamma === 0 ? 'Perfect match. Reflection phase is undefined; 0° is used as the editing convention.' : m.r === Infinity ? 'Open circuit: Γ = +1.' : '';
     $('match-status').className = '';
     const values = {z:m.r, x:m.x, gamma:m.gamma, phase:m.phase, rl:-m.rl, vswr:m.vswr, mloss:m.mloss};
-    for (const [id, value] of Object.entries(values)) if (!(source === 'z' && ['z','x'].includes(id)) && document.activeElement !== $(id)) Bench.setNumber(id, value, id === 'phase' ? 'deg' : ['rl','mloss'].includes(id) ? 'dB' : '');
+    for (const [id, value] of Object.entries(values)) if (!(source === 'z' && ['z','x'].includes(id)) && document.activeElement !== $(id)) Bench.setNumber(id, value, id === 'phase' ? 'deg' : ['rl','mloss'].includes(id) ? 'dB' : '', !(id === source || (source === 'gamma' && id === 'phase')));
     for (const id of ['smith-marker','smith-vector']) $(id).setAttribute('visibility', 'visible');
     $('smith-marker').setAttribute('cx', 220 + re * 190); $('smith-marker').setAttribute('cy', 220 - im * 190);
     $('smith-vector').setAttribute('x2', 220 + re * 190); $('smith-vector').setAttribute('y2', 220 - im * 190);

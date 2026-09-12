@@ -35,6 +35,60 @@ test('logarithmic and angle displays round floating-point residue to zero', () =
   }
 });
 
+test('numbers accept decimal commas and thousands separators but not hex or infinity', () => {
+  for (const [text, value] of [['1,000',1000],['0,25',.25],['0,250',.25],['1,000.5',1000.5],['1.000,5',1000.5],['1,000,000.25',1000000.25],['1e3',1000],['-.5',-.5],['+3',3],[' -10.5 ',-10.5]]) assert.equal(RF.parseNumber(text), value, text);
+  for (const text of ['0x10','0b11','1,0,5','1.5.2','Infinity','-Infinity','1_000','--1','']) assert.ok(Number.isNaN(RF.parseNumber(text)), text);
+});
+test('frequency text takes SI prefixes, units, or a default scale', () => {
+  assert.equal(RF.parseFrequency('10k'), 1e4); assert.equal(RF.parseFrequency('100 MHz'), 1e8); assert.equal(RF.parseFrequency('10G'), 10e9);
+  assert.equal(RF.parseFrequency('2.4 GHz'), 2.4e9); assert.equal(RF.parseFrequency('100', 1e6), 1e8); assert.equal(RF.parseFrequency('1,000 Hz'), 1000);
+  for (const text of ['10 x', 'ten', '', '0x10']) assert.ok(Number.isNaN(RF.parseFrequency(text, 1)), text);
+  assert.deepEqual(RF.formatFrequency(124.99e9), { value: 124.99, unit: 'GHz', text: '124.99 GHz' });
+  assert.equal(RF.formatFrequency(10e3).text, '10 kHz');
+});
+test('sweep point counts land exactly on the stop when the step divides the span', () => {
+  const wide = RF.sweepPoints(100e6, 10e9, 10e6);
+  assert.equal(wide.points, 991); assert.equal(wide.exact, true); assert.equal(wide.lastPoint, 10e9);
+  const power = RF.sweepPoints(-20, -4, .1);
+  assert.equal(power.points, 161); assert.equal(power.exact, true);
+  const odd = RF.sweepPoints(0, 10, 3);
+  assert.equal(odd.exact, false); assert.equal(odd.points, 4); assert.equal(odd.lastPoint, 9); assert.equal(odd.pointsCeil, 5); near(odd.stepCeil, 2.5); near(odd.stepFloor, 10/3);
+  near(RF.sweepStep(-20, -4, 161).step, .1); assert.equal(RF.sweepStep(-20, -4, 1), null); assert.equal(RF.sweepStep(5, 5, 1).step, 0);
+  for (const args of [[10, 0, 1], [0, 10, 0], [0, 10, -1], [NaN, 1, 1]]) assert.equal(RF.sweepPoints(...args), null);
+});
+test('segmented sweeps total points and flag step jumps, gaps, overlaps and duplicates', () => {
+  const decades = [[10e3, 90e3, 10e3], [100e3, 900e3, 100e3], [1e6, 9e6, 1e6], [10e6, 90e6, 10e6], [100e6, 10e9, 100e6]].map(([start, stop, step]) => ({ start, stop, step }));
+  const r = RF.segmentedSweep(decades, { maxPoints: 100001, ifbw: 1000 });
+  assert.deepEqual(r.rows.map(x => x.points), [9, 9, 9, 9, 1250]); assert.equal(r.points, 136);
+  assert.equal(r.boundaries.length, 4); assert.ok(r.boundaries.every(b => b.kind === 'contiguous' && !b.sharp && Math.abs(b.stepRatio - 10) < 1e-9 && Math.abs(b.patternRatio - 1) < 1e-9));
+  assert.equal(r.headroom, 100001 - 136); near(r.sweepTime, .136); assert.equal(r.problems, 0); assert.equal(r.mode, 'relative');
+  for (const row of r.rows.slice(0, 4)) near(row.decadePoints, 9, 1e-9);
+  near(r.rows[4].decadePoints, 1250 / Math.log10(10.1e9 / 100e6), 1e-9); near(r.decadePoints.min, 9, 1e-9);
+  const absolute = RF.segmentedSweep(decades, { mode: 'absolute' });
+  assert.equal(absolute.problems, 4); assert.ok(absolute.boundaries.every(b => b.sharp));
+  const dense = RF.segmentedSweep([{ start: 1e6, stop: 9e6, step: 1e6 }, { start: 10e6, stop: 90e6, step: 1e6 }]);
+  assert.equal(dense.boundaries[0].sharp, true); near(dense.boundaries[0].patternRatio, .1);
+  near(r.rows[0].fractionalStart, 1); near(r.rows[4].fractionalStop, 100e6 / 10e9);
+  near(r.log.coarse, 1); assert.equal(r.log.coarsePoints, Math.ceil(Math.log(10e9 / 10e3) / Math.log(2)) + 1);
+  const smooth = RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }, { start: 2.01e9, stop: 3e9, step: 10e6 }], { jumpLimit: 3 });
+  assert.equal(smooth.problems, 0); assert.equal(smooth.boundaries[0].kind, 'contiguous');
+  assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }, { start: 2e9, stop: 3e9, step: 10e6 }]).boundaries[0].kind, 'duplicate');
+  assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }, { start: 1.5e9, stop: 3e9, step: 10e6 }]).boundaries[0].kind, 'overlap');
+  assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }, { start: 2.5e9, stop: 3e9, step: 10e6 }]).boundaries[0].kind, 'gap');
+  assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }], { maxPoints: 50 }).problems, 1);
+  for (const bad of [[], [{ start: 0, stop: 1e9, step: 1e6 }], [{ start: 2e9, stop: 1e9, step: 1e6 }], [{ start: 1e9, stop: 2e9, step: 0 }]]) assert.equal(RF.segmentedSweep(bad), null);
+});
+test('log-style tables generate one round-number segment per decade with an optional linear tail', () => {
+  const table = RF.logTable(10e3, 10e9, 1, 100e6, 100e6);
+  assert.deepEqual(table, [[10e3, 90e3, 10e3], [100e3, 900e3, 100e3], [1e6, 9e6, 1e6], [10e6, 90e6, 10e6], [100e6, 10e9, 100e6]].map(([start, stop, step]) => ({ start, stop, step })));
+  assert.equal(RF.segmentedSweep(table).points, 136);
+  assert.deepEqual(RF.logTable(1e6, 100e6, 2), [{ start: 1e6, stop: 9e6, step: 2e6 }, { start: 10e6, stop: 90e6, step: 20e6 }, { start: 100e6, stop: 100e6, step: 200e6 }]);
+  assert.deepEqual(RF.logTable(25e3, 1e6, 1)[0], { start: 30e3, stop: 90e3, step: 10e3 });
+  assert.deepEqual(RF.logTable(1e9, 9.5e9, .5)[0], { start: 1e9, stop: 9.5e9, step: .5e9 });
+  assert.equal(RF.segmentedSweep(RF.logTable(1e6, 1e9, .1)).rows[0].points, 90);
+  assert.equal(RF.segmentedSweep(RF.logTable(1e6, 1e9, .1)).problems, 0);
+  for (const args of [[0, 1e9, 1], [1e9, 1e9, 1], [1e6, 1e9, 0], [1e6, 1e9, 10], [1e6, 1e9, 1, 1e5, 1e6], [1e6, 1e9, 1, 1e8, 0]]) assert.equal(RF.logTable(...args), null);
+});
 test('blank-as-zero parser changes only empty input, not invalid input', () => {
   assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
   assert.equal(RF.parseZero('0,25'),.25);

@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
+  const eq = Bench.equation, tex = Bench.tex;
   const $ = id => document.getElementById(id), n = id => Bench.read(id);
   const fmt = RF.formatNumber, dbm = v => RF.formatDbm(v) + ' dBm';
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -44,7 +44,6 @@
       <label>Limit at output (dBm, optional)<input data-key="limit" inputmode="decimal" value="${escape(s.limit)}" placeholder="No limit specified" aria-label="Stage ${i + 1} output limit"></label>
       </div></section>`).join('');
     $('add-active').disabled = $('add-passive').disabled = stages.length >= 24;
-    Bench.compactInputs($('stages'));
   }
   function invalid(message) {
     result = null;
@@ -118,7 +117,7 @@
   ['source-power','bandwidth','source-temp'].forEach(id => $(id).addEventListener('input', () => { loadError = ''; compute(); }));
   $('bandwidth-unit').addEventListener('change', () => {
     const value = n('bandwidth');
-    if (Number.isFinite(value)) Bench.setNumber('bandwidth', value * scales[bandwidthUnit] / scales[$('bandwidth-unit').value], $('bandwidth-unit').value);
+    if (Number.isFinite(value)) Bench.setNumber('bandwidth', value * scales[bandwidthUnit] / scales[$('bandwidth-unit').value], $('bandwidth-unit').value, true);
     bandwidthUnit = $('bandwidth-unit').value; loadError = ''; compute();
   });
   $('copy-link').addEventListener('click', () => { if (result) Bench.copy(location.href); });

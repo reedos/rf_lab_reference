@@ -8,10 +8,8 @@
   <title>Large-signal · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260908-3"><link rel="stylesheet" href="vendor/katex/katex.min.css?v=0.18.7"><link rel="stylesheet" href="css/workbench.css?v=20260908-3">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-1">
+  <link rel="stylesheet" href="css/app.css?v=20260912-1"><link rel="stylesheet" href="css/workbench.css?v=20260912-1">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -23,6 +21,7 @@
         <a href="match.html">Match</a>
         <a class="is-active" href="large-signal.html">Large-signal</a>
         <a href="delay.html">Delay</a>
+      <a href="sweep.html">Sweep</a>
       <a href="chain.html">Power &amp; noise</a></nav>
     </header>
 
@@ -35,18 +34,18 @@
     <section class="board" id="calc">
       <div class="board-toolbar">
         <div class="seg" role="tablist" aria-label="Large-signal tool">
-          <button type="button" class="seg-btn is-active" data-panel="twotone">Two-tone</button>
-          <button type="button" class="seg-btn" data-panel="imd3">IMD3</button>
-          <button type="button" class="seg-btn" data-panel="p1db">P1dB</button>
-          <button type="button" class="seg-btn" data-panel="thd">THD</button>
+          <button type="button" class="seg-btn is-active" role="tab" id="tab-twotone" aria-controls="panel-twotone" aria-selected="true" data-panel="twotone">Two-tone</button>
+          <button type="button" class="seg-btn" role="tab" id="tab-imd3" aria-controls="panel-imd3" aria-selected="false" data-panel="imd3">IMD3</button>
+          <button type="button" class="seg-btn" role="tab" id="tab-p1db" aria-controls="panel-p1db" aria-selected="false" data-panel="p1db">P1dB</button>
+          <button type="button" class="seg-btn" role="tab" id="tab-thd" aria-controls="panel-thd" aria-selected="false" data-panel="thd">THD</button>
         </div>
       </div>
 
-      <div class="ls-panel" id="panel-twotone">
+      <div class="ls-panel" id="panel-twotone" role="tabpanel" aria-labelledby="tab-twotone">
         <div class="board-toolbar">
-          <div class="seg" role="tablist" aria-label="Drive mode">
-            <button type="button" class="seg-btn is-active" id="btn-se" data-drive="se">Single-ended</button>
-            <button type="button" class="seg-btn" id="btn-diff" data-drive="diff">Differential</button>
+          <div class="seg" role="group" aria-label="Drive mode">
+            <button type="button" class="seg-btn is-active" id="btn-se" data-drive="se" aria-pressed="true">Single-ended</button>
+            <button type="button" class="seg-btn" id="btn-diff" data-drive="diff" aria-pressed="false">Differential</button>
           </div>
           <div class="z-ctrl">
             <label class="z-field">
@@ -79,7 +78,7 @@
         <p class="hint">Two equal CW tones add in voltage at envelope peaks. Peak envelope power is <strong>+6.02 dB</strong> vs one tone — the DUT sees twice the CW VOPP you would calculate from a single tone at that dBm. That is why a two-tone IMD sweep compresses sooner than a CW P1dB sweep at the same per-tone power.</p>
       </div>
 
-      <div class="ls-panel" id="panel-imd3" hidden>
+      <div class="ls-panel" id="panel-imd3" role="tabpanel" aria-labelledby="tab-imd3" hidden>
         <svg class="spec-svg" viewBox="0 0 640 88" aria-hidden="true">
           <text x="86" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">2f1−f2</text>
           <text x="220" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">f1</text>
@@ -122,7 +121,7 @@
         <p class="hint">dBc is relative to one output tone; absolute IM3 dBm is measured at the DUT output. Input tone power gives IIP3 = P<sub>in,tone</sub> + Δ/2; output tone power gives OIP3 = P<sub>out,tone</sub> + Δ/2. OIP3 = IIP3 + G. Blank gain means 0 dB (unity); enter the actual gain for an amplifier. Use the small-signal cubic region, below compression. <a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Swept_IMD_and_IM_Spectrum_Concepts.htm">Measurement reference</a>.</p>
       </div>
 
-      <div class="ls-panel" id="panel-p1db" hidden>
+      <div class="ls-panel" id="panel-p1db" role="tabpanel" aria-labelledby="tab-p1db" hidden>
         <div class="fields">
           <div class="field compact">
             <div class="field-label"><span>Small-signal gain</span><span>blank = 0 dB</span></div>
@@ -157,7 +156,7 @@
         <p class="hint">OP1dB = IP1dB + G<sub>0</sub> − 1 dB. If you enter a measured P<sub>out</sub> at the same P<sub>in</sub>, compression is (P<sub>in</sub> + G<sub>0</sub>) − P<sub>out</sub>. On a VNA, G<sub>0</sub> is small-signal |S<sub>21</sub>| after power cal at the DUT plane.</p>
       </div>
 
-      <div class="ls-panel" id="panel-thd" hidden>
+      <div class="ls-panel" id="panel-thd" role="tabpanel" aria-labelledby="tab-thd" hidden>
         <div class="fields">
           <div class="field compact">
             <div class="field-label"><span>Fundamental</span></div>
@@ -237,10 +236,10 @@
         </tbody>
       </table>
     </section>
-    <p class="foot">Static page. Works offline once loaded.</p>
+    <p class="foot">Static page. Calculations stay in your browser.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="vendor/katex/katex.min.js?v=0.18.7"></script><script src="js/bench.js?v=20260908-3"></script><script src="js/rf.js?v=20260908-3"></script>
-  <script src="js/large-signal.js?v=20260908-3"></script>
+  <script src="js/bench.js?v=20260912-1"></script><script src="js/rf.js?v=20260912-1"></script>
+  <script src="js/large-signal.js?v=20260912-1"></script>
 </body>
 </html>

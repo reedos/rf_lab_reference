@@ -8,10 +8,8 @@
   <title>Power &amp; noise · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260908-3"><link rel="stylesheet" href="vendor/katex/katex.min.css?v=0.18.7"><link rel="stylesheet" href="css/workbench.css?v=20260908-3">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-1">
+  <link rel="stylesheet" href="css/app.css?v=20260912-1"><link rel="stylesheet" href="css/workbench.css?v=20260912-1">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -23,6 +21,7 @@
         <a href="match.html">Match</a>
         <a href="large-signal.html">Large-signal</a>
         <a href="delay.html">Delay</a>
+      <a href="sweep.html">Sweep</a>
       <a class="is-active" href="chain.html">Power &amp; noise</a></nav>
     </header>
 
@@ -37,4 +36,4 @@
 <div class="chain-results"><table><thead><tr><th>Stage output</th><th>Stage NF</th><th>Cumulative NF</th><th>Output noise</th></tr></thead><tbody id="noise-rows"></tbody></table></div>
 <h2 style="margin-top:24px">Added noise referred to the chain input</h2><div id="noise-bars" class="noise-bars"></div><div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
 <section class="panel"><h2>Model and reference</h2><p>Friis cascade: F = 1 + Σ (Fᵢ − 1)/Gbeforeᵢ, using linear power gain and noise factor. A passive loss L at temperature T has F = 1 + (L − 1)T/290 K. Noise output = kB[Tsource + 290 K(F − 1)]Gtotal.</p><p>Assumes matched stages, independent noise, and gain/noise figure constant over the chosen bandwidth. Coupler loss refers to the selected branch with other ports terminated. A filter's nominal bandwidth may differ from its equivalent noise bandwidth.</p><p><a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Noise_Figure.htm">Keysight: noise figure measurements</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="vendor/katex/katex.min.js?v=0.18.7"></script><script src="js/bench.js?v=20260908-3"></script><script src="js/rf.js?v=20260908-3"></script><script src="js/chain.js?v=20260908-3"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260912-1"></script><script src="js/rf.js?v=20260912-1"></script><script src="js/chain.js?v=20260912-1"></script></body></html>

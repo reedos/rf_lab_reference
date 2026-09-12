@@ -8,10 +8,8 @@
   <title>VOPP · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260908-3"><link rel="stylesheet" href="vendor/katex/katex.min.css?v=0.18.7"><link rel="stylesheet" href="css/workbench.css?v=20260908-3">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-1">
+  <link rel="stylesheet" href="css/app.css?v=20260912-1"><link rel="stylesheet" href="css/workbench.css?v=20260912-1">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -25,6 +23,7 @@
         <a href="match.html">Match</a>
         <a href="large-signal.html">Large-signal</a>
         <a href="delay.html">Delay</a>
+      <a href="sweep.html">Sweep</a>
       <a href="chain.html">Power &amp; noise</a></nav>
     </header>
 
@@ -36,13 +35,13 @@
 
     <section class="board" id="calc">
       <div class="board-toolbar">
-        <div class="seg" role="tablist" aria-label="Signal path">
-          <button type="button" class="seg-btn is-active" id="btn-src" data-path="src" aria-selected="true">VNA → DUT</button>
-          <button type="button" class="seg-btn" id="btn-rx" data-path="rx" aria-selected="false">DUT → VNA</button>
+        <div class="seg" role="group" aria-label="Signal path">
+          <button type="button" class="seg-btn is-active" id="btn-src" data-path="src" aria-pressed="true">VNA → DUT</button>
+          <button type="button" class="seg-btn" id="btn-rx" data-path="rx" aria-pressed="false">DUT → VNA</button>
         </div>
-        <div class="seg" role="tablist" aria-label="Drive mode">
-          <button type="button" class="seg-btn is-active" id="btn-se" data-drive="se" aria-selected="true">Single-ended</button>
-          <button type="button" class="seg-btn" id="btn-diff" data-drive="diff" aria-selected="false">Differential</button>
+        <div class="seg" role="group" aria-label="Drive mode">
+          <button type="button" class="seg-btn is-active" id="btn-se" data-drive="se" aria-pressed="true">Single-ended</button>
+          <button type="button" class="seg-btn" id="btn-diff" data-drive="diff" aria-pressed="false">Differential</button>
         </div>
       </div>
 
@@ -270,11 +269,11 @@
       </table>
     </section>
 
-    <p class="foot">Static page. Works offline once loaded. Built for GitHub Pages.</p>
+    <p class="foot">Static page. Calculations stay in your browser. Built for GitHub Pages.</p>
   </div>
 
   <div class="toast" id="toast" role="status"></div>
-  <script src="vendor/katex/katex.min.js?v=0.18.7"></script><script src="js/bench.js?v=20260908-3"></script><script src="js/rf.js?v=20260908-3"></script>
-  <script src="js/app.js?v=20260908-3"></script>
+  <script src="js/bench.js?v=20260912-1"></script><script src="js/rf.js?v=20260912-1"></script>
+  <script src="js/app.js?v=20260912-1"></script>
 </body>
 </html>

@@ -29,7 +29,6 @@ let checks=0;
         await context.addInitScript(() => {
           Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{writeText: async text => { window.copiedText = text; }}});
         });
-        await context.route(/fonts\.(googleapis|gstatic)\.com/, route=>route.abort());
         const page=await context.newPage(), errors=[];
         page.on('pageerror',e=>errors.push(e.message));
         const go=async file=>{await page.goto(base+file); await page.locator('#calculation-text').waitFor({state:'attached'});};
@@ -171,7 +170,7 @@ let checks=0;
           assert.equal(await page.locator('#setup-list option').count(),1);
         });
         await check('Copied links and results reflect current inputs; clipboard failures are reported',async()=>{
-          for (const file of ['index.html','match.html','large-signal.html','delay.html','chain.html']) {
+          for (const file of ['index.html','match.html','large-signal.html','delay.html','sweep.html','chain.html']) {
             await go(file); await page.locator('#copy-link').click();
             assert.equal(await page.evaluate(()=>window.copiedText),page.url());
             await page.locator('#copy-result').click();
@@ -183,10 +182,10 @@ let checks=0;
           await expect(page.locator('#bench-status')).toContainText(/Clipboard unavailable/);
         });
         await check('Fractional inputs retain precision across saved links',async()=>{
-          await go('large-signal.html?t=-10.123456789'); await numeric('tone-dbm',-10.12);
-          await page.locator('[data-panel="p1db"]').click(); await fill('p1-pout',7.123456789); await page.reload(); await numeric('p1-pout',7.12);
-          await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50'); await numeric('vopp',.1235);
-          await page.reload(); await numeric('vopp',.1235);
+          await go('large-signal.html?t=-10.123456789'); await numeric('tone-dbm',-10.123456789,1e-12);
+          await page.locator('[data-panel="p1db"]').click(); await fill('p1-pout',7.123456789); await page.reload(); await numeric('p1-pout',7.123456789,1e-12);
+          await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50'); await numeric('vopp',.123456789012,1e-12);
+          await page.reload(); await numeric('vopp',.123456789012,1e-12);
           near(Number(new URL(page.url()).searchParams.get('v')),.123456789012,1e-14);
         });
         await check('Rounded fields retain exact values across repeated unit changes and restoration',async()=>{
@@ -203,10 +202,10 @@ let checks=0;
           near(Number(new URL(page.url()).searchParams.get('t')),originalDelay,1e-12);
           await page.locator('#phase-use').click(); await numeric('length',299.8);
           await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('L'))).toBeCloseTo(299.792458,9);
-          await page.reload(); await numeric('length',299.8);
+          await page.reload(); await numeric('length',299.792458,1e-9);
           await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50');
           for(let i=0;i<3;i++) { await page.locator('#vopp-unit').selectOption('mV'); await numeric('vopp',123.5); await page.locator('#vopp-unit').selectOption('V'); }
-          await page.reload(); await numeric('vopp',.1235);
+          await page.reload(); await numeric('vopp',.123456789012,1e-12);
           near(Number(new URL(page.url()).searchParams.get('v')),.123456789012,1e-14);
           await go('match.html'); await fill('x',50); await numeric('gamma',.4472);
           await page.locator('.reference-details summary').click();
@@ -216,17 +215,62 @@ let checks=0;
         await check('Preset buttons replace exact values even when their rounded displays match',async()=>{
           const queryNumber=async key=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get(key));
           await go('match.html?z0=50.0001&z=50.0002&x=0');
-          await numeric('z0',50); await numeric('z',50);
+          await numeric('z0',50.0001,1e-9); await numeric('z',50.0002,1e-9);
           await page.locator('[data-reference="50"]').click();
           await expect.poll(()=>queryNumber('z0')).toBe(50);
           await page.locator('[data-load="50"]').click();
           await expect.poll(()=>queryNumber('z')).toBe(50); await numeric('gamma',0);
-          await go('delay.html?er=2.10001'); await numeric('er',2.1);
+          await go('delay.html?er=2.10001'); await numeric('er',2.10001,1e-9);
           await page.locator('[data-er="2.1"]').click(); await expect.poll(()=>queryNumber('er')).toBe(2.1);
-          await go('index.html?zd=50.0001'); await numeric('zdut',50);
+          await go('index.html?zd=50.0001'); await numeric('zdut',50.0001,1e-9);
           await page.locator('[data-z="50"]').click(); await expect.poll(()=>queryNumber('zd')).toBe(50);
-          await go('large-signal.html?z=50.0001'); await numeric('z0',50);
+          await go('large-signal.html?z=50.0001'); await numeric('z0',50.0001,1e-9);
           await page.locator('[data-z="50"]').click(); await expect.poll(()=>queryNumber('z')).toBe(50);
+        });
+        await check('Typed and restored values are shown as written; solved values are rounded',async()=>{
+          await go('delay.html'); await fill('freq','2437.5'); await page.keyboard.press('Tab');
+          assert.equal(await page.locator('#freq').inputValue(),'2437.5');
+          await page.reload(); assert.equal(await page.locator('#freq').inputValue(),'2437.5');
+          await fill('length','1,000'); assert.equal(await page.locator('#length').inputValue(),'1,000');
+          await numeric('delay',3.336); await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('L'))).toBe(1000);
+          await fill('length','0x10'); await expect.poll(valid).toBe(false);
+          await go('index.html?d=-10.123456789&from=dbm'); assert.equal(await page.locator('#dbm').inputValue(),'-10.123456789');
+          await numeric('vopp',0.1972);
+        });
+        await check('Sweep segments count points, flag step jumps and gaps, and size power sweeps',async()=>{
+          await go('sweep.html'); await expect(page.locator('#sweep-rows')).toContainText('991');
+          await expect(page.locator('#sweep-metrics')).toContainText('991');
+          await page.locator('[data-preset="decades"]').click(); assert.equal(await page.locator('.segment').count(),5);
+          await expect(page.locator('#sweep-metrics')).toContainText('136');
+          await expect(page.locator('#boundary-rows tr.over-limit')).toHaveCount(0);
+          await expect(page.locator('#sweep-status')).toContainText(/repeat their relative spacing/);
+          await expect(page.locator('#sweep-metrics')).toContainText(/9 to 403\.6 by segment/);
+          await page.locator('#mode').selectOption('absolute');
+          await expect(page.locator('#boundary-rows tr.over-limit')).toHaveCount(4);
+          await expect(page.locator('#sweep-status')).toContainText(/4 boundaries change the step size/);
+          await page.locator('#mode').selectOption('relative');
+          await page.reload(); assert.equal(await page.locator('.segment').count(),5); await expect(page.locator('#sweep-metrics')).toContainText('136');
+          await page.locator('.segment').nth(1).locator('[data-key="start"]').fill('85 kHz');
+          await expect(page.locator('#boundary-rows')).toContainText(/Overlap/);
+          await page.locator('.segment').nth(1).locator('[data-key="start"]').fill('200 kHz');
+          await expect(page.locator('#boundary-rows')).toContainText(/Gap/);
+          await page.locator('.segment').nth(1).locator('[data-key="start"]').fill('100 kHz');
+          await fill('limit','1001'); await expect(page.locator('#sweep-status')).toContainText(/exceeds/);
+          await fill('limit',''); await fill('ifbw','1 kHz'); await expect(page.locator('#sweep-metrics')).toContainText(/1\.286 s/);
+          await page.locator('.segment').last().locator('[data-action="remove"]').click(); assert.equal(await page.locator('.segment').count(),4);
+          await page.locator('#add-segment').click(); assert.equal(await page.locator('.segment').count(),5);
+          await page.locator('.segment').first().locator('[data-key="step"]').fill('bad'); await expect.poll(valid).toBe(false);
+          await page.locator('[data-preset="wide"]').click(); await expect.poll(valid).toBe(true);
+          await page.locator('#generate').click(); assert.equal(await page.locator('.segment').count(),5);
+          await expect(page.locator('#sweep-metrics')).toContainText('136'); await expect(page.locator('#generate-status')).toContainText('Generated 5 segments');
+          await page.locator('#g-mult').selectOption('2'); await fill('g-tail',''); await page.locator('#generate').click();
+          assert.equal(await page.locator('.segment').count(),8); await expect(page.locator('#sweep-rows').locator('tr').last()).toContainText('200 GHz');
+          await fill('g-stop','1 kHz'); await page.locator('#generate').click(); await expect(page.locator('#generate-status')).toContainText(/Enter start/);
+          await page.locator('[data-preset="wide"]').click();
+          await fill('p-start',-20); await fill('p-stop',-4); await fill('p-step',0.1); await numeric('p-points',161);
+          await fill('p-points',17); await numeric('p-step',1);
+          await fill('p-step',0.3); await expect(page.locator('#power-status')).toContainText(/does not divide/);
+          await fill('p-step',0.1); await page.reload(); await numeric('p-points',161);
         });
         await check('Blank neutral inputs mean zero, while required values and omitted measurements stay distinct',async()=>{
           await go('match.html'); await fill('x',''); await expect.poll(valid).toBe(true); await numeric('gamma',0);
@@ -283,7 +327,8 @@ let checks=0;
             'large-signal.html?tab=imd3&imd-unit=dbm',
             'large-signal.html?tab=p1db&p1-meas=7',
             'large-signal.html?tab=thd&thd-h4=-60&thd-h5=-70',
-            'chain.html?stages=%5B%5D'
+            'chain.html?stages=%5B%5D',
+            'sweep.html?p-start=-20&p-stop=-4&p-step=0.1'
           ]) {
             await go(file); await page.locator('.calculation summary').click(); await rendered();
           }
@@ -301,7 +346,7 @@ let checks=0;
           assert.equal(await page.locator('#calculation-text img').count(),0); await rendered();
         });
         await check('Every page has working navigation, calculation detail, and responsive layout',async()=>{
-          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','delay.html','chain.html']) {
+          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','delay.html','sweep.html','chain.html']) {
             await page.setViewportSize({width,height:900}); await go(file);
             assert.equal(await valid(),true,`${file} default invalid`);
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);

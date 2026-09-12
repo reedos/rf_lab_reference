@@ -2,8 +2,10 @@
   'use strict';
   const page = location.pathname.split('/').pop() || 'index.html';
   const storageKey = 'rf-lab:setups:v1:' + page;
+  const KATEX_VERSION = '0.18.7';
   let latest = { valid: false, lines: ['Enter valid inputs to show the calculation.'] };
   let detail, status, list, name, save, setups = [];
+  let renderTimer = 0, katexLoading = null, katexFailed = false;
   // Exact computed values live separately from their rounded editable displays.
   const numbers = new WeakMap();
   const element = value => typeof value === 'string' ? document.getElementById(value) : value;
@@ -12,35 +14,22 @@
     if (cached && el.value === cached.shown) return cached.exact;
     return zero ? RF.parseZero(el.value) : RF.parseNumber(el.value);
   }
+  // Link values are canonical numbers even when the field text uses separators or exponents.
   function raw(value) {
     const el = element(value), cached = numbers.get(el);
-    return cached && el.value === cached.shown ? String(cached.exact) : el.value;
+    if (cached && el.value === cached.shown) return String(cached.exact);
+    const parsed = RF.parseNumber(el.value);
+    return Number.isFinite(parsed) ? String(parsed) : el.value;
   }
-  function setNumber(value, exact, unit) {
-    const el = element(value), shown = RF.formatNumber(exact, unit);
+  // A driver field's text (typed by the user or restored from a link) is kept verbatim when it
+  // already represents the exact value. Solved fields always show the rounded display.
+  function setNumber(value, exact, unit, solved = false) {
+    const el = element(value);
+    const shown = !solved && el.value.trim() !== '' && RF.parseNumber(el.value) === exact ? el.value : RF.formatNumber(exact, unit);
     el.value = shown;
     numbers.set(el, { exact, shown });
   }
-  function inputUnit(el) {
-    if (['db', 'nf', 'limit'].includes(el.dataset.key)) return 'dB';
-    if (['phase', 'degrees', 'phase-p1', 'phase-p2'].includes(el.id)) return 'deg';
-    if (['dbm','tone-dbm','imd-tone','imd-im3','imd-gain','p1-gain','p1-pin','p1-pout','p1-meas','thd-fund','thd-h2','thd-h3','thd-h4','thd-h5','source-power','rl','mloss'].includes(el.id)) return 'dB';
-    return '';
-  }
-  function compactInputs(container) {
-    container.querySelectorAll('input').forEach(el => {
-      if (el.id === 'setup-name' || el.dataset.key === 'name' || el.value.trim() === '') return;
-      const exact = read(el);
-      if (Number.isFinite(exact)) setNumber(el, exact, inputUnit(el));
-    });
-  }
   document.addEventListener('input', event => numbers.delete(event.target), true);
-  document.addEventListener('focusout', event => {
-    const el = event.target;
-    if (el.tagName !== 'INPUT' || el.id === 'setup-name' || el.dataset.key === 'name' || !el.value.trim()) return;
-    const exact = read(el);
-    if (Number.isFinite(exact)) setNumber(el, exact, inputUnit(el));
-  });
   // Keep authored equations separate from prose and user-supplied labels.
   function tex(value, unit = '', withUnit = true) {
     let number = RF.formatNumber(value, unit).replace(/(-?)∞/, '$1\\infty').replace('—', '\\text{undefined}');
@@ -54,26 +43,48 @@
       (substitution ? '\\\\ &= ' + substitution : '') +
       (result ? '\\\\ &\\approx ' + result : '') + '\\end{aligned}' };
   }
+  function paragraph(text) { const p = document.createElement('p'); p.textContent = text; return p; }
+  // KaTeX (about 300 KB with its stylesheet) is fetched the first time a calculation panel opens.
+  function loadKatex() {
+    if (window.katex) return Promise.resolve();
+    if (!katexLoading) katexLoading = new Promise((resolve, reject) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = `vendor/katex/katex.min.css?v=${KATEX_VERSION}`;
+      const js = document.createElement('script');
+      js.src = `vendor/katex/katex.min.js?v=${KATEX_VERSION}`;
+      js.onload = resolve;
+      js.onerror = () => { katexLoading = null; js.remove(); reject(new Error('KaTeX did not load')); };
+      document.head.append(css, js);
+    });
+    return katexLoading;
+  }
   function renderCalculation() {
+    clearTimeout(renderTimer);
     if (!detail || !detail.closest('details').open) return;
+    if (!window.katex && !katexFailed) {
+      detail.replaceChildren(paragraph('Loading equation renderer…'));
+      loadKatex().then(renderCalculation, () => { katexFailed = true; renderCalculation(); });
+      return;
+    }
     detail.replaceChildren();
     for (const line of latest.lines) {
       if (!line) continue;
-      if (typeof line === 'string') {
-        const paragraph = document.createElement('p'); paragraph.textContent = line; detail.append(paragraph);
-        continue;
-      }
+      if (typeof line === 'string') { detail.append(paragraph(line)); continue; }
       const block = document.createElement('section'), label = document.createElement('h3'), math = document.createElement('div');
       block.className = 'equation'; label.textContent = line.label; math.className = 'equation-math';
       math.tabIndex = 0; math.setAttribute('role', 'region'); math.setAttribute('aria-label', line.label);
-      try { katex.render(line.latex, math, { displayMode: true, output: 'htmlAndMathml', throwOnError: true, trust: false, strict: 'error' }); }
-      catch (_) { math.classList.add('equation-error'); math.textContent = 'Equation unavailable. The calculator result is shown above.'; }
+      try {
+        if (katexFailed) throw new Error('unavailable');
+        katex.render(line.latex, math, { displayMode: true, output: 'htmlAndMathml', throwOnError: true, trust: false, strict: 'error' });
+      } catch (_) { math.classList.add('equation-error'); math.textContent = 'Equation unavailable. The calculator result is shown above.'; }
       block.append(label, math); detail.append(block);
     }
   }
+  // Inputs fire on every keystroke; equation rendering is coalesced into one pass.
+  function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderCalculation, 60); }
   function update(value) {
     latest = value;
-    renderCalculation();
+    scheduleRender();
     if (save) save.disabled = !value.valid;
     ['copy-result', 'copy-link'].forEach(id => { const button = document.getElementById(id); if (button) button.disabled = !value.valid; });
   }
@@ -84,11 +95,10 @@
       say('Copied.');
     } catch (_) { say('Clipboard unavailable. Select and copy the address or calculation text.'); }
   }
-  window.Bench = { update, copy, read, raw, setNumber, compactInputs, tex, voltage, equation, get valid() { return latest.valid; } };
+  window.Bench = { update, copy, read, raw, setNumber, tex, voltage, equation, get valid() { return latest.valid; } };
   document.addEventListener('DOMContentLoaded', function () {
     const calc = document.getElementById('calc');
     if (!calc) return;
-    compactInputs(calc);
     const area = document.createElement('section');
     area.className = 'bench-tools';
     area.setAttribute('aria-label', 'Calculation and saved setups');

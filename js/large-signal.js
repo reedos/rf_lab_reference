@@ -75,7 +75,7 @@
     els.tabs.forEach(function (btn) {
       if (!btn.getAttribute("data-panel")) return;
       btn.classList.toggle("is-active", btn.getAttribute("data-panel") === name);
-      btn.setAttribute("aria-pressed", String(btn.getAttribute("data-panel") === name));
+      btn.setAttribute("aria-selected", String(btn.getAttribute("data-panel") === name));
     });
     compute();
   }
@@ -117,6 +117,8 @@
     els.body.setAttribute("data-drive", state.drive);
     els.btnSe.classList.toggle("is-active", state.drive === "se");
     els.btnDiff.classList.toggle("is-active", state.drive === "diff");
+    els.btnSe.setAttribute("aria-pressed", String(state.drive === "se"));
+    els.btnDiff.setAttribute("aria-pressed", String(state.drive === "diff"));
     els.toneScope.textContent = state.drive === "diff" ? "per port" : "into Z₀";
     els.chips.forEach(function (chip) {
       chip.classList.toggle("is-active", Number(chip.getAttribute("data-z")) === z0);
@@ -189,8 +191,8 @@
       lastLine = "";
       return;
     }
-    if (state.p1Source !== 'pin') Bench.setNumber(els.p1Pin, p1.pin1dB, 'dBm');
-    if (state.p1Source !== 'pout') Bench.setNumber(els.p1Pout, p1.pout1dB, 'dBm');
+    if (state.p1Source !== 'pin') Bench.setNumber(els.p1Pin, p1.pin1dB, 'dBm', true);
+    if (state.p1Source !== 'pout') Bench.setNumber(els.p1Pout, p1.pout1dB, 'dBm', true);
 
     calculation = ['CW compression point; G₀ is small-signal power gain in dB.',
       eq('Output compression point', String.raw`\mathrm{OP1dB} &= \mathrm{IP1dB}+G_0-1\,\mathrm{dB}`, tex(p1.pout1dB, 'dBm'), String.raw`${tex(p1.pin1dB,'dBm',false)}+${tex(gain,'dB',false)}-1\,\mathrm{dBm}`),
@@ -283,13 +285,13 @@
   els.imdUnit.addEventListener('change', function () {
     const measurement = RF.ip3Measurement(Bench.read(els.imdTone), Bench.read(els.imdIm3), Bench.read(els.imdGain, true), els.imdPlane.value, previousImdUnit);
     const value = measurement && (els.imdUnit.value === 'dbc' ? measurement.im3Dbc : measurement.im3Output);
-    if (Number.isFinite(value)) Bench.setNumber(els.imdIm3, value, els.imdUnit.value === 'dbc' ? 'dBc' : 'dBm'); else els.imdIm3.value = '';
+    if (Number.isFinite(value)) Bench.setNumber(els.imdIm3, value, els.imdUnit.value === 'dbc' ? 'dBc' : 'dBm', true); else els.imdIm3.value = '';
     previousImdUnit = els.imdUnit.value; compute();
   });
   els.imdPlane.addEventListener('change', function () {
     const gain = Bench.read(els.imdGain, true), tone = Bench.read(els.imdTone);
     if (previousImdPlane !== els.imdPlane.value) {
-      if (Number.isFinite(gain) && Number.isFinite(tone)) Bench.setNumber(els.imdTone, tone + (els.imdPlane.value === 'output' ? gain : -gain), 'dBm');
+      if (Number.isFinite(gain) && Number.isFinite(tone)) Bench.setNumber(els.imdTone, tone + (els.imdPlane.value === 'output' ? gain : -gain), 'dBm', true);
       else els.imdTone.value = '';
     }
     previousImdPlane = els.imdPlane.value; compute();

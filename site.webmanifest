@@ -1,7 +1,7 @@
 {
   "name": "RF Lab Reference",
   "short_name": "rf_lab",
-  "description": "VNA dBm to peak-to-peak voltage, single-ended and differential.",
+  "description": "RF bench calculators: dBm to VOPP, impedance match, large-signal, delay, sweep setup, power and noise.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0a0c0f",

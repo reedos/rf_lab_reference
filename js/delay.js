@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
+  const eq = Bench.equation, tex = Bench.tex;
   const $ = id => document.getElementById(id), n = id => Bench.read(id, ['length','delay','degrees','phase-p1','phase-p2','phase-turns'].includes(id));
   const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9, m: 1, cm: .01, mm: .001, in: .0254, ns: 1e-9, ps: 1e-12, 'µs': 1e-6 };
   const fmt = RF.formatNumber;
@@ -52,10 +52,10 @@
       return;
     }
     current = { er, f, length, delay, degrees, lambda };
-    if (dielectric === 'er') Bench.setNumber('vf', RF.vfFromEr(er)); else Bench.setNumber('er', er);
-    if (source !== 'length') Bench.setNumber('length', length / scales[$('len-unit').value], $('len-unit').value);
-    if (source !== 'delay') Bench.setNumber('delay', delay / scales[$('delay-unit').value], $('delay-unit').value);
-    if (source !== 'degrees') Bench.setNumber('degrees', degrees, 'deg');
+    if (dielectric === 'er') Bench.setNumber('vf', RF.vfFromEr(er), '', true); else Bench.setNumber('er', er, '', true);
+    if (source !== 'length') Bench.setNumber('length', length / scales[$('len-unit').value], $('len-unit').value, true);
+    if (source !== 'delay') Bench.setNumber('delay', delay / scales[$('delay-unit').value], $('delay-unit').value, true);
+    if (source !== 'degrees') Bench.setNumber('degrees', degrees, 'deg', true);
     document.querySelectorAll('[data-er]').forEach(b => b.classList.toggle('is-active', Math.abs(Number(b.dataset.er) - er) < 1e-9));
     $('metrics').innerHTML = metric('Guided wavelength', show(lambda * 1000, 'mm')) + metric('Half wavelength', show(lambda * 500, 'mm')) + metric('Quarter wavelength', show(lambda * 250, 'mm')) +
       metric('Propagation velocity', show(RF.C_LIGHT * RF.vfFromEr(er) / 1e8, '× 10⁸ m/s')) +
@@ -92,7 +92,7 @@
   const fields = { 'freq-unit': 'freq', 'len-unit': 'length', 'delay-unit': 'delay' };
   Object.keys(fields).forEach(id => $(id).addEventListener('change', () => {
     const field = fields[id], value = n(field);
-    if (Number.isFinite(value)) Bench.setNumber(field, value * scales[units[id]] / scales[$(id).value], $(id).value);
+    if (Number.isFinite(value)) Bench.setNumber(field, value * scales[units[id]] / scales[$(id).value], $(id).value, true);
     units[id] = $(id).value;
     compute();
   }));
@@ -100,7 +100,7 @@
   document.querySelectorAll('[data-er]').forEach(b => b.addEventListener('click', () => { dielectric = 'er'; Bench.setNumber('er', Number(b.dataset.er)); compute(); }));
   $('phase-use').addEventListener('click', () => {
     if (!slope || slope.length < 0) return;
-    source = 'length'; Bench.setNumber('length', slope.length / scales[$('len-unit').value], $('len-unit').value); compute();
+    source = 'length'; Bench.setNumber('length', slope.length / scales[$('len-unit').value], $('len-unit').value, true); compute();
   });
   $('copy-link').addEventListener('click', () => { if (Bench.valid) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => {

@@ -148,7 +148,7 @@
     if (path === "rx" || path === "src") state.path = path;
     state.zvna = 50;
     const zd = RF.parseNumber(q.get("zd"));
-    if (zd > 0) state.zdut = zd;
+    if (zd > 0) { state.zdut = zd; els.zdut.value = q.get("zd").trim(); }
     const unit = q.get("u");
     if (unit === "V" || unit === "mV") state.unit = unit;
     const src = q.get("from");
@@ -160,6 +160,7 @@
     } else if (Number.isFinite(dbm)) {
       state.source = "dbm";
       state.dbm = dbm;
+      els.dbm.value = q.get("d").trim();
     }
   }
 
@@ -237,12 +238,12 @@
     els.body.setAttribute("data-path", state.path);
     els.btnSe.classList.toggle("is-active", state.drive === "se");
     els.btnDiff.classList.toggle("is-active", state.drive === "diff");
-    els.btnSe.setAttribute("aria-selected", state.drive === "se" ? "true" : "false");
-    els.btnDiff.setAttribute("aria-selected", state.drive === "diff" ? "true" : "false");
+    els.btnSe.setAttribute("aria-pressed", state.drive === "se" ? "true" : "false");
+    els.btnDiff.setAttribute("aria-pressed", state.drive === "diff" ? "true" : "false");
     els.btnSrc.classList.toggle("is-active", state.path === "src");
     els.btnRx.classList.toggle("is-active", state.path === "rx");
-    els.btnSrc.setAttribute("aria-selected", state.path === "src" ? "true" : "false");
-    els.btnRx.setAttribute("aria-selected", state.path === "rx" ? "true" : "false");
+    els.btnSrc.setAttribute("aria-pressed", state.path === "src" ? "true" : "false");
+    els.btnRx.setAttribute("aria-pressed", state.path === "rx" ? "true" : "false");
 
     const isDiff = state.drive === "diff";
     const copy = PATH_COPY[state.path];
@@ -297,11 +298,11 @@
     if (els.diffLoadZ) els.diffLoadZ.innerHTML = rightZ;
 
     if (document.activeElement !== els.dbm) {
-      if (ok) Bench.setNumber(els.dbm, state.dbm, 'dBm');
+      if (ok) Bench.setNumber(els.dbm, state.dbm, 'dBm', state.source !== 'dbm');
     }
     if (document.activeElement !== els.vopp) {
       const shown = RF.voltsToUnit(state.vopp, state.unit);
-      if (ok) Bench.setNumber(els.vopp, shown, state.unit);
+      if (ok) Bench.setNumber(els.vopp, shown, state.unit, state.source !== 'vopp');
     }
 
     els.fieldDbm.classList.toggle("invalid", !ok && state.source === "dbm");

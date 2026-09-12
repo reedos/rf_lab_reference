@@ -123,18 +123,27 @@
     return result.vpp != null ? result.vpp : result.vppSe;
   }
 
+  // Plain decimal notation only: no hex, binary, octal, or Infinity. A comma is a
+  // decimal mark ("0,25") or a thousands separator ("1,000", "1,000.5", "1.000,5").
+  const DECIMAL = /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/;
   function parseNumber(raw) {
     if (raw == null) return NaN;
-    const text = String(raw).trim().replace(",", ".");
-    if (text === "" || text === "-" || text === "." || text === "-.") return NaN;
+    let text = String(raw).trim();
+    if (text.includes(",")) {
+      if (text.includes(".")) {
+        const thousands = text.lastIndexOf(".") > text.lastIndexOf(",") ? "," : ".";
+        text = text.split(thousands).join("").replace(",", ".");
+      } else if (/^[-+]?[1-9]\d{0,2}(,\d{3})+$/.test(text)) {
+        text = text.split(",").join("");
+      } else if (text.split(",").length === 2) {
+        text = text.replace(",", ".");
+      } else {
+        return NaN;
+      }
+    }
+    if (!DECIMAL.test(text)) return NaN;
     const value = Number(text);
     return Number.isFinite(value) ? value : NaN;
-  }
-
-  function trimFixed(value, digits) {
-    if (!Number.isFinite(value)) return "—";
-    const rounded = value.toFixed(digits);
-    return rounded.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   }
 
   // Presentation only: four significant figures for linear quantities, and
@@ -195,16 +204,6 @@
     if (mw < 1) return `${formatNumber(mw * 1e3)} µW`;
     if (mw < 1000) return `${formatNumber(mw)} mW`;
     return `${formatNumber(watts)} W`;
-  }
-
-  function formatCurrent(amps) {
-    if (!Number.isFinite(amps)) return "—";
-    const mag = Math.abs(amps);
-    if (mag === 0) return "0 A";
-    if (mag < 1e-6) return `${formatNumber(amps * 1e9)} nA`;
-    if (mag < 1e-3) return `${formatNumber(amps * 1e6)} µA`;
-    if (mag < 1) return `${formatNumber(amps * 1e3)} mA`;
-    return `${formatNumber(amps)} A`;
   }
 
   function voltsToUnit(volts, unit) {
@@ -350,31 +349,6 @@
     };
   }
 
-  function ip3FromDbc(pToneDbm, im3Dbc, gainDb) {
-    if (!Number.isFinite(pToneDbm) || !Number.isFinite(im3Dbc)) {
-      return null;
-    }
-    const delta = -im3Dbc;
-    const iip3 = pToneDbm + delta / 2;
-    const g = Number.isFinite(gainDb) ? gainDb : NaN;
-    const oip3 = Number.isFinite(g) ? iip3 + g : NaN;
-    return {
-      pToneDbm,
-      im3Dbc,
-      im3Dbm: pToneDbm + im3Dbc,
-      delta,
-      iip3,
-      oip3,
-      gainDb: g,
-      p1dbThumb: Number.isFinite(oip3) ? oip3 - 10 : NaN
-    };
-  }
-
-  function ip3FromAbs(pToneDbm, im3Dbm, gainDb) {
-    if (!Number.isFinite(pToneDbm) || !Number.isFinite(im3Dbm)) return null;
-    return ip3FromDbc(pToneDbm, im3Dbm - pToneDbm, gainDb);
-  }
-
   function p1dbFromInput(gainDb, pin1dB) {
     if (!Number.isFinite(gainDb) || !Number.isFinite(pin1dB)) return null;
     return {
@@ -478,12 +452,6 @@
     return 1 / (vf * vf);
   }
 
-  function formatVswr(vswr) {
-    if (!Number.isFinite(vswr)) return "∞";
-    if (vswr >= 100) return vswr.toFixed(1);
-    return vswr.toFixed(3);
-  }
-
   // Passive loads, real positive reference impedance. Handles short and open.
   function complexMatch(r, x, z0) {
     if (![r, x, z0].every(Number.isFinite) || r < 0 || !(z0 > 0)) return null;
@@ -568,8 +536,118 @@
       snr: inputDbm + gainDb - noiseDbm };
   }
 
+  // Frequency text with an optional SI prefix or unit: "10k", "100 MHz", "10G". Bare numbers use defaultScale.
+  const FREQUENCY_SCALE = { '': 1, hz: 1, k: 1e3, khz: 1e3, m: 1e6, mhz: 1e6, g: 1e9, ghz: 1e9, t: 1e12, thz: 1e12 };
+  function parseFrequency(raw, defaultScale) {
+    if (raw == null) return NaN;
+    const match = String(raw).trim().match(/^(.*?)\s*([kKmMgGtT]?(?:[hH][zZ])?)$/);
+    if (!match) return NaN;
+    const number = parseNumber(match[1]), suffix = match[2].toLowerCase();
+    if (!Number.isFinite(number)) return NaN;
+    return number * (suffix === '' ? (defaultScale > 0 ? defaultScale : 1) : FREQUENCY_SCALE[suffix]);
+  }
+
+  // Frequencies keep up to ten significant digits so sweep boundaries read exactly.
+  function formatFrequency(hz) {
+    if (!Number.isFinite(hz)) return { value: NaN, unit: 'Hz', text: '—' };
+    const mag = Math.abs(hz);
+    const unit = mag >= 1e9 ? 'GHz' : mag >= 1e6 ? 'MHz' : mag >= 1e3 ? 'kHz' : 'Hz';
+    const value = Number((hz / FREQUENCY_SCALE[unit.toLowerCase()]).toPrecision(10));
+    return { value, unit, text: `${value} ${unit}` };
+  }
+
+  // Linear sweep from start to stop in equal steps. The step divides the span when `exact`;
+  // otherwise `points` is the count that fits without passing stop, and the alternatives land on stop.
+  function sweepPoints(start, stop, step) {
+    if (![start, stop, step].every(Number.isFinite) || !(step > 0) || stop < start) return null;
+    const span = stop - start, n = span / step, nearest = Math.round(n);
+    const exact = Math.abs(n - nearest) <= 1e-9 * Math.max(1, n);
+    const points = (exact ? nearest : Math.floor(n)) + 1;
+    return { start, stop, step, span, points, exact, lastPoint: exact ? stop : start + (points - 1) * step,
+      pointsCeil: exact ? points : Math.ceil(n) + 1, stepCeil: exact ? step : span / Math.ceil(n),
+      stepFloor: exact ? step : Math.floor(n) > 0 ? span / Math.floor(n) : NaN };
+  }
+
+  function sweepStep(start, stop, points) {
+    if (![start, stop].every(Number.isFinite) || !Number.isInteger(points) || points < 1 || stop < start) return null;
+    if (points === 1) return stop === start ? { start, stop, points, step: 0, span: 0, exact: true, lastPoint: stop } : null;
+    return { start, stop, points, step: (stop - start) / (points - 1), span: stop - start, exact: true, lastPoint: stop };
+  }
+
+  // Segment table: per-segment point counts and relative spacing, boundary continuity, and jumps.
+  // mode 'relative' (log-style tables) compares Δf/f at adjacent segment starts, so a decade table
+  // that repeats its pattern is smooth; mode 'absolute' compares step sizes. A boundary is "sharp"
+  // when the chosen ratio is outside 1/jumpLimit .. jumpLimit (default 3x).
+  function segmentedSweep(segments, options) {
+    const opts = options || {};
+    if (!Array.isArray(segments) || segments.length === 0 || segments.length > 100) return null;
+    const rows = [];
+    for (const segment of segments) {
+      if (!segment || !(segment.start > 0)) return null;
+      const linear = sweepPoints(segment.start, segment.stop, segment.step);
+      if (!linear) return null;
+      rows.push(Object.assign(linear, {
+        fractionalStart: linear.step / linear.start, fractionalStop: linear.step / linear.lastPoint,
+        pointsPerDecadeStart: 1 / Math.log10(1 + linear.step / linear.start),
+        pointsPerDecadeStop: 1 / Math.log10(1 + linear.step / linear.lastPoint) }));
+    }
+    // Average density counts a segment as covering [start, next start) so a 1..9 decade is 9 per decade.
+    rows.forEach((r, i) => {
+      const next = rows[i + 1], end = next && next.start > r.lastPoint ? next.start : r.lastPoint + r.step;
+      r.decadePoints = r.points / Math.log10(end / r.start);
+    });
+    const jumpLimit = opts.jumpLimit > 1 ? opts.jumpLimit : 3, mode = opts.mode === 'absolute' ? 'absolute' : 'relative';
+    const outside = ratio => ratio > jumpLimit || ratio < 1 / jumpLimit;
+    const boundaries = [];
+    for (let i = 1; i < rows.length; i++) {
+      const a = rows[i - 1], b = rows[i], gap = b.start - a.lastPoint, wide = Math.max(a.step, b.step);
+      const kind = gap < 0 ? 'overlap' : gap === 0 ? 'duplicate' : gap <= wide * (1 + 1e-9) ? 'contiguous' : 'gap';
+      const stepRatio = b.step / a.step, patternRatio = b.fractionalStart / a.fractionalStart;
+      boundaries.push({ index: i, frequency: b.start, gap, kind, stepRatio, patternRatio,
+        fractionalRatio: b.fractionalStart / a.fractionalStop,
+        sharp: outside(mode === 'relative' ? patternRatio : stepRatio) });
+    }
+    const points = rows.reduce((sum, r) => sum + r.points, 0);
+    const first = rows[0].start, last = rows[rows.length - 1].lastPoint;
+    const fine = Math.min(...rows.map(r => r.fractionalStop)), coarse = Math.max(...rows.map(r => r.fractionalStart));
+    const logPoints = ratio => last > first ? Math.ceil(Math.log(last / first) / Math.log(1 + ratio)) + 1 : 1;
+    const maxPoints = Number.isInteger(opts.maxPoints) && opts.maxPoints > 0 ? opts.maxPoints : null;
+    const ifbw = opts.ifbw > 0 ? opts.ifbw : null;
+    return { rows, boundaries, points, first, last, jumpLimit, mode, maxPoints, ifbw,
+      headroom: maxPoints === null ? null : maxPoints - points,
+      sweepTime: ifbw === null ? NaN : points / ifbw,
+      inexact: rows.filter(r => !r.exact).length,
+      decadePoints: { min: Math.min(...rows.map(r => r.decadePoints)), max: Math.max(...rows.map(r => r.decadePoints)) },
+      problems: rows.filter(r => !r.exact).length + boundaries.filter(b => b.sharp || b.kind !== 'contiguous').length + (maxPoints !== null && points > maxPoints ? 1 : 0),
+      log: { fine, coarse, finePoints: logPoints(fine), coarsePoints: logPoints(coarse) } };
+  }
+
+  // Log-style table: points at 1, 1+k, 1+2k, ... times each decade (k = multiplierStep), one linear
+  // segment per decade, optionally followed by a linear tail from tailStart to stop.
+  function logTable(start, stop, multiplierStep, tailStart, tailStep) {
+    const k = multiplierStep, tail = Number.isFinite(tailStart);
+    if (!(start > 0) || !(stop > start) || !(k > 0) || !(k <= 9)) return null;
+    if (tail && (!(tailStart > start) || !(tailStart <= stop) || !(tailStep > 0))) return null;
+    const logStop = tail ? tailStart : stop, segments = [], round = f => Number(f.toPrecision(12));
+    for (let n = Math.floor(Math.log10(start) + 1e-9); segments.length <= 60; n++) {
+      const base = Math.pow(10, n);
+      if (base > logStop * (1 + 1e-9)) break;
+      const points = [];
+      for (let m = 1; m < 10 - 1e-9; m = round(m + k)) {
+        const f = round(m * base);
+        if (f < start * (1 - 1e-12)) continue;
+        if (tail ? f >= logStop * (1 - 1e-12) : f > logStop * (1 + 1e-12)) break;
+        points.push(f);
+      }
+      if (points.length) segments.push({ start: points[0], stop: points[points.length - 1], step: round(k * base) });
+    }
+    if (segments.length > 60) return null;
+    if (tail) segments.push({ start: tailStart, stop, step: tailStep });
+    return segments.length ? segments : null;
+  }
+
   const RF = {
-    formatNumber, parseZero,
+    formatNumber, parseZero, parseFrequency, formatFrequency, sweepPoints, sweepStep, segmentedSweep, logTable,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,
@@ -592,12 +670,10 @@
     dbmOf,
     voppOf,
     parseNumber,
-    trimFixed,
     formatDbm,
     splitVoltage,
     formatVoltage,
     formatPowerWatts,
-    formatCurrent,
     voltsToUnit,
     unitToVolts,
     reflection,
@@ -612,8 +688,6 @@
     mismatchLossFromGamma,
     gammaFromMismatchLoss,
     matchFromGamma,
-    ip3FromDbc,
-    ip3FromAbs,
     p1dbFromInput,
     p1dbFromOutput,
     compressionAt,
@@ -625,8 +699,7 @@
     degreesFromLength,
     lengthFromDegrees,
     vfFromEr,
-    erFromVf,
-    formatVswr
+    erFromVf
   };
 
   if (typeof module === "object" && module.exports) {
