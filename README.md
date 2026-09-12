@@ -76,9 +76,13 @@ VOPP_diff  = 2 · VOPP_SE
 
 ## Large-signal
 
-- **Two-tone:** two equal CW tones. Envelope VOPP is **2×** the CW VOPP at that per-tone dBm. PEP is **+6.02 dB** vs one tone.
-- **IMD3:** select whether each tone's dBm is at the DUT input or output.
-  IIP3 = P_input,tone + Δ/2; OIP3 = P_output,tone + Δ/2. OIP3 = IIP3 + G.
+- **Two-tone workspace:** one setup drives three sections. The per-tone level, reference
+  plane, impedance, drive mode, and gain are entered once at the top; changing the reference
+  plane converts the tone level by the gain. Envelope VOPP is **2×** the CW VOPP at that
+  per-tone dBm, and PEP is **+6.02 dB** vs one tone. Links from the older separate tabs
+  (`tab=tones`, `tab=imd3`, and the old `imd-tone` field) still load.
+- **IMD3:** the shared reference plane says whether the tone level is at the DUT input or
+  output. IIP3 = P_input,tone + Δ/2; OIP3 = P_output,tone + Δ/2. OIP3 = IIP3 + G.
   Absolute IM3 dBm is always at the **DUT output**; dBc is relative to one output
   tone. Gain defaults to 0 dB when blank; enter the DUT gain to translate between
   input and output reference planes. Changing units

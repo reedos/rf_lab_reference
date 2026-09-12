@@ -95,17 +95,25 @@ let checks=0;
         });
         await check('IP3 reference planes, absolute IM3 conversion and blank unity gain',async()=>{
           await go('large-signal.html?tab=imd3');
+          // A legacy tab link lands on the merged workspace.
+          await expect(page.locator('#panel-twotone')).toBeVisible();
           const before=await page.locator('#imd-metrics').innerText(); assert.match(before,/30\.00 dBm/);
           await page.locator('#imd-unit').selectOption('dbm'); await numeric('imd-im3',-30);
-          await page.locator('#imd-plane').selectOption('output'); await numeric('imd-tone',10);
+          await page.locator('#ls-plane').selectOption('output'); await numeric('tone-dbm',10);
           await expect(page.locator('#imd-metrics')).toContainText(/30\.00 dBm/);
+          // The envelope section follows the same tone level.
+          await expect(page.locator('#tt-metrics')).toContainText(/2 V/);
+          await expect(page.locator('#tone-scope')).toContainText('DUT output');
           await fill('imd-gain',''); await expect.poll(valid).toBe(true);
-          await page.locator('#imd-plane').selectOption('input'); await expect.poll(valid).toBe(true); await numeric('imd-tone',10);
-          await fill('imd-tone',-10); await expect.poll(valid).toBe(true);
+          await page.locator('#ls-plane').selectOption('input'); await expect.poll(valid).toBe(true); await numeric('tone-dbm',10);
+          await fill('tone-dbm',-10); await expect.poll(valid).toBe(true);
           await fill('imd-gain',20); await expect.poll(valid).toBe(true);
+          // A legacy link carrying only the old IMD3 tone field still restores the level.
+          await go('large-signal.html?tab=imd3&imd-tone=-14&imd-plane=output');
+          await numeric('tone-dbm',-14); await expect(page.locator('#ls-plane')).toHaveValue('output');
         });
         await check('Tone plan grids products on the spacing and reports the limiting analyzer floor',async()=>{
-          await go('large-signal.html?tab=tones');
+          await go('large-signal.html?tab=twotone');
           await expect(page.locator('#tone-f2')).toHaveValue('1.001 GHz');
           await expect(page.locator('#tone-metrics')).toContainText('999 MHz');
           await expect(page.locator('#tone-metrics')).toContainText('1.002 GHz');
@@ -122,6 +130,7 @@ let checks=0;
           await expect(page.locator('#tone-rows tr.over-limit').first()).toBeVisible();
           await page.reload(); await expect(page.locator('#tone-metrics')).toContainText(/-70 dBc/);
           await fill('tone-f1','bad'); await expect.poll(valid).toBe(false);
+          await expect(page.locator('#tt-metrics')).toContainText(/Envelope/);
           await fill('tone-f1','1 GHz'); await fill('tone-delta','2.5 GHz');
           await expect(page.locator('#tone-status')).toContainText(/below zero frequency/);
         });
@@ -153,11 +162,11 @@ let checks=0;
           await expect(page.locator('#thd-metrics')).toContainText(/fundamental frequency/);
         });
         await check('Large-signal saves every tab, P1dB driver and THD data',async()=>{
-          await go('large-signal.html?tab=imd3'); await fill('imd-tone',-14); await fill('imd-im3',-46);
+          await go('large-signal.html'); await fill('tone-dbm',-14); await fill('imd-im3',-46);
           await page.locator('[data-panel="p1db"]').click(); await fill('p1-pout',7);
           await page.locator('[data-panel="thd"]').click(); await fill('thd-h2',-55); await fill('thd-h4',-70);
           await page.reload(); await numeric('thd-h2',-55); await numeric('thd-h4',-70);
-          await page.locator('[data-panel="imd3"]').click(); await numeric('imd-tone',-14); await numeric('imd-im3',-46);
+          await page.locator('[data-panel="twotone"]').click(); await numeric('tone-dbm',-14); await numeric('imd-im3',-46);
           await page.locator('[data-panel="p1db"]').click(); await numeric('p1-pout',7);
           await fill('p1-gain',22); await numeric('p1-pout',7); await numeric('p1-pin',-14);
           await page.locator('[data-panel="thd"]').click(); await fill('thd-h4','bad'); await expect.poll(valid).toBe(false);
@@ -372,11 +381,11 @@ let checks=0;
             'match.html?z=50&x=50',
             'delay.html?phase-mode=reflection&phase-p2=-72',
             'large-signal.html?tab=twotone&m=diff',
-            'large-signal.html?tab=imd3&imd-unit=dbm',
+            'large-signal.html?tab=twotone&imd-unit=dbm',
             'large-signal.html?tab=p1db&p1-meas=7',
             'large-signal.html?tab=thd&thd-h4=-60&thd-h5=-70',
             'large-signal.html?tab=thd&thd-f0=1+GHz&thd-fc=1+GHz&thd-contam=-10&thd-fmax=2+GHz',
-            'large-signal.html?tab=tones&tone-rbw=100+Hz&tone-level=-20&tone-toi=15&tone-pn=-140&tone-danl=-155',
+            'large-signal.html?tab=twotone&tone-rbw=100+Hz&tone-level=-20&tone-toi=15&tone-pn=-140&tone-danl=-155',
             'chain.html?stages=%5B%5D',
             'sweep.html?p-start=-20&p-stop=-4&p-step=0.1'
           ]) {
