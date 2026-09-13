@@ -225,7 +225,7 @@
       eq('Power sweep points', String.raw`N_{P} &= \frac{P_{\mathrm{stop}}-P_{\mathrm{start}}}{\Delta P}+1`, tex(power.points), String.raw`\frac{${tex(power.stop, 'dBm', false)}-(${tex(power.start, 'dBm', false)})}{${tex(power.step, 'dB', false)}}+1`),
       ...(noise ? [
         eq('Noise floor at the working IF bandwidth', String.raw`P_{\mathrm{floor}} &= P_{\mathrm{ref}} + 10\log_{10}\frac{\mathrm{IFBW}}{\mathrm{IFBW}_{\mathrm{ref}}} - 10\log_{10}N`, tex(noise.floor, 'dBm'),
-          String.raw`${tex(noise.floorRef, 'dBm', false)} + 10\log_{10}\frac{${tex(noise.ifbw, 'Hz', false)}}{${tex(noise.ifbwRef, 'Hz', false)}} - 10\log_{10}${tex(noise.averages)}\,\mathrm{dBm}`),
+          String.raw`${tex(noise.floorRef, 'dBm', false)} + 10\log_{10}\frac{${tex(noise.ifbw, 'Hz', false)}}{${tex(noise.ifbwRef, 'Hz', false)}} \\ &\quad - 10\log_{10}${tex(noise.averages)}\,\mathrm{dBm}`),
         ...(noise.snr !== null ? [
           eq('Margin above the floor', String.raw`\mathrm{SNR} &= P_{\mathrm{rx}} - P_{\mathrm{floor}}`, tex(noise.snr, 'dB'), String.raw`${tex(noise.signal, 'dBm', false)} - (${tex(noise.floor, 'dBm', false)})\,\mathrm{dB}`),
           eq('Trace noise from the in-phase noise component', String.raw`\sigma_{\mathrm{dB}} &\approx \frac{20}{\ln 10}\cdot\frac{10^{-\mathrm{SNR}/20}}{\sqrt 2} \\ \sigma_{\phi} &\approx \frac{180}{\pi}\cdot\frac{10^{-\mathrm{SNR}/20}}{\sqrt 2}`,

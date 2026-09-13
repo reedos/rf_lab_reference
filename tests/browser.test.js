@@ -743,11 +743,31 @@ let checks=0;
           }
           // A table that runs past the phone's edge says so; one that fits does not.
           await go('sweep.html');
-          await expect.poll(()=>page.locator('#sweep-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('right');
-          await page.evaluate(()=>{const el=document.querySelector('#sweep-rows').closest('.chain-results'); el.scrollLeft=el.scrollWidth;});
-          await expect.poll(()=>page.locator('#sweep-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('left');
+          await go('mixed.html');
+          await expect.poll(()=>page.locator('#mm-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('right');
+          await page.evaluate(()=>{const el=document.querySelector('#mm-rows').closest('.chain-results'); el.scrollLeft=el.scrollWidth;});
+          await expect.poll(()=>page.locator('#mm-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('left');
           await go('index.html');
           assert.equal(await page.locator('#ref-body').locator('xpath=ancestor::section[contains(@class,"ref")]').getAttribute('data-scroll'),null);
+          // The heading above a reference table stays put: the frame scrolls, not the card.
+          await go('gain.html');
+          assert.equal(await page.locator('.ref').first().getAttribute('data-scroll'),null);
+          assert.equal(await page.evaluate(()=>document.querySelector('.ref').scrollWidth-document.querySelector('.ref').clientWidth),0);
+          // Nothing needs a sideways scroll at phone width except a matrix, and no equation does.
+          for (const file of ['gain.html?t=sd','gain.html?t=dd&s11-db=-10&s11-deg=180','mixed.html','mixed.html?din=diff&dout=se','large-signal.html','large-signal.html?tab=thd','sweep.html?ifbw=1','chain.html','index.html?m=diff','match.html?z=25&x=30','delay.html']) {
+            await go(file); await page.locator('.calculation summary').click(); await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
+            const over=await page.evaluate(()=>{const out=[];
+              document.querySelectorAll('.katex-display').forEach(el=>{const box=el.closest('.equation-math, .gain-result')||el.parentElement, html=el.querySelector('.katex-html'); if(html&&html.getBoundingClientRect().width-box.clientWidth>2) out.push('equation '+(el.textContent||'').slice(0,30));});
+              document.querySelectorAll('.ref, .table-scroll, .chain-results').forEach(el=>{if(!el.querySelector('.matrix')&&el.scrollWidth-el.clientWidth>2) out.push('table '+el.className);});
+              return out;});
+            assert.deepEqual(over,[],file+' scrolls sideways');
+          }
+          // List tables stack into cards with their headings; the mixed-mode matrix keeps its grid.
+          await go('sweep.html');
+          assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#sweep-rows tr')).display),'grid');
+          assert.equal(await page.evaluate(()=>document.querySelector('#sweep-rows td:nth-child(2)').getAttribute('data-label')),'Start');
+          await go('mixed.html');
+          assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#mm-rows tr')).display),'table-row');
           await go('sweep.html');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs thead')).display),'none');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs tbody tr')).display),'block');
@@ -767,18 +787,22 @@ let checks=0;
           await expect.poll(eqColours).toContain('rgb(180, 83, 9)');
           assert.equal(await page.evaluate(()=>document.querySelector('meta[name="theme-color"]').content),'#ffffff');
           // A pinned choice survives a reload and is the only thing stored.
-          await page.locator('[data-theme-choice="dark"]').click();
+          // The button cycles Auto, Light, Dark and shows the choice in force.
+          await page.locator('#theme-button').click();
+          await expect.poll(theme).toBe('light'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),'light');
+          await expect(page.locator('#theme-button')).toHaveAttribute('data-theme-choice','light');
+          await page.locator('#theme-button').click();
           await expect.poll(theme).toBe('dark'); await expect.poll(eqColours).toContain('rgb(243, 182, 58)');
           await page.reload(); await page.locator('#calculation-text').waitFor({state:'attached'});
           assert.equal(await theme(),'dark'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),'dark');
-          await expect(page.locator('[data-theme-choice="dark"]')).toHaveClass(/is-active/);
+          await expect(page.locator('#theme-button')).toHaveAttribute('data-theme-choice','dark');
           // Exports recolour the algebra for their own theme rather than the page's.
           const exported=t=>page.evaluate(t=>Array.from(Snapshot.prepare(document.getElementById('gain-equation'),t).querySelectorAll('.katex-html [style*="color"]')).map(n=>n.style.color),t);
           assert.ok((await exported('light')).includes('rgb(180, 83, 9)'),'light export uses light amber');
           assert.ok(!(await exported('light')).includes('rgb(243, 182, 58)'),'light export drops dark amber');
           assert.ok((await exported('dark')).includes('rgb(243, 182, 58)'),'dark export keeps dark amber');
           // Auto again: back to the system, nothing stored.
-          await page.locator('[data-theme-choice="system"]').click();
+          await page.locator('#theme-button').click();
           await expect.poll(theme).toBe('light'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),null);
           // Every page lays out and renders its equations in the light theme on a phone.
           await page.setViewportSize({width:390,height:900});

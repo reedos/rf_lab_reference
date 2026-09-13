@@ -2,7 +2,6 @@
 .fields { grid-template-columns: minmax(0, 1fr); }
 .field, .field-row, .field input { min-width: 0; }
 .field-label { flex-wrap: wrap; }
-.ref { overflow-x: auto; }
 #chart { width: 100%; height: auto; display: block; }
 @media (min-width: 720px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .bench-tools details, .reference-details { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-elev); margin: 10px 0; padding: 15px 18px; }
@@ -17,7 +16,7 @@ summary { cursor: pointer; font-weight: 500; }
 .equation-math .katex-display > .katex { text-align: left; }
 .equation-math .katex { font-size: 1.15em; }
 .equation-error { color: var(--danger); font-size: 13px; }
-@media (max-width: 700px) { .equation { padding: 14px 10px; } .equation-math .katex { font-size: 1em; } }
+@media (max-width: 700px) { .equation { padding: 14px 10px; } .equation-math .katex { font-size: 1em; } .gain-result { padding: 14px 12px; } .gain-result .katex { font-size: 1em; } }
 .muted, .hint { color: var(--muted); }
 .setup-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-top: 16px; }
 .setup-controls label { flex: 1 1 180px; }
@@ -50,13 +49,13 @@ summary { cursor: pointer; font-weight: 500; }
 .gain-svg .head { fill: var(--line-strong); stroke: none; }
 /* Mixed-mode page: the single-ended entry grid and the mixed-mode result table. */
 .chain-results .s-grid { width: auto; font-size: 12px; }
-.chain-results .s-grid th, .chain-results .s-grid td { text-align: left; padding: 6px 8px; white-space: nowrap; }
+.chain-results .s-grid th, .chain-results .s-grid td { text-align: center; padding: 6px 8px; white-space: nowrap; }
 .chain-results .s-grid th { font-family: var(--font-mono); }
 .s-cell { display: flex; align-items: center; gap: 4px; }
 .s-grid input { width: 5.4em; margin: 0; padding: 8px 8px; font-size: 13px; background: var(--bg-inset); color: var(--text); border: 1px solid var(--line-strong); border-radius: 8px; font-family: var(--font-mono); }
 .s-cell span { color: var(--dim); font-size: 11px; }
-.chain-results .mm-table th { text-align: left; font-family: var(--font-mono); }
-.chain-results .mm-table td { text-align: left; font-family: var(--font-mono); }
+.chain-results .mm-table th { text-align: center; font-family: var(--font-mono); }
+.chain-results .mm-table td { text-align: center; font-family: var(--font-mono); }
 .chain-results .mm-table td.is-primary { color: var(--accent); font-weight: 500; }
 .equation-group { margin: 0 0 8px; font: 500 12px var(--font-display); color: var(--muted); }
 #mixed-equations .gain-result { margin: 12px 0; }
@@ -125,7 +124,7 @@ button:disabled { opacity: .45; cursor: default; }
 .stage .work-fields { margin-bottom: 0; }
 .chain-results { overflow-x: auto; }
 .chain-results table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.chain-results th, .chain-results td { padding: 13px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.chain-results th, .chain-results td { padding: 13px 12px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
 .chain-results th:first-child, .chain-results td:first-child { text-align: left; white-space: normal; min-width: 115px; overflow-wrap: anywhere; }
 .chain-results td { font-family: var(--font-mono); }
 .chain-results th { color: var(--muted); font-weight: 400; }
@@ -161,6 +160,18 @@ button:disabled { opacity: .45; cursor: default; }
   nav { justify-content: flex-start; letter-spacing: .05em; }
   nav a { padding: 8px; }
   .setup-controls button { min-height: 42px; }
+}
+/* On a phone a list table becomes cards: one per row, each value under its own heading, so
+   nothing scrolls sideways. Matrices keep their rows and columns. */
+@media (max-width: 700px) {
+  .chain-results table:not(.matrix), .chain-results table:not(.matrix) tbody { display: block; width: 100%; }
+  .chain-results table:not(.matrix) thead { display: none; }
+  .chain-results table:not(.matrix) tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; padding: 10px 0 12px; border-bottom: 1px solid var(--line); }
+  .chain-results table:not(.matrix) td { display: block; padding: 0; border: 0; text-align: left; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+  .chain-results table:not(.matrix) td:first-child { grid-column: 1 / -1; color: var(--text); font-weight: 500; }
+  .chain-results table:not(.matrix) td::before { content: attr(data-label); display: block; margin-bottom: 1px; font: 500 .58rem var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+  .chain-results table:not(.matrix) td[colspan] { grid-column: 1 / -1; }
+  .chain-results table:not(.matrix) td[colspan]::before { display: none; }
 }
 @media (max-width: 700px) {
   /* The diagrams scale with the page, so their labels grow to stay legible on a phone. */

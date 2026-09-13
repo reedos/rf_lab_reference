@@ -9,8 +9,8 @@
   <title>Voltage &amp; power gain &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-14">
-  <link rel="stylesheet" href="css/app.css?v=20260913-14"><link rel="stylesheet" href="css/workbench.css?v=20260913-14">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-15">
+  <link rel="stylesheet" href="css/app.css?v=20260913-15"><link rel="stylesheet" href="css/workbench.css?v=20260913-15">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -154,13 +154,13 @@
 
 <section class="ref">
   <div class="ref-head"><h2>Standard references</h2><p>100 Ω differential, 50 Ω single-ended</p></div>
-  <table>
-    <thead><tr><th>Topology</th><th>Parameter</th><th>Z<sub>1</sub></th><th>Z<sub>2</sub></th><th>Voltage factor</th><th>Add to dB</th></tr></thead>
+  <table class="refs">
+    <thead><tr><th>Topology</th><th>S-param</th><th>Z<sub>1</sub></th><th>Z<sub>2</sub></th><th class="phone-hide">Voltage factor</th><th>Add to dB</th></tr></thead>
     <tbody>
-      <tr><td>Diff → Diff</td><td class="num">S<sub>dd21</sub></td><td class="num">100 Ω</td><td class="num">100 Ω</td><td class="num">1</td><td class="num">0.00 dB</td></tr>
-      <tr><td>Diff → SE</td><td class="num">S<sub>sd21</sub></td><td class="num">100 Ω</td><td class="num">50 Ω</td><td class="num">0.7071</td><td class="num">−3.01 dB</td></tr>
-      <tr><td>SE → Diff</td><td class="num">S<sub>ds21</sub></td><td class="num">50 Ω</td><td class="num">100 Ω</td><td class="num">1.414</td><td class="num">+3.01 dB</td></tr>
-      <tr><td>SE → SE</td><td class="num">S<sub>21</sub></td><td class="num">50 Ω</td><td class="num">50 Ω</td><td class="num">1</td><td class="num">0.00 dB</td></tr>
+      <tr><td>Diff → Diff</td><td class="num">S<sub>dd21</sub></td><td class="num">100 Ω</td><td class="num">100 Ω</td><td class="num phone-hide">1</td><td class="num">0.00 dB</td></tr>
+      <tr><td>Diff → SE</td><td class="num">S<sub>sd21</sub></td><td class="num">100 Ω</td><td class="num">50 Ω</td><td class="num phone-hide">0.7071</td><td class="num">−3.01 dB</td></tr>
+      <tr><td>SE → Diff</td><td class="num">S<sub>ds21</sub></td><td class="num">50 Ω</td><td class="num">100 Ω</td><td class="num phone-hide">1.414</td><td class="num">+3.01 dB</td></tr>
+      <tr><td>SE → SE</td><td class="num">S<sub>21</sub></td><td class="num">50 Ω</td><td class="num">50 Ω</td><td class="num phone-hide">1</td><td class="num">0.00 dB</td></tr>
     </tbody>
   </table>
 </section>
@@ -171,6 +171,6 @@
 <p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
 <p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/theme.js?v=20260913-14"></script><script src="js/bench.js?v=20260913-14"></script><script src="js/rf.js?v=20260913-14"></script><script src="js/dut.js?v=20260913-14"></script><script src="js/snapshot.js?v=20260913-14"></script><script src="js/gain.js?v=20260913-14"></script>
+<script src="js/theme.js?v=20260913-15"></script><script src="js/bench.js?v=20260913-15"></script><script src="js/rf.js?v=20260913-15"></script><script src="js/dut.js?v=20260913-15"></script><script src="js/snapshot.js?v=20260913-15"></script><script src="js/gain.js?v=20260913-15"></script>
 </body>
 </html>

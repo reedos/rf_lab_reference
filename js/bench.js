@@ -134,7 +134,25 @@
   }
   // A table wider than its wrapper scrolls sideways; the wrapper says so with a fade on the
   // side that has more, which is the cue a phone otherwise lacks.
-  const scrollers = () => document.querySelectorAll('.ref, .chain-results');
+  const scrollers = () => document.querySelectorAll('.table-scroll, .chain-results');
+  // A reference table gets its own scrolling frame so the heading above it stays put, and
+  // every cell learns its column heading for the stacked phone layout.
+  function dressTables() {
+    document.querySelectorAll('.ref > table').forEach(table => {
+      const frame = document.createElement('div'); frame.className = 'table-scroll';
+      table.replaceWith(frame); frame.append(table);
+    });
+    document.querySelectorAll('table').forEach(table => {
+      const heads = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+      if (!heads.length) return;
+      table.querySelectorAll('tbody tr').forEach(row => Array.from(row.children).forEach((cell, i) => {
+        if (heads[i] !== undefined && cell.getAttribute('data-label') !== heads[i]) cell.setAttribute('data-label', heads[i]);
+      }));
+    });
+  }
+  // Pages set some equations on one line for a desktop and several for a phone.
+  const narrowMedia = matchMedia('(max-width: 700px)');
+  narrowMedia.addEventListener('change', () => { document.dispatchEvent(new CustomEvent('layout-change', { detail: narrowMedia.matches })); scheduleRender(); });
   function markScroll(el) {
     const left = el.scrollLeft > 1, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
     const state = left && right ? 'left right' : left ? 'left' : right ? 'right' : '';
@@ -159,7 +177,7 @@
     if (save) save.disabled = !value.valid;
     ['copy-result', 'copy-link'].forEach(id => { const button = document.getElementById(id); if (button) button.disabled = !value.valid; });
     document.dispatchEvent(new CustomEvent('bench-valid', { detail: value.valid }));
-    requestAnimationFrame(watchScroll);
+    requestAnimationFrame(() => { dressTables(); watchScroll(); });
   }
   function say(message) { if (status) status.textContent = message; }
   async function copy(text) {
@@ -168,7 +186,7 @@
       say('Copied.');
     } catch (_) { say('Clipboard unavailable. Select and copy the address or calculation text.'); }
   }
-  window.Bench = { update, copy, read, raw, setNumber, enhance, math, tex, voltage, equation, tint, mark, PORT, calculationClone, get valid() { return latest.valid; } };
+  window.Bench = { update, copy, read, raw, setNumber, enhance, math, tex, voltage, equation, tint, mark, PORT, calculationClone, get valid() { return latest.valid; }, get narrow() { return narrowMedia.matches; } };
   document.addEventListener('DOMContentLoaded', function () {
     const calc = document.getElementById('calc');
     if (!calc) return;
@@ -222,6 +240,6 @@
       if (list.value === '') return say('Choose a saved setup.');
       if (persist(setups.filter((_, i) => i !== Number(list.value)))) say('Setup deleted.');
     });
-    refresh(); update(latest); watchScroll();
+    refresh(); update(latest); dressTables(); watchScroll();
   });
 })();

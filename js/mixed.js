@@ -141,7 +141,9 @@
     const c = Math.abs(entry.terms[0].coefficient);
     const prefix = Math.abs(c - 0.5) < 1e-9 ? '\\tfrac12' : Math.abs(c - Math.SQRT1_2) < 1e-9 ? '\\tfrac{1}{\\sqrt 2}' : '';
     const parts = entry.terms.map((t, k) => `${t.coefficient < 0 ? '-' : k ? '+' : ''}(${rect(S[t.i][t.j])})`);
-    const body = parts.length > 2 ? parts.slice(0, 2).join(' ') + ' \\\\ &\\qquad ' + parts.slice(2).join(' ') : parts.join(' ');
+    const per = Bench.narrow ? 1 : 2, groups = [];
+    for (let i = 0; i < parts.length; i += per) groups.push(parts.slice(i, i + per).join(' '));
+    const body = groups.join(' \\\\ &\\qquad ');
     return prefix ? `${prefix}\\bigl[${body}\\bigr]` : body;
   }
   function renderTransform() {
@@ -156,7 +158,8 @@
       const body = parts.map(({ port, w }, k) => `${w < 0 ? '-' : k ? '+' : ''}a_{${port}}`).join('');
       return `a_{${sideTint(r.side, `\\mathrm{${r.mode}}${r.side}`)}} &= ${parts.length === 2 ? `\\frac{${body}}{\\sqrt 2}` : body}`;
     }).join(' \\\\ ');
-    Bench.math($('mixed-transform'), `\\begin{aligned} ${waves} \\end{aligned} \\qquad T = \\begin{bmatrix} ${matrix} \\end{bmatrix} \\qquad S_{\\mathrm{mm}} = T\\,S\\,T^{\\mathsf T}`, true);
+    const parts = [`\\begin{aligned} ${waves} \\end{aligned}`, `T = \\begin{bmatrix} ${matrix} \\end{bmatrix}`, `S_{\\mathrm{mm}} = T\\,S\\,T^{\\mathsf T}`];
+    Bench.math($('mixed-transform'), Bench.narrow ? `\\begin{gathered} ${parts.join(' \\\\[8pt] ')} \\end{gathered}` : parts.join(' \\qquad '), true);
     $('mixed-transform').setAttribute('data-latex', `T = [${matrix}]`);
   }
   function renderEquations(m) {
@@ -285,6 +288,7 @@
   });
   document.addEventListener('dut-change', () => { pullFromCard(); validateMapping(); renderMapping(); renderGrid(); compute(); });
   document.addEventListener('theme-change', compute);
+  document.addEventListener('layout-change', compute);
   Dut.describe('the port topology on each side and the per-line references that set the mode impedances');
   $('copy-link').addEventListener('click', () => { if (Bench.valid) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => {

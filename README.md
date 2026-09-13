@@ -11,7 +11,7 @@ No build step. Classic scripts, no bundler.
 
 | Page | Use at the bench |
 | --- | --- |
-| [VOPP](https://reedos.github.io/rf_lab_reference/) | CW dBm ↔ peak-to-peak voltage, single-ended and true differential |
+| [VOPP](https://reedos.github.io/rf_lab_reference/) | CW dBm to peak-to-peak voltage, single-ended and true differential |
 | [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
 | [Gain](https://reedos.github.io/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
@@ -39,13 +39,23 @@ pages make no external requests.
 ## Light and dark
 
 The pages follow the operating system's colour preference by default, the way an instrument's
-screen and its print mode are two views of the same trace set, and the switch in the header
-pins **Light** or **Dark** or returns to **Auto**. A pinned choice is the one word this site
+screen and its print mode are two views of the same trace set, and the button at the top
+right cycles **Auto**, **Light** and **Dark**; its icon shows the choice in force. A pinned choice is the one word this site
 keeps in the browser besides named setups. The two palettes share their roles: amber for the
 first quantity and teal for the second, which is the channel-one-yellow, channel-two-cyan
 order of most bench instruments, with every meaning-carrying colour clearing WCAG AA on its
 background in both themes. Exported images pick their theme independently of the page, and
 the rendered algebra is recoloured to match.
+
+## Tables and equations on a phone
+
+Columns are centred so a heading sits over its numbers, and a number never wraps away from its
+unit. Reference tables scroll inside their own frame when they must, so the heading above stays
+put, and a frame with more to the side shows a fade there. List tables (sweep segments and
+boundaries, chain stages, tone and harmonic plans) stack into cards on a phone, each value
+under its own heading, so nothing scrolls sideways; matrices (the mixed-mode grids) keep their
+rows and columns and scroll. Equations that run wide on a phone are set on several lines there
+and on one line on a desktop, so no equation needs a sideways scroll at the default settings.
 
 ## Copying figures, tables and equations
 
@@ -150,7 +160,7 @@ from another one behaves the other way round, because it is rewritten from the p
 each time: change the unit on a solved delay and it converts, so the delay itself does not
 move. Typing a unit or SI prefix still works where a keyboard allows it (10k, 100 MHz, 2.4G).
 
-## VOPP — dBm ↔ peak-to-peak
+## VOPP: dBm to peak-to-peak
 
 The calculation panel follows the direction you actually solved in. Type a level and it runs
 power to voltage; type VOPP and it runs voltage to power, ending in dBm. Every substituted
@@ -159,7 +169,7 @@ coefficient is tied to the power split through P_del/P_avs = 1 − |Γ|² rather
 as a loose number. Differential adds the differential impedance, the pair voltage, and the
 total across both ports.
 
-dBm ↔ voltage at the reference plane. Default unit is **volts**.
+dBm to voltage at the reference plane, in either direction. Default unit is **volts**.
 
 - **Z<sub>VNA</sub>** is fixed at 50 Ω (analyzer port).
 - **Z<sub>DUT</sub>** is the DUT impedance at that plane (per side if differential).

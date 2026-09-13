@@ -260,7 +260,7 @@
     els.toneRows.innerHTML = plan.products.map(p => `<tr class="${p.valid ? (p.inBand === false ? 'over-limit' : '') : 'over-limit'}"><td>${p.order === 1 ? 'Tone' : p.order}</td><td>${p.label}</td><td>${p.valid ? freqText(p.frequency) : 'at or below 0 Hz'}</td><td>${p.valid ? RF.formatNumber((p.frequency - plan.f1) / plan.delta) + 'Δ' : '—'}</td><td>${yesNo(p.inBand)}</td></tr>`).join('');
     calculation.push('Two equal tones through a memoryless nonlinearity. Odd-order products land on a uniform grid of spacing Δ, so they stay near the tones; even-order products fall near DC and near the second harmonic.',
       eq('Tone spacing and centre', String.raw`\Delta &= f_2-f_1 = ${tex(plan.delta, 'Hz')} \\ f_{\mathrm c} &= \frac{f_1+f_2}{2} = ${tex(plan.center, 'Hz')}`),
-      eq('Odd-order product grid', String.raw`f_{2k+1} &= f_1-k\Delta \ \text{and}\ f_2+k\Delta`, String.raw`${tex(plan.im3Lower, 'Hz')}\ \text{and}\ ${tex(plan.im3Upper, 'Hz')}\ (k=1)`),
+      eq('Odd-order product grid', String.raw`f_{\mathrm{low}} &= f_1-k\Delta \\ f_{\mathrm{high}} &= f_2+k\Delta`, String.raw`${tex(plan.im3Lower, 'Hz')},\ ${tex(plan.im3Upper, 'Hz')}\ (k=1)`),
       eq('IM3 pair span', String.raw`f_{\mathrm{span}} &= 3\Delta`, tex(plan.im3Span, 'Hz')),
       eq('Resolution bandwidth', String.raw`\mathrm{RBW} &\le \frac{\Delta}{10}`, tex(plan.rbwMax, 'Hz')),
       ...plan.floors.map(floor => eq(floor.source, floor.source === 'Analyzer third-order products' ?

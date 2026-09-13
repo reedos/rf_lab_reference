@@ -114,12 +114,11 @@
       : `${spec.label} · ${PLAIN[ports.out]} / ${PLAIN[ports.in]} = ${fmt(result.ratio)}, so the voltage ratio is ${fmt(Math.abs(result.db), 'dB')} dB ${result.db > 0 ? 'above' : 'below'} the parameter`;
     const parameter = spec.parameter;
     // Headline conclusion, rendered as algebra with the entered impedances substituted.
+    // One line per identity on a desktop; one line per step on a phone.
+    const step = Bench.narrow ? ' \\\\ &= ' : ' = ', plus = Bench.narrow ? ' \\\\ &\\quad + ' : ' + ';
     Bench.math($('gain-equation'), String.raw`\begin{aligned}
-      A_{v} &= ${parameter}\sqrt{\frac{${outSym}}{${inSym}}}
-        = ${parameter}\sqrt{\frac{${outVal}}{${inVal}}}
-        = ${tex(result.factor)}\,${parameter} \\[4pt]
-      20\log_{10}|A_{v}| &= 20\log_{10}|${parameter}| + 10\log_{10}\frac{${outSym}}{${inSym}}
-        = 20\log_{10}|${parameter}| ${result.db < 0 ? '-' : '+'}\ ${tex(Math.abs(result.db), 'dB')}
+      A_{v} &= ${parameter}\sqrt{\frac{${outSym}}{${inSym}}}${step}${parameter}\sqrt{\frac{${outVal}}{${inVal}}}${step}${tex(result.factor)}\,${parameter} \\[4pt]
+      20\log_{10}|A_{v}| &= 20\log_{10}|${parameter}|${plus}10\log_{10}\frac{${outSym}}{${inSym}}${step}20\log_{10}|${parameter}| ${result.db < 0 ? '-' : '+'}\ ${tex(Math.abs(result.db), 'dB')}
     \end{aligned}`, true);
     const sign = result.db > 0 ? '+' : result.db < 0 ? '−' : '';
     $('metrics').innerHTML = [
@@ -161,14 +160,19 @@
     ] });
     writeQuery();
   }
+  // Each identity is one line on a desktop; a phone gets the same algebra stacked.
   function renderDerivation() {
     const z1 = tint('in', 'Z_1'), z2 = tint('out', 'Z_2');
     const v1 = tint('in', 'V_1^{+}'), v2 = tint('out', 'V_2^{-}'), v2t = tint('out', 'V_2');
-    Bench.math($('derivation-waves'), `a_1 = \\frac{${v1}}{\\sqrt{${z1}}},\\qquad b_2 = \\frac{${v2}}{\\sqrt{${z2}}},\\qquad S_{21} = \\left.\\frac{b_2}{a_1}\\right|_{a_2=0}`, true);
+    const narrow = Bench.narrow;
+    const stack = lines => narrow ? `\\begin{gathered} ${lines.join(' \\\\[6pt] ')} \\end{gathered}` : lines.join(' \\qquad ');
+    const chain = parts => narrow ? `\\begin{aligned} ${parts[0]} ${parts.slice(1).map(p => '\\\\ &= ' + p).join(' ')} \\end{aligned}` : parts.join(' = ');
+    const implies = (a, b) => narrow ? `\\begin{gathered} ${a} \\\\[6pt] ${b} \\end{gathered}` : `${a} \\qquad\\Longrightarrow\\qquad ${b}`;
+    Bench.math($('derivation-waves'), stack([`a_1 = \\frac{${v1}}{\\sqrt{${z1}}}`, `b_2 = \\frac{${v2}}{\\sqrt{${z2}}}`, `S_{21} = \\left.\\frac{b_2}{a_1}\\right|_{a_2=0}`]), true);
     Bench.math($('derivation-ratio'), `\\frac{${v2}}{${v1}} = \\frac{b_2\\sqrt{${z2}}}{a_1\\sqrt{${z1}}} = S_{21}\\sqrt{\\frac{${z2}}{${z1}}}`, true);
-    Bench.math($('derivation-gain'), `A_{v} = \\frac{${v2t}}{${v1}} = S_{21}\\sqrt{\\frac{${z2}}{${z1}}} \\qquad\\Longrightarrow\\qquad |A_{v}|_{\\mathrm{dB}} = |S_{21}|_{\\mathrm{dB}} + 10\\log_{10}\\frac{${z2}}{${z1}}`, true);
-    Bench.math($('derivation-power'), `\\frac{P_2}{P_{\\mathrm{avs}}} = \\frac{|${v2t}|^{2}/${z2}}{|${v1}|^{2}/${z1}} = \\left|S_{21}\\sqrt{\\frac{${z2}}{${z1}}}\\right|^{2}\\frac{${z1}}{${z2}} = |S_{21}|^{2}`, true);
-    Bench.math($('derivation-terminal'), `V_1 = ${v1}\\left(1+S_{11}\\right) \\qquad\\Longrightarrow\\qquad \\frac{${v2t}}{V_1} = \\frac{S_{21}}{1+S_{11}}\\sqrt{\\frac{${z2}}{${z1}}}`, true);
+    Bench.math($('derivation-gain'), implies(`A_{v} = \\frac{${v2t}}{${v1}} = S_{21}\\sqrt{\\frac{${z2}}{${z1}}}`, `|A_{v}|_{\\mathrm{dB}} = |S_{21}|_{\\mathrm{dB}} + 10\\log_{10}\\frac{${z2}}{${z1}}`), true);
+    Bench.math($('derivation-power'), chain([`\\frac{P_2}{P_{\\mathrm{avs}}} ${narrow ? '&' : ''}= \\frac{|${v2t}|^{2}/${z2}}{|${v1}|^{2}/${z1}}`, `\\left|S_{21}\\sqrt{\\frac{${z2}}{${z1}}}\\right|^{2}\\frac{${z1}}{${z2}}`, `|S_{21}|^{2}`]), true);
+    Bench.math($('derivation-terminal'), implies(`V_1 = ${v1}\\left(1+S_{11}\\right)`, `\\frac{${v2t}}{V_1} = \\frac{S_{21}}{1+S_{11}}\\sqrt{\\frac{${z2}}{${z1}}}`), true);
   }
   document.querySelectorAll('[data-topology]').forEach(button => button.addEventListener('click', () => {
     topology = button.dataset.topology; applyTopology(); compute();
@@ -188,6 +192,7 @@
   });
   document.addEventListener('dut-change', () => { pullFromCard(); applyTopology(); compute(); });
   document.addEventListener('theme-change', () => { renderDerivation(); compute(); });
+  document.addEventListener('layout-change', () => { renderDerivation(); compute(); });
   Dut.describe('both sides: the topology picks the parameter, and each per-line impedance doubles for a differential reference');
   Bench.exports({ figureTitle: 'Port topology', figure: () => [$('diagram-' + topology), $('diagram-key'), $('diagram-caption'), $('metrics')], equations: () => [$('gain-equation')] });
   readQuery(); applyTopology(); renderDerivation(); compute();
