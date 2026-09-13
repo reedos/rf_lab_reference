@@ -488,6 +488,20 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
           await fill('z1',100); await expect.poll(valid).toBe(true);
         });
+        await check('Diagrams fit the screen instead of scrolling sideways',async()=>{
+          for (const width of [320,390,430,768]) {
+            await page.setViewportSize({width,height:900});
+            for (const [file,sel] of [['index.html','#schematic-se'],['index.html?m=diff','#schematic-diff'],['gain.html','#diagram-dd']]) {
+              await go(file);
+              const over=await page.evaluate(s=>{
+                const stage=document.querySelector(s).closest('.schematic-stage') || document.querySelector(s).parentElement;
+                return Math.round(stage.scrollWidth - stage.clientWidth);
+              },sel);
+              assert.ok(over<=1,`${file} ${sel} overflows its container by ${over}px at ${width}px`);
+            }
+          }
+          await page.setViewportSize({width:1280,height:900});
+        });
         await check('No diagram label straddles the edge of a box',async()=>{
           const straddling=async()=>page.evaluate(()=>{
             const bad=[];

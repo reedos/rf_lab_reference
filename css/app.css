@@ -949,6 +949,81 @@ select:focus-visible {
   gap: 16px;
 }
 
+@media (max-width: 700px) {
+  .schematic {
+    min-width: 0;
+    padding: 12px 10px 14px;
+  }
+
+  .blk-se {
+    grid-template-columns: 88px minmax(0, 1fr) 92px;
+    grid-template-rows: auto 92px auto;
+  }
+
+  .blk-diff {
+    grid-template-columns: 88px minmax(0, 1fr) 96px;
+    grid-template-rows: auto 70px 70px auto;
+  }
+
+  .blk-port {
+    padding: 0 6px;
+    gap: 5px;
+    font-size: 0.64rem;
+  }
+
+  .src-port .nub {
+    margin-right: -11px;
+  }
+
+  .dut-port .nub {
+    margin-left: -11px;
+  }
+
+  .bus-tag,
+  .rail-tag,
+  .rail-sub {
+    font-size: 0.6rem;
+    line-height: 1.35;
+  }
+
+  .node-title {
+    font-size: 0.92rem;
+  }
+
+  .node-kicker {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+  }
+
+  .node-sub {
+    font-size: 0.66rem;
+  }
+
+  .node-z {
+    font-size: 0.6rem;
+    margin-top: 4px;
+  }
+
+  .node-readout strong {
+    font-size: 0.86rem;
+  }
+
+  .blk-midcap {
+    margin-left: 4px;
+    font-size: 0.58rem;
+    padding: 2px 5px;
+    letter-spacing: 0.08em;
+  }
+
+  .vopp-brace {
+    margin-right: 4px;
+  }
+
+  .vopp-callout {
+    font-size: 0.6rem;
+  }
+}
+
 @media (min-width: 900px) {
   .layout {
     grid-template-columns: 1fr 1fr;
