@@ -333,6 +333,36 @@ let checks=0;
           assert.equal(await gain.inputValue(),'-10');
           await expect.poll(valid).toBe(true);
         });
+        await check('Segments can be parked without losing their values',async()=>{
+          await go('sweep.html');
+          await page.locator('[data-preset="decades"]').click();
+          const total=()=>page.locator('#sweep-metrics .metric').first().innerText();
+          await expect.poll(total).toContain('136');
+          // Parking the third segment removes exactly its nine points.
+          await page.locator('.segment').nth(2).locator('[data-key="enabled"]').uncheck();
+          await expect.poll(total).toContain('1277');
+          await expect.poll(total).toContain('4 of 5 segments');
+          await expect(page.locator('#sweep-status')).toContainText(/1 segment is switched off/);
+          await expect(page.locator('.segment').nth(2)).toHaveClass(/is-off/);
+          // Results keep the original numbering, so rows still name the segment they came from.
+          const numbers=await page.locator('#sweep-rows tr td:first-child').allTextContents();
+          assert.deepEqual(numbers,['1','2','4','5']);
+          // The hole it leaves is reported rather than glossed over.
+          await expect(page.locator('#boundary-rows')).toContainText(/Gap of 9.1 MHz/);
+          // The values survive a reload and come back when it is switched on again.
+          await page.reload();
+          await expect(page.locator('.segment').nth(2).locator('[data-key="enabled"]')).not.toBeChecked();
+          await expect(page.locator('.segment').nth(2).locator('[data-key="start"]')).toHaveValue('1');
+          await expect.poll(total).toContain('1277');
+          await page.locator('.segment').nth(2).locator('[data-key="enabled"]').check();
+          await expect.poll(total).toContain('136');
+          // Switching every segment off is an error, not an empty sweep.
+          for (let i=0;i<5;i++) await page.locator('.segment').nth(i).locator('[data-key="enabled"]').uncheck();
+          await expect.poll(valid).toBe(false);
+          await expect(page.locator('#sweep-status')).toContainText(/Every segment is switched off/);
+          await page.locator('.segment').first().locator('[data-key="enabled"]').check();
+          await expect.poll(valid).toBe(true);
+        });
         await check('Sweep segments count points, flag step jumps and gaps, and size power sweeps',async()=>{
           await go('sweep.html'); await expect(page.locator('#sweep-rows')).toContainText('991');
           await expect(page.locator('#sweep-metrics')).toContainText('991');

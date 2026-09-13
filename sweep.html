@@ -8,8 +8,8 @@
   <title>Sweep setup &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-5">
-  <link rel="stylesheet" href="css/app.css?v=20260913-5"><link rel="stylesheet" href="css/workbench.css?v=20260913-5">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-6">
+  <link rel="stylesheet" href="css/app.css?v=20260913-6"><link rel="stylesheet" href="css/workbench.css?v=20260913-6">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -28,7 +28,7 @@
 
 <section class="lede"><p class="kicker">VNA setup</p><h1>Sweep setup</h1><p>Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, and power-sweep sizing.</p></section>
 <section class="board work-board" id="calc"><h2>Frequency sweep segments</h2>
-<p class="hint">One segment is a plain linear sweep. Every frequency carries its own unit, so a kilohertz step sits beside a gigahertz stop. Points include both ends, so 100 MHz to 10 GHz in 10 MHz steps is 991 points.</p>
+<p class="hint">Use the checkbox beside a segment number to park it without losing its values. A parked segment is excluded from the totals and from the boundary checks, so switching a middle one off will correctly report the gap it leaves. One segment is a plain linear sweep. Every frequency carries its own unit, so a kilohertz step sits beside a gigahertz stop. Points include both ends, so 100 MHz to 10 GHz in 10 MHz steps is 991 points.</p>
 <div class="work-fields"><label>Instrument point limit (optional)<input id="limit" value="" placeholder="e.g. 100001" inputmode="numeric" autocomplete="off" aria-label="Instrument point limit"></label><div class="quantity-field"><label for="ifbw">IF bandwidth (optional)</label><div class="unit-pair"><input id="ifbw" value="" placeholder="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="IF bandwidth"><select id="ifbw-unit" aria-label="IF bandwidth unit"><option value="Hz">Hz</option><option value="kHz" selected>kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><label>Compare boundaries by<select id="mode" aria-label="Boundary comparison"><option value="relative">Δf/f at starts (log-style)</option><option value="absolute">Step size (linear)</option></select></label><label>Flag ratio above<input id="jump" value="3" inputmode="decimal" autocomplete="off" aria-label="Ratio flag threshold"></label></div>
 <h2>Build a log-style table</h2>
 <p class="hint">Points at 1, 1+k, 1+2k … times each decade, one linear segment per decade, so every frequency is a round number. Add a linear tail where the DUT lives. Generating replaces the segment rows below.</p>
@@ -65,4 +65,4 @@
   </table>
 </section>
 <section class="panel"><h2>Model and reference</h2><p>N = (stop − start)/step + 1 for a linear segment. Relative spacing Δf/f sets how well narrow features are resolved; points per decade is 1/log₁₀(1 + Δf/f). A log sweep with the same span needs ⌈ln(f<sub>last</sub>/f<sub>first</sub>)/ln(1 + r)⌉ + 1 points for relative spacing r. Minimum sweep time is about N/IFBW before band crossings, settling, and dwell.</p><p>Segment count, total points, and per-segment IF bandwidth or power are instrument settings; check the analyzer's limits.</p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-5"></script><script src="js/rf.js?v=20260913-5"></script><script src="js/sweep.js?v=20260913-5"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-6"></script><script src="js/rf.js?v=20260913-6"></script><script src="js/sweep.js?v=20260913-6"></script></body></html>

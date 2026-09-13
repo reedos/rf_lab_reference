@@ -75,6 +75,13 @@ test('segmented sweeps total points and flag step jumps, gaps, overlaps and dupl
   assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }, { start: 2e9, stop: 3e9, step: 10e6 }]).boundaries[0].kind, 'duplicate');
   assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }, { start: 1.5e9, stop: 3e9, step: 10e6 }]).boundaries[0].kind, 'overlap');
   assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }, { start: 2.5e9, stop: 3e9, step: 10e6 }]).boundaries[0].kind, 'gap');
+  // Continuity is judged by the step just swept, not by whichever of the two is larger. A fine
+  // segment followed by a coarse one leaves a real hole even though the coarse step spans it.
+  const hole = RF.segmentedSweep([{ start: 100e3, stop: 900e3, step: 100e3 }, { start: 10e6, stop: 90e6, step: 10e6 }]);
+  assert.equal(hole.boundaries[0].kind, 'gap');
+  near(hole.boundaries[0].gap, 9.1e6, 1); near(hole.boundaries[0].previousStep, 100e3, 1e-6);
+  // The decade table stays contiguous under the stricter rule.
+  assert.ok(RF.segmentedSweep(decades).boundaries.every(b => b.kind === 'contiguous'));
   assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }], { maxPoints: 50 }).problems, 1);
   for (const bad of [[], [{ start: 0, stop: 1e9, step: 1e6 }], [{ start: 2e9, stop: 1e9, step: 1e6 }], [{ start: 1e9, stop: 2e9, step: 0 }]]) assert.equal(RF.segmentedSweep(bad), null);
 });

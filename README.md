@@ -244,9 +244,17 @@ per decade, so every frequency is a round number; the generator builds that tabl
 stop, and k, with an optional linear tail where the DUT lives (for example decades from 10 kHz,
 then 100 MHz to 10 GHz in 100 MHz steps).
 
+Each segment has a checkbox beside its number. Clearing it **parks** the segment: the values
+stay on screen but the segment is excluded from the totals, the table and the boundary checks,
+so switching a middle one off reports the hole it leaves rather than hiding it. Result rows
+keep their original numbering, and the parked state travels in the link. Switching every
+segment off is an error rather than an empty sweep.
+
 Boundary checks compare each segment's last point with the next start (contiguous, gap,
 overlap, or duplicate point) and a ratio beyond the configurable threshold (default 3×) is
-marked. The relative comparison (default) uses Δf/f at adjacent segment starts, so a decade
+marked. Continuity is judged against the step just swept, not against whichever of the two
+steps is larger: a segment stepping 100 kHz that is followed by one starting 9.1 MHz later has
+a gap, even though the next segment's own 10 MHz step would span it. The relative comparison (default) uses Δf/f at adjacent segment starts, so a decade
 table that repeats its pattern is smooth even though its absolute step jumps 10×; the absolute
 comparison uses step size for tables meant to be linear throughout. Per-segment Δf/f, average
 points per decade, and instantaneous points per decade show the relative resolution, and a

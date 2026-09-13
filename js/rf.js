@@ -600,10 +600,10 @@
     const outside = ratio => ratio > jumpLimit || ratio < 1 / jumpLimit;
     const boundaries = [];
     for (let i = 1; i < rows.length; i++) {
-      const a = rows[i - 1], b = rows[i], gap = b.start - a.lastPoint, wide = Math.max(a.step, b.step);
-      const kind = gap < 0 ? 'overlap' : gap === 0 ? 'duplicate' : gap <= wide * (1 + 1e-9) ? 'contiguous' : 'gap';
+      const a = rows[i - 1], b = rows[i], gap = b.start - a.lastPoint;
+      const kind = gap < 0 ? 'overlap' : gap === 0 ? 'duplicate' : gap <= a.step * (1 + 1e-9) ? 'contiguous' : 'gap';
       const stepRatio = b.step / a.step, patternRatio = b.fractionalStart / a.fractionalStart;
-      boundaries.push({ index: i, frequency: b.start, gap, kind, stepRatio, patternRatio,
+      boundaries.push({ index: i, frequency: b.start, gap, kind, stepRatio, patternRatio, previousStep: a.step,
         fractionalRatio: b.fractionalStart / a.fractionalStop,
         sharp: outside(mode === 'relative' ? patternRatio : stepRatio) });
     }

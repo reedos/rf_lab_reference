@@ -6,7 +6,10 @@
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const metric = (label, value, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${label}</dt><dd>${value}</dd></div>`;
   const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 };
-  const segment = (start, startUnit, stop, stopUnit, step, stepUnit) => ({ start, startUnit, stop, stopUnit, step, stepUnit });
+  const segment = (start, startUnit, stop, stopUnit, step, stepUnit) => ({ start, startUnit, stop, stopUnit, step, stepUnit, enabled: true });
+  // A segment can be parked without losing its values. Everything downstream, including the
+  // boundary checks, sees only the enabled ones, so switching one off genuinely opens a gap.
+  const isOn = s => s.enabled !== false;
   const PRESETS = {
     wide: [segment('100', 'MHz', '10', 'GHz', '10', 'MHz')],
     decades: [
@@ -31,7 +34,7 @@
     });
   }
   const segmentUnit = (s, key) => Object.hasOwn(scales, s[key]) ? s[key] : 'MHz';
-  let segments = PRESETS.wide.map(s => ({ ...s })), powerSource = 'step', result = null, power = null, loadError = '';
+  let segments = PRESETS.wide.map(s => ({ ...s })), powerSource = 'step', result = null, power = null, loadError = '', active = [];
   function readQuery() {
     const q = new URLSearchParams(location.search);
     for (const id of optionIds) if (q.has(id)) {
@@ -44,7 +47,8 @@
         const data = JSON.parse(q.get('segments'));
         if (!Array.isArray(data) || !data.length || data.length > 100 ||
             !data.every(s => s && ['start', 'stop', 'step'].every(key => typeof s[key] === 'string' && s[key].length <= 40) &&
-              ['startUnit', 'stopUnit', 'stepUnit'].every(key => s[key] === undefined || Object.hasOwn(scales, s[key])))) throw new Error();
+              ['startUnit', 'stopUnit', 'stepUnit'].every(key => s[key] === undefined || Object.hasOwn(scales, s[key])) &&
+              (s.enabled === undefined || typeof s.enabled === 'boolean'))) throw new Error();
         segments = data;
       } catch (_) { loadError = 'This sweep link could not be read. The example sweep is shown; edit a value to start a new setup.'; }
     }
@@ -63,7 +67,8 @@
         `<input id="${id}" data-key="${key}" value="${escape(s[key])}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Segment ${i + 1} ${label.toLowerCase()}">` +
         `<select data-key="${key}Unit" aria-label="Segment ${i + 1} ${label.toLowerCase()} unit">${options}</select></div></div>`;
     };
-    $('segments').innerHTML = segments.map((s, i) => `<div class="segment" data-index="${i}" role="group" aria-label="Segment ${i + 1}"><span class="segment-index">${i + 1}</span>
+    $('segments').innerHTML = segments.map((s, i) => `<div class="segment${isOn(s) ? '' : ' is-off'}" data-index="${i}" role="group" aria-label="Segment ${i + 1}">
+      <div class="segment-lead"><input type="checkbox" id="seg${i}-on" data-key="enabled" ${isOn(s) ? 'checked' : ''} aria-label="Include segment ${i + 1} in the sweep"><label class="segment-index" for="seg${i}-on">${i + 1}</label></div>
       ${field(s, i, 'start', 'Start')}${field(s, i, 'stop', 'Stop')}${field(s, i, 'step', 'Step')}
       <button class="ghost" type="button" data-action="remove" aria-label="Remove segment ${i + 1}" ${segments.length === 1 ? 'disabled' : ''}>Remove</button></div>`).join('');
     $('add-segment').disabled = segments.length >= 100;
@@ -75,7 +80,7 @@
   function boundaryText(b) {
     if (b.kind === 'overlap') return `Overlap of ${freq(-b.gap)}`;
     if (b.kind === 'duplicate') return 'Duplicate point: stop equals next start';
-    if (b.kind === 'gap') return `Gap of ${freq(b.gap)} (wider than either step)`;
+    if (b.kind === 'gap') return `Gap of ${freq(b.gap)}, wider than the ${freq(b.previousStep)} step before it`;
     return `Contiguous, ${freq(b.gap)} to next point`;
   }
   function invalidSweep(message) {
@@ -85,7 +90,9 @@
   }
   function computeSweep() {
     if (loadError) return invalidSweep(loadError);
-    const parsed = segments.map(s => ({ start: RF.parseFrequency(s.start, scales[segmentUnit(s, 'startUnit')]),
+    active = segments.map((s, i) => ({ s, i })).filter(({ s }) => isOn(s));
+    if (!active.length) return invalidSweep('Every segment is switched off. Enable at least one to size the sweep.');
+    const parsed = active.map(({ s }) => ({ start: RF.parseFrequency(s.start, scales[segmentUnit(s, 'startUnit')]),
       stop: RF.parseFrequency(s.stop, scales[segmentUnit(s, 'stopUnit')]), step: RF.parseFrequency(s.step, scales[segmentUnit(s, 'stepUnit')]) }));
     const limitBlank = $('limit').value.trim() === '', ifbwBlank = $('ifbw').value.trim() === '';
     const maxPoints = limitBlank ? null : Bench.read('limit'), ifbw = ifbwBlank ? null : readHz($('ifbw')), jumpLimit = Bench.read('jump'), mode = $('mode').value;
@@ -100,12 +107,14 @@
     if (broken) notes.push(`${broken} boundar${broken === 1 ? 'y has' : 'ies have'} a gap, overlap, or duplicate point`);
     if (sharp) notes.push(`${sharp} boundar${sharp === 1 ? 'y changes' : 'ies change'} ${mode === 'relative' ? 'the relative step Δf/f at the segment start' : 'the step size'} by more than ${fmt(result.jumpLimit)}×`);
     if (result.headroom !== null && result.headroom < 0) notes.push(`the total exceeds the ${result.maxPoints}-point limit by ${-result.headroom}`);
+    const parked = segments.length - active.length;
     $('sweep-status').className = notes.length ? 'over-limit' : '';
-    $('sweep-status').textContent = notes.length ? `Check: ${notes.join('; ')}.` : `Segments are contiguous, ${mode === 'relative' ? 'repeat their relative spacing pattern' : 'change step size evenly'}, and land exactly on their stop frequencies.`;
-    $('sweep-rows').innerHTML = result.rows.map((r, i) => `<tr class="${r.exact ? '' : 'over-limit'}"><td>${i + 1}</td><td>${freq(r.start)}</td><td>${freq(r.stop)}</td><td>${freq(r.step)}</td><td>${r.points}</td><td>${freq(r.lastPoint)}${r.exact ? '' : ` · use ${freq(r.stepCeil)} for ${r.pointsCeil} points`}</td><td>${fmt(r.fractionalStart * 100)} → ${fmt(r.fractionalStop * 100)} %</td><td>${fmt(r.decadePoints)}</td><td>${fmt(r.pointsPerDecadeStart)} → ${fmt(r.pointsPerDecadeStop)}</td></tr>`).join('');
+    const parkedNote = parked ? ` ${parked} segment${parked === 1 ? ' is' : 's are'} switched off and excluded.` : '';
+    $('sweep-status').textContent = (notes.length ? `Check: ${notes.join('; ')}.` : `Segments are contiguous, ${mode === 'relative' ? 'repeat their relative spacing pattern' : 'change step size evenly'}, and land exactly on their stop frequencies.`) + parkedNote;
+    $('sweep-rows').innerHTML = result.rows.map((r, i) => `<tr class="${r.exact ? '' : 'over-limit'}"><td>${active[i].i + 1}</td><td>${freq(r.start)}</td><td>${freq(r.stop)}</td><td>${freq(r.step)}</td><td>${r.points}</td><td>${freq(r.lastPoint)}${r.exact ? '' : ` · use ${freq(r.stepCeil)} for ${r.pointsCeil} points`}</td><td>${fmt(r.fractionalStart * 100)} → ${fmt(r.fractionalStop * 100)} %</td><td>${fmt(r.decadePoints)}</td><td>${fmt(r.pointsPerDecadeStart)} → ${fmt(r.pointsPerDecadeStop)}</td></tr>`).join('');
     $('boundary-rows').innerHTML = result.boundaries.length ? result.boundaries.map(b => `<tr class="${b.sharp || b.kind !== 'contiguous' ? 'over-limit' : ''}"><td>${freq(b.frequency)}</td><td>${boundaryText(b)}</td><td class="${mode === 'absolute' && b.sharp ? 'over-limit' : ''}">${fmt(b.stepRatio)}×</td><td class="${mode === 'relative' && b.sharp ? 'over-limit' : ''}">${fmt(b.patternRatio)}×</td><td>${b.sharp ? (mode === 'relative' ? 'Pattern change' : 'Sharp step change') : b.kind !== 'contiguous' ? 'Fix boundary' : 'OK'}</td></tr>`).join('')
       : '<tr><td colspan="5">One segment: no boundaries to check.</td></tr>';
-    $('sweep-metrics').innerHTML = metric('Total points', String(result.points), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) +
+    $('sweep-metrics').innerHTML = metric('Total points', String(result.points) + (parked ? ` · ${active.length} of ${segments.length} segments` : ''), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) +
       metric('Points per decade', result.decadePoints.min === result.decadePoints.max ? fmt(result.decadePoints.min) : `${fmt(result.decadePoints.min)} to ${fmt(result.decadePoints.max)} by segment`) +
       metric('Point limit', result.maxPoints === null ? 'None specified' : `${result.maxPoints} · ${result.headroom >= 0 ? `${result.headroom} spare` : `<span class="over-limit">${-result.headroom} over</span>`}`) +
       metric('Minimum sweep time', result.ifbw === null ? 'Enter IF bandwidth' : `≈ ${seconds(result.sweepTime)}`) +
@@ -152,7 +161,10 @@
     const key = event.target.dataset.key, el = event.target.closest('[data-index]');
     if (!key || !el) return;
     const s = segments[Number(el.dataset.index)];
-    if (key.endsWith('Unit')) {
+    if (key === 'enabled') {
+      s.enabled = event.target.checked;
+      el.classList.toggle('is-off', !s.enabled);
+    } else if (key.endsWith('Unit')) {
       // Changing a unit keeps the physical value, the same as every other unit control here.
       const base = key.slice(0, -4), hz = RF.parseFrequency(s[base], scales[segmentUnit(s, key)]);
       s[key] = event.target.value;
@@ -202,7 +214,7 @@
   $('copy-result').addEventListener('click', () => {
     if (!Bench.valid) return;
     Bench.copy(`Frequency sweep | ${result.points} points | ${freq(result.first)} → ${freq(result.last)}\n` +
-      result.rows.map((r, i) => `Segment ${i + 1}: ${freq(r.start)} → ${freq(r.stop)} step ${freq(r.step)} = ${r.points} points${r.exact ? '' : ' (ends at ' + freq(r.lastPoint) + ')'}`).join('\n') +
+      result.rows.map((r, i) => `Segment ${active[i].i + 1}: ${freq(r.start)} → ${freq(r.stop)} step ${freq(r.step)} = ${r.points} points${r.exact ? '' : ' (ends at ' + freq(r.lastPoint) + ')'}`).join('\n') +
       (result.boundaries.length ? '\n' + result.boundaries.map(b => `Boundary ${freq(b.frequency)}: ${boundaryText(b)}, step ratio ${fmt(b.stepRatio)}×, Δf/f-at-start ratio ${fmt(b.patternRatio)}×${b.sharp ? ' (flagged)' : ''}`).join('\n') : '') +
       `\nPower sweep | ${fmt(power.start, 'dBm')} → ${fmt(power.stop, 'dBm')} dBm step ${fmt(power.step, 'dB')} dB = ${power.points} points`);
   });
