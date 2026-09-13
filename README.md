@@ -15,7 +15,7 @@ No build step. Classic scripts, no bundler.
 | [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
 | [Gain](https://reedos.github.io/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
-| [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, and phase-slope length estimates |
+| [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, phase-slope length estimates, intra-pair skew |
 | [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
 
@@ -225,6 +225,38 @@ band crossings, settling, and dwell.
 
 Power sweeps use the same count: −20 dBm to −4 dBm in 0.1 dB steps is 161 points. Enter the
 step or the number of points; the other updates.
+
+## Intra-pair skew
+
+A length mismatch between the P and N halves of a pair delays one of them. For an otherwise
+ideal pair the differential signal is scaled and the missing part reappears as common mode:
+
+    dt   = dl * sqrt(eff. permittivity) / c
+    dphi = 360 * f * dt
+    |Sdd21| = cos(pi f dt) = cos(dphi / 2)
+    |Scd21| = sin(pi f dt) = sin(dphi / 2)
+    |Sdd21|^2 + |Scd21|^2 = 1
+
+Skew dissipates nothing. It moves energy from the differential mode into the common mode,
+which is why it shows up as radiation and as lost common-mode rejection long before it shows
+up as insertion loss. At half a period of skew the two halves arrive in phase and the
+differential signal nulls completely.
+
+**What is acceptable depends on frequency**, in direct proportion. The page takes a target,
+either a mode-conversion ceiling or a differential-loss ceiling, and reports the largest
+mismatch that still meets it at the frequency entered above. Mode conversion is almost always
+the binding constraint:
+
+| Target at 10 GHz, FR4 | Skew | Mismatch | Fraction of a period |
+| --- | --- | --- | --- |
+| −20 dB conversion | 3.19 ps | 18.1 mil | 3.19 % |
+| −30 dB conversion | 1.01 ps | 5.73 mil | 1.01 % |
+| −40 dB conversion | 0.32 ps | 1.81 mil | 0.32 % |
+| 0.1 dB differential loss | 4.82 ps | 27.4 mil | 4.82 % |
+
+A budget met at 5 GHz is missed by 6 dB at 10 GHz, so state the frequency whenever you quote
+a skew number. The model assumes the pair is otherwise ideal and that skew is the only
+asymmetry; real loss and impedance imbalance add their own conversion on top.
 
 ## Power and noise chain
 

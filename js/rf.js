@@ -759,9 +759,42 @@
       perLine2: spec.output === 'diff' ? z2 / 2 : null };
   }
 
+  // Intra-pair skew. A length mismatch delays one half of a differential pair, which rotates
+  // part of the differential signal into the common mode. For an otherwise ideal pair the
+  // split is |Sdd21| = cos(pi f dt) and |Scd21| = sin(pi f dt), so power is conserved between
+  // the two modes. At half a period of skew the halves arrive in phase and the differential
+  // signal nulls completely.
+  function pairSkew(lengthDelta, er, freqHz) {
+    if (![lengthDelta, er, freqHz].every(Number.isFinite) || !(er > 0) || !(freqHz > 0)) return null;
+    const length = Math.abs(lengthDelta);
+    const skew = (length * Math.sqrt(er)) / C_LIGHT;
+    const cycles = freqHz * skew;
+    const half = Math.PI * cycles;
+    const differential = Math.abs(Math.cos(half)), common = Math.abs(Math.sin(half));
+    const level = value => value === 0 ? -Infinity : 20 * Math.log10(value);
+    return { length, er, freqHz, skew, cycles, degrees: 360 * cycles,
+      differential, common, differentialDb: level(differential), commonDb: level(common),
+      nullFrequency: skew > 0 ? 1 / (2 * skew) : Infinity,
+      beyondNull: cycles > 0.5 };
+  }
+
+  // Largest skew, and length mismatch, that still meets a target. 'common' caps mode
+  // conversion; 'differential' caps insertion loss. The mode-conversion limit binds first,
+  // which is why a pair can look flat on Sdd21 and still radiate.
+  function skewBudget(targetDb, mode, er, freqHz) {
+    if (!Number.isFinite(targetDb) || targetDb >= 0 || !(er > 0) || !(freqHz > 0) ||
+        !['common', 'differential'].includes(mode)) return null;
+    const ratio = 10 ** (targetDb / 20);
+    const half = mode === 'differential' ? Math.acos(ratio) : Math.asin(ratio);
+    if (!Number.isFinite(half)) return null;
+    const cycles = half / Math.PI, skew = cycles / freqHz;
+    return { targetDb, mode, cycles, skew, degrees: 360 * cycles,
+      length: (skew * C_LIGHT) / Math.sqrt(er) };
+  }
+
   const RF = {
     formatNumber, parseZero, parseFrequency, formatFrequency, sweepPoints, sweepStep, segmentedSweep, logTable,
-    tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES,
+    tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,

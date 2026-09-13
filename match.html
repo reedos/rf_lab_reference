@@ -8,8 +8,8 @@
   <title>Impedance &amp; match · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-7">
-  <link rel="stylesheet" href="css/app.css?v=20260912-7"><link rel="stylesheet" href="css/workbench.css?v=20260912-7">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-1">
+  <link rel="stylesheet" href="css/app.css?v=20260913-1"><link rel="stylesheet" href="css/workbench.css?v=20260913-1">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -40,5 +40,20 @@
 <details class="reference-details"><summary>Real-resistance reference curve</summary><p class="hint" id="real-solutions"></p>
 <div class="match-controls"><button class="chip is-active" data-chart="rl">S11</button><button class="chip" data-chart="vswr">VSWR</button><button class="chip" data-chart="ml">Mismatch loss</button></div>
 <svg id="chart" viewBox="0 0 720 280" role="img" aria-label="Mismatch against real resistance"></svg><p class="hint">This slice has X = 0. Click it to set a real resistance.</p></details><div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+<section class="ref">
+  <div class="ref-head"><h2>Rules of thumb</h2><p>Order-of-magnitude only</p></div>
+  <table class="thumbs">
+    <thead><tr><th>Item</th><th>Thumb</th><th>Why it bites you</th></tr></thead>
+    <tbody>
+      <tr><td>Return loss 10 dB</td><td class="num">VSWR 1.92 · 0.46 dB lost</td><td>Often acceptable; the lost power is rarely what hurts</td></tr>
+      <tr><td>Return loss 14 dB</td><td class="num">VSWR 1.50 · 0.18 dB</td><td>A common connector and cable specification</td></tr>
+      <tr><td>Return loss 20 dB</td><td class="num">VSWR 1.22 · 0.04 dB</td><td>Good match; going further buys almost no power back</td></tr>
+      <tr><td>Return loss 26 dB</td><td class="num">VSWR 1.11 · 0.01 dB</td><td>Calibration-grade, and hard to hold over a wide band</td></tr>
+      <tr><td>VSWR 2</td><td class="num">RL 9.5 dB · 0.51 dB</td><td>The classic acceptable limit still costs half a decibel</td></tr>
+      <tr><td>Two mismatches face to face</td><td class="num">ripple ±20 log₁₀(1 ± |Γ₁||Γ₂|)</td><td>Two 20 dB returns ripple ±0.09 dB; two 10 dB returns ripple ±0.9 dB</td></tr>
+      <tr><td>Why match actually matters</td><td class="num">ripple and uncertainty, not loss</td><td>The interaction between two mismatches beats the power either one wastes</td></tr>
+    </tbody>
+  </table>
+</section>
 <section class="panel"><h2>Model and reference</h2><p>Passive impedances (R ≥ 0), real positive Z₀. Γ = (Z − Z₀)/(Z + Z₀). Delivered power fraction is 1 − |Γ|² for a matched source at this plane. This is not a full source/load mismatch uncertainty model.</p><p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260912-7"></script><script src="js/rf.js?v=20260912-7"></script><script src="js/match.js?v=20260912-7"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-1"></script><script src="js/rf.js?v=20260913-1"></script><script src="js/match.js?v=20260913-1"></script></body></html>

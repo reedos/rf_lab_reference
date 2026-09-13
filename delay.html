@@ -8,8 +8,8 @@
   <title>Wavelength &amp; delay · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-7">
-  <link rel="stylesheet" href="css/app.css?v=20260912-7"><link rel="stylesheet" href="css/workbench.css?v=20260912-7">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-1">
+  <link rel="stylesheet" href="css/app.css?v=20260913-1"><link rel="stylesheet" href="css/workbench.css?v=20260913-1">
 </head>
 <body class="delay-page">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -32,6 +32,33 @@
 <dl class="metrics" id="metrics" aria-live="polite"></dl>
 <div class="phase-results"><p id="delay-interpretation"></p><p class="hint">Port extension is entered as physical one-way delay per port; reflection compensation accounts for the round trip. Trace electrical delay follows the measured trace delay. The sign and entry convention depend on the instrument control; consult its help.</p></div>
 <hr><h2>Estimate delay from phase slope</h2><p class="hint">Enter two measured phase values at increasing frequencies. For a uniform line, decreasing unwrapped phase gives positive delay.</p><div class="work-fields"><label>Start frequency (MHz)<input id="phase-f1" value="1000" inputmode="decimal" autocomplete="off" aria-label="Start frequency (MHz)"></label><label>End frequency (MHz)<input id="phase-f2" value="1100" inputmode="decimal" autocomplete="off" aria-label="End frequency (MHz)"></label><label>Start phase (deg)<input data-signed placeholder="0" title="Blank is treated as zero" id="phase-p1" value="0" inputmode="decimal" autocomplete="off" aria-label="Start phase (deg)"></label><label>End phase (deg)<input data-signed placeholder="0" title="Blank is treated as zero" id="phase-p2" value="-36" inputmode="decimal" autocomplete="off" aria-label="End phase (deg)"></label><label>Extra full turns in phase change<input data-signed placeholder="0" title="Blank is treated as zero" id="phase-turns" value="0" inputmode="decimal" autocomplete="off" aria-label="Extra full turns in phase change"></label><label>Measurement<select id="phase-mode"><option value="transmission">Transmission · S21</option><option value="reflection">Reflection · S11</option></select></label></div><p class="hint">Unwrapped Δφ = end − start + 360° × extra turns. Example: +170° → −170° across a wrap uses +1 turn for +20°. Two samples cannot resolve the number of turns; choose it from the measured trace. Negative delay is shown as a signed estimate, not a physical cable length.</p>
-<dl id="phase-metrics" class="metrics" aria-live="polite"></dl><p id="phase-status" role="status"></p><button id="phase-use" class="ghost" type="button">Use estimated length above</button><div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+<dl id="phase-metrics" class="metrics" aria-live="polite"></dl><p id="phase-status" role="status"></p><button id="phase-use" class="ghost" type="button">Use estimated length above</button>
+<hr><h2>Intra-pair skew</h2>
+<p class="hint">A length mismatch between the P and N halves delays one of them. The differential signal is scaled by cos(πfΔt) and the part that goes missing reappears as common mode, sin(πfΔt), so no power is lost, it just changes mode. Evaluated at the frequency and dielectric entered above. Blank mismatch means zero.</p>
+<div class="work-fields">
+  <div class="quantity-field"><label for="skew-length">P to N length mismatch</label><div class="unit-pair"><input placeholder="0" title="Blank is treated as zero" id="skew-length" value="5" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="P to N length mismatch"><select id="skew-unit" aria-label="Length mismatch unit"><option value="mil" selected>mil</option><option value="µm">µm</option><option value="mm">mm</option><option value="cm">cm</option><option value="in">in</option></select></div></div>
+  <label for="skew-target">Acceptable limit<select id="skew-target" aria-label="Skew limit"><option value="common:-20">Mode conversion −20 dB</option><option value="common:-30" selected>Mode conversion −30 dB</option><option value="common:-40">Mode conversion −40 dB</option><option value="differential:-0.1">Differential loss 0.1 dB</option><option value="differential:-0.5">Differential loss 0.5 dB</option></select></label>
+</div>
+<dl id="skew-metrics" class="metrics" aria-live="polite"></dl>
+<p id="skew-status" role="status"></p>
+<p class="hint">Mode conversion is the binding constraint in practice: a pair can look flat on the differential response and still convert enough to radiate. The limit tightens in direct proportion to frequency, so a budget met at 5 GHz is missed by 6 dB at 10 GHz.</p>
+<div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+<section class="ref">
+  <div class="ref-head"><h2>Rules of thumb</h2><p>Order-of-magnitude only</p></div>
+  <table class="thumbs">
+    <thead><tr><th>Item</th><th>Thumb</th><th>Why it bites you</th></tr></thead>
+    <tbody>
+      <tr><td>Free space</td><td class="num">1 ns ≈ 300 mm ≈ 11.8 in</td><td>About a foot per nanosecond, close enough for planning</td></tr>
+      <tr><td>FR4 stripline</td><td class="num">≈ 176 ps/in, 6.9 ps/mm</td><td>Fully buried, so it sees the full ε<sub>r</sub> ≈ 4.3</td></tr>
+      <tr><td>FR4 microstrip</td><td class="num">≈ 147 ps/in, 5.8 ps/mm</td><td>Part of the field is in air, so ε<sub>eff</sub> ≈ 3 and it is faster</td></tr>
+      <tr><td>PTFE cable</td><td class="num">≈ 123 ps/in</td><td>Velocity factor near 0.7; use the datasheet, not bulk ε<sub>r</sub></td></tr>
+      <tr><td>Lumped or distributed</td><td class="num">lumped below λ/10</td><td>Past that, a trace is a transmission line whether you planned one or not</td></tr>
+      <tr><td>Reflection</td><td class="num">trace delay = 2× one way</td><td>Port extension and S<sub>11</sub> phase both count the round trip</td></tr>
+      <tr><td>Intra-pair skew</td><td class="num">−30 dB conversion at 1% of a period</td><td>About 6 mil of FR4 at 10 GHz, and half that at 20 GHz</td></tr>
+      <tr><td>Skew null</td><td class="num">total at half a period</td><td>P and N arrive in phase, so the differential signal disappears entirely</td></tr>
+      <tr><td>Sweep step for unwrapping</td><td class="num">Δf &lt; 1/(2τ)</td><td>A 10 ns cable needs steps under 50 MHz or the phase wraps between points</td></tr>
+    </tbody>
+  </table>
+</section>
 <section class="panel"><h2>Measurement reference</h2><p>Reflection travels out and back through a fixture. Its trace phase slope represents twice the physical one-way delay; transmission through that same line represents one traversal. Phase-slope estimates can include DUT dispersion and resonance.</p><p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comparing_the_pna_delay_functions.htm">Keysight: comparing VNA delay functions</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260912-7"></script><script src="js/rf.js?v=20260912-7"></script><script src="js/delay.js?v=20260912-7"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-1"></script><script src="js/rf.js?v=20260913-1"></script><script src="js/delay.js?v=20260913-1"></script></body></html>

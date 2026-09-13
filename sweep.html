@@ -8,8 +8,8 @@
   <title>Sweep setup &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-7">
-  <link rel="stylesheet" href="css/app.css?v=20260912-7"><link rel="stylesheet" href="css/workbench.css?v=20260912-7">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-1">
+  <link rel="stylesheet" href="css/app.css?v=20260913-1"><link rel="stylesheet" href="css/workbench.css?v=20260913-1">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -50,5 +50,19 @@
 <p id="power-status" role="status"></p>
 <dl id="power-metrics" class="metrics" aria-live="polite"></dl>
 <div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+<section class="ref">
+  <div class="ref-head"><h2>Rules of thumb</h2><p>Order-of-magnitude only</p></div>
+  <table class="thumbs">
+    <thead><tr><th>Item</th><th>Thumb</th><th>Why it bites you</th></tr></thead>
+    <tbody>
+      <tr><td>Sweep time</td><td class="num">≈ N / IFBW</td><td>991 points at 1 kHz is about 12.5 s before any overhead</td></tr>
+      <tr><td>IF bandwidth</td><td class="num">÷10 lowers the floor 10 dB and costs 10× the time</td><td>The trade you make on every single sweep</td></tr>
+      <tr><td>More points</td><td class="num">change resolution, not the noise floor</td><td>Adding points will not clean up a noisy trace</td></tr>
+      <tr><td>Narrow features</td><td class="num">at least 5 points across the 3 dB bandwidth</td><td>Fewer and you will under-report the depth of a notch</td></tr>
+      <tr><td>Long cables or fixtures</td><td class="num">Δf &lt; 1/(2τ)</td><td>Otherwise the phase wraps between points and unwrapping is guesswork</td></tr>
+      <tr><td>Segmented sweeps</td><td class="num">spend points where the DUT lives</td><td>A decade table spans 10 kHz to 10 GHz in 136 points</td></tr>
+    </tbody>
+  </table>
+</section>
 <section class="panel"><h2>Model and reference</h2><p>N = (stop − start)/step + 1 for a linear segment. Relative spacing Δf/f sets how well narrow features are resolved; points per decade is 1/log₁₀(1 + Δf/f). A log sweep with the same span needs ⌈ln(f<sub>last</sub>/f<sub>first</sub>)/ln(1 + r)⌉ + 1 points for relative spacing r. Minimum sweep time is about N/IFBW before band crossings, settling, and dwell.</p><p>Segment count, total points, and per-segment IF bandwidth or power are instrument settings; check the analyzer's limits.</p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260912-7"></script><script src="js/rf.js?v=20260912-7"></script><script src="js/sweep.js?v=20260912-7"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-1"></script><script src="js/rf.js?v=20260913-1"></script><script src="js/sweep.js?v=20260913-1"></script></body></html>

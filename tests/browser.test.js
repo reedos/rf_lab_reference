@@ -488,6 +488,29 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
           await fill('z1',100); await expect.poll(valid).toBe(true);
         });
+        await check('Intra-pair skew tracks frequency and reports a budget',async()=>{
+          await go('delay.html?er=4.3&f=10&fu=GHz');
+          await expect(page.locator('#skew-metrics')).toContainText('-31.18 dB');
+          await expect(page.locator('#skew-metrics')).toContainText('0.8785 ps');
+          await expect(page.locator('#skew-status')).toContainText(/Within the limit/);
+          // The same mismatch fails at a higher frequency, and the budget tightens with it.
+          await fill('freq',25);
+          await expect(page.locator('#skew-metrics')).toContainText('-23.23 dB');
+          await expect(page.locator('#skew-status')).toContainText(/reduce the mismatch to 2.292 mil/);
+          await page.locator('#skew-target').selectOption('common:-20');
+          await expect(page.locator('#skew-status')).toContainText(/Within the limit/);
+          // Differential loss is the looser constraint, so it passes where conversion failed.
+          await page.locator('#skew-target').selectOption('differential:-0.1');
+          await expect(page.locator('#skew-status')).toContainText(/Within the limit/);
+          await page.locator('#skew-unit').selectOption('µm');
+          await expect(page.locator('#skew-metrics')).toContainText('0.8785 ps');
+          await fill('skew-length','');
+          await expect(page.locator('#skew-metrics')).toContainText('None, the halves are matched');
+          await expect.poll(valid).toBe(true);
+          await fill('skew-length','bad'); await expect.poll(valid).toBe(false);
+          await fill('skew-length',5); await expect.poll(valid).toBe(true);
+          await page.reload(); await expect(page.locator('#skew-status')).toContainText(/Within the limit/);
+        });
         await check('Diagrams carry the entered values and make no static claims',async()=>{
           const svgText=async sel=>(await page.locator(sel).textContent()).replace(/\s+/g,' ');
           // Both differential rails run from the source impedance to the load impedance.

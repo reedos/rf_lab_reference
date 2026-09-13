@@ -180,6 +180,52 @@ test('a transmission parameter becomes a voltage gain through the square root of
     assert.equal(RF.gainConversion(...bad), null);
   }
 });
+test('intra-pair skew splits the differential signal into the common mode', () => {
+  // 1 mm of mismatch in a line with an effective permittivity of 4 travels at half c.
+  const r = RF.pairSkew(1e-3, 4, 10e9);
+  near(r.skew, 2e-3 * Math.sqrt(4) / (2 * RF.C_LIGHT) * 1, 1e-18);
+  near(r.skew, 1e-3 * 2 / RF.C_LIGHT, 1e-18);
+  near(r.cycles, r.skew * 10e9, 1e-15); near(r.degrees, 360 * r.cycles, 1e-9);
+  // Power is conserved between the two modes at every skew.
+  for (const length of [0, 1e-4, 1e-3, 5e-3, 2e-2]) {
+    const s = RF.pairSkew(length, 4, 10e9);
+    near(s.differential ** 2 + s.common ** 2, 1, 1e-12);
+  }
+  // No skew is no conversion; half a period of skew is a complete null.
+  const none = RF.pairSkew(0, 4, 10e9);
+  near(none.differentialDb, 0); assert.equal(none.commonDb, -Infinity); assert.equal(none.nullFrequency, Infinity);
+  const nulled = RF.pairSkew(RF.C_LIGHT / (2 * 10e9) / Math.sqrt(4), 4, 10e9);
+  // cos(pi/2) lands a hair off zero in floating point, so the null is deep rather than exactly -Infinity.
+  near(nulled.cycles, .5, 1e-12); assert.ok(nulled.differentialDb < -200, String(nulled.differentialDb)); near(nulled.commonDb, 0, 1e-9);
+  near(nulled.nullFrequency, 10e9, 1);
+  // A quarter period splits the power evenly.
+  const half = RF.pairSkew(RF.C_LIGHT / (4 * 10e9) / Math.sqrt(4), 4, 10e9);
+  near(half.differentialDb, -10 * Math.log10(2), 1e-9); near(half.commonDb, -10 * Math.log10(2), 1e-9);
+  assert.equal(half.beyondNull, false); assert.equal(RF.pairSkew(1, 4, 10e9).beyondNull, true);
+  // Sign of the mismatch does not matter.
+  near(RF.pairSkew(-1e-3, 4, 10e9).skew, r.skew, 1e-18);
+  for (const bad of [[1e-3, 0, 10e9], [1e-3, 4, 0], [NaN, 4, 10e9], [1e-3, 4, NaN]]) assert.equal(RF.pairSkew(...bad), null);
+});
+test('a skew budget follows the target and the frequency', () => {
+  const budget = RF.skewBudget(-30, 'common', 4, 10e9);
+  near(budget.cycles, Math.asin(10 ** -1.5) / Math.PI, 1e-15);
+  near(budget.skew, 1.0067e-12, 1e-15);
+  near(budget.length, budget.skew * RF.C_LIGHT / 2, 1e-15);
+  near(budget.length, 1.5095e-4, 1e-7);
+  // The budget is what the model says it is: feeding it back reproduces the target.
+  for (const [target, mode] of [[-20, 'common'], [-30, 'common'], [-40, 'common'], [-0.1, 'differential'], [-1, 'differential']]) {
+    const b = RF.skewBudget(target, mode, 4, 10e9);
+    const check = RF.pairSkew(b.length, 4, 10e9);
+    near(mode === 'common' ? check.commonDb : check.differentialDb, target, 1e-9);
+  }
+  // Mode conversion binds long before insertion loss does.
+  assert.ok(RF.skewBudget(-30, 'common', 4, 10e9).skew < RF.skewBudget(-0.1, 'differential', 4, 10e9).skew);
+  // Halving the frequency doubles the allowance.
+  near(RF.skewBudget(-30, 'common', 4, 5e9).skew, 2 * budget.skew, 1e-18);
+  for (const bad of [[0, 'common', 4, 10e9], [1, 'common', 4, 10e9], [-30, 'both', 4, 10e9], [-30, 'common', 0, 10e9], [-30, 'common', 4, 0]]) {
+    assert.equal(RF.skewBudget(...bad), null);
+  }
+});
 test('blank-as-zero parser changes only empty input, not invalid input', () => {
   assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
   assert.equal(RF.parseZero('0,25'),.25);
