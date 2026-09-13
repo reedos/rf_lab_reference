@@ -725,6 +725,36 @@ let checks=0;
             await go(file); await page.locator('#export-figure').click(); await expect(status).toContainText(/Image copied/,{timeout:15000});
           }
         });
+        await check('Numbers keep their units on one line on a phone, and rules of thumb stack',async()=>{
+          await page.setViewportSize({width:390,height:900});
+          // Text that wraps has line boxes a full line apart; a subscript shifts one by a fraction
+          // of the font size, and a tall neighbour in the same row stretches the cell, not the text.
+          const wrapped=()=>page.evaluate(()=>Array.from(document.querySelectorAll('table:not(.thumbs) td.num')).filter(td=>{
+            const range=document.createRange(); range.selectNodeContents(td);
+            const tops=Array.from(range.getClientRects()).map(r=>r.top).sort((a,b)=>a-b);
+            const step=0.8*parseFloat(getComputedStyle(td).fontSize);
+            let lines=tops.length?1:0; for(let i=1;i<tops.length;i++) if(tops[i]-tops[i-1]>step) lines++;
+            return lines>1;
+          }).map(td=>td.textContent.trim()));
+          for (const file of ['index.html','gain.html','sweep.html','mixed.html','chain.html']) {
+            await go(file);
+            assert.deepEqual(await wrapped(),[],`${file}: numeric cells wrap`);
+            assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${file} overflows the page`);
+          }
+          // A table that runs past the phone's edge says so; one that fits does not.
+          await go('sweep.html');
+          await expect.poll(()=>page.locator('#sweep-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('right');
+          await page.evaluate(()=>{const el=document.querySelector('#sweep-rows').closest('.chain-results'); el.scrollLeft=el.scrollWidth;});
+          await expect.poll(()=>page.locator('#sweep-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('left');
+          await go('index.html');
+          assert.equal(await page.locator('#ref-body').locator('xpath=ancestor::section[contains(@class,"ref")]').getAttribute('data-scroll'),null);
+          await go('sweep.html');
+          assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs thead')).display),'none');
+          assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs tbody tr')).display),'block');
+          await page.setViewportSize({width:1280,height:900});
+          await go('sweep.html');
+          assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs tbody tr')).display),'table-row');
+        });
         await check('The page follows the system theme, remembers a choice, and exports either theme',async()=>{
           const theme=()=>page.evaluate(()=>document.documentElement.dataset.theme);
           const bodyBg=()=>page.evaluate(()=>getComputedStyle(document.body).backgroundColor);
@@ -734,7 +764,7 @@ let checks=0;
           // Auto follows the system, and the algebra takes the light port colours with it.
           await page.emulateMedia({colorScheme:'light'});
           await expect.poll(theme).toBe('light'); assert.equal(await bodyBg(),'rgb(255, 255, 255)');
-          await expect.poll(eqColours).toContain('rgb(165, 102, 10)');
+          await expect.poll(eqColours).toContain('rgb(180, 83, 9)');
           assert.equal(await page.evaluate(()=>document.querySelector('meta[name="theme-color"]').content),'#ffffff');
           // A pinned choice survives a reload and is the only thing stored.
           await page.locator('[data-theme-choice="dark"]').click();
@@ -744,7 +774,7 @@ let checks=0;
           await expect(page.locator('[data-theme-choice="dark"]')).toHaveClass(/is-active/);
           // Exports recolour the algebra for their own theme rather than the page's.
           const exported=t=>page.evaluate(t=>Array.from(Snapshot.prepare(document.getElementById('gain-equation'),t).querySelectorAll('.katex-html [style*="color"]')).map(n=>n.style.color),t);
-          assert.ok((await exported('light')).includes('rgb(165, 102, 10)'),'light export uses light amber');
+          assert.ok((await exported('light')).includes('rgb(180, 83, 9)'),'light export uses light amber');
           assert.ok(!(await exported('light')).includes('rgb(243, 182, 58)'),'light export drops dark amber');
           assert.ok((await exported('dark')).includes('rgb(243, 182, 58)'),'dark export keeps dark amber');
           // Auto again: back to the system, nothing stored.

@@ -23,6 +23,7 @@
   --port-out: #4fd6c8;
   --accent: var(--amber);
   --accent-soft: var(--amber-soft);
+  --scroll-fade: rgba(255, 255, 255, 0.16);
   --font-ui: "IBM Plex Sans", "Segoe UI", sans-serif;
   --font-display: Sora, "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -69,8 +70,8 @@ body {
 
 [data-theme="light"] body {
   background-image:
-    radial-gradient(900px 480px at 8% -8%, rgba(165, 102, 10, 0.07), transparent 55%),
-    radial-gradient(800px 420px at 100% 0%, rgba(11, 124, 115, 0.06), transparent 50%);
+    radial-gradient(900px 480px at 8% -8%, rgba(180, 83, 9, 0.07), transparent 55%),
+    radial-gradient(800px 420px at 100% 0%, rgba(15, 118, 110, 0.06), transparent 50%);
   -webkit-font-smoothing: auto;
 }
 
@@ -1003,20 +1004,21 @@ select:focus-visible {
   --bg-well: #e7eaef;
   --line: rgba(0, 0, 0, 0.12);
   --line-strong: rgba(0, 0, 0, 0.3);
-  --amber: #a5660a;
-  --amber-soft: rgba(165, 102, 10, 0.12);
-  --cyan: #0b7c73;
-  --cyan-soft: rgba(11, 124, 115, 0.12);
+  --amber: #b45309;
+  --amber-soft: rgba(180, 83, 9, 0.12);
+  --cyan: #0f766e;
+  --cyan-soft: rgba(15, 118, 110, 0.12);
   --text: #161a22;
   --muted: #4a5261;
   --dim: #6b7280;
   --danger: #b42318;
-  --plus: #a5660a;
+  --plus: #b45309;
   --minus: #2f5fd0;
-  --port-in: #a5660a;
-  --port-out: #0b7c73;
+  --port-in: #b45309;
+  --port-out: #0f766e;
   --accent: var(--amber);
   --accent-soft: var(--amber-soft);
+  --scroll-fade: rgba(0, 0, 0, 0.22);
   --shadow: none;
 }
 
@@ -1337,6 +1339,7 @@ td {
 
 th {
   color: var(--dim);
+  white-space: nowrap;
   font-weight: 500;
   font-size: 0.7rem;
   letter-spacing: 0.12em;
@@ -1345,6 +1348,37 @@ th {
 
 td.num {
   color: var(--text);
+  white-space: nowrap;
+}
+
+/* Sideways-scroll cue: an inset shadow on the side that has more. It sits on the wrapper
+   itself, so it stays put while the table moves. */
+@media (max-width: 700px) {
+  .ref {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  table {
+    font-size: 0.82rem;
+  }
+
+  th,
+  td {
+    padding: 9px 5px;
+  }
+}
+
+[data-scroll="right"] {
+  box-shadow: inset -34px 0 24px -24px var(--scroll-fade);
+}
+
+[data-scroll="left"] {
+  box-shadow: inset 34px 0 24px -24px var(--scroll-fade);
+}
+
+[data-scroll="left right"] {
+  box-shadow: inset 34px 0 24px -24px var(--scroll-fade), inset -34px 0 24px -24px var(--scroll-fade);
 }
 
 .foot {
@@ -1430,6 +1464,38 @@ noscript {
 
 .thumbs td.num {
   color: var(--text);
+}
+
+/* On a phone a rule of thumb becomes a card: item, the thumb, then why it matters. Three
+   narrow columns would wrap every value and unit onto separate lines. */
+@media (max-width: 700px) {
+  .thumbs thead {
+    display: none;
+  }
+
+  .thumbs tr {
+    display: block;
+    padding: 10px 0 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .thumbs td {
+    display: block;
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .thumbs td:first-child {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .thumbs td.num {
+    white-space: normal;
+    color: var(--accent);
+  }
 }
 
 .spec-svg {

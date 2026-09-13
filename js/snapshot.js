@@ -86,6 +86,7 @@
       el.replaceWith(span);
     });
     clone.querySelectorAll('button, [aria-hidden="true"] .sign, .toolbar, .export-tools').forEach(el => el.remove());
+    [clone, ...clone.querySelectorAll('[data-scroll]')].forEach(el => el.removeAttribute('data-scroll'));
     return clone;
   }
   const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

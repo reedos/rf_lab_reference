@@ -482,7 +482,7 @@
         <td class="num">${sign}</td>
         <td class="num">${RF.formatVoltage(se.vppSe)}</td>
         <td class="num">${RF.formatVoltage(diff.vppDiff)}</td>
-        <td class="num">${RF.formatDbm(se.dbmDelivered)} dBm del</td>
+        <td class="num">${RF.formatDbm(se.dbmDelivered)} dBm</td>
       </tr>`;
     }).join("");
   }

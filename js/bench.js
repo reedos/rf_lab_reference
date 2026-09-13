@@ -132,6 +132,25 @@
   function calculationClone() {
     return loadKatex().then(() => { const box = document.createElement('div'); box.className = 'calculation-export'; renderLines(latest.lines, box); return box; });
   }
+  // A table wider than its wrapper scrolls sideways; the wrapper says so with a fade on the
+  // side that has more, which is the cue a phone otherwise lacks.
+  const scrollers = () => document.querySelectorAll('.ref, .chain-results');
+  function markScroll(el) {
+    const left = el.scrollLeft > 1, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    const state = left && right ? 'left right' : left ? 'left' : right ? 'right' : '';
+    if (state) el.setAttribute('data-scroll', state); else el.removeAttribute('data-scroll');
+  }
+  function markScrollAll() { scrollers().forEach(markScroll); }
+  function watchScroll() {
+    scrollers().forEach(el => {
+      if (el.dataset.scrollWatched) return;
+      el.dataset.scrollWatched = '1';
+      el.addEventListener('scroll', () => markScroll(el), { passive: true });
+      if (typeof ResizeObserver === 'function') new ResizeObserver(() => markScroll(el)).observe(el);
+    });
+    markScrollAll();
+  }
+  window.addEventListener('resize', markScrollAll);
   // Inputs fire on every keystroke; equation rendering is coalesced into one pass.
   function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderCalculation, 60); }
   function update(value) {
@@ -140,6 +159,7 @@
     if (save) save.disabled = !value.valid;
     ['copy-result', 'copy-link'].forEach(id => { const button = document.getElementById(id); if (button) button.disabled = !value.valid; });
     document.dispatchEvent(new CustomEvent('bench-valid', { detail: value.valid }));
+    requestAnimationFrame(watchScroll);
   }
   function say(message) { if (status) status.textContent = message; }
   async function copy(text) {
@@ -202,6 +222,6 @@
       if (list.value === '') return say('Choose a saved setup.');
       if (persist(setups.filter((_, i) => i !== Number(list.value)))) say('Setup deleted.');
     });
-    refresh(); update(latest);
+    refresh(); update(latest); watchScroll();
   });
 })();
