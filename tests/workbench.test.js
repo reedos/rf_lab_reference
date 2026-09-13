@@ -233,6 +233,37 @@ test('a skew budget follows the target and the frequency', () => {
     assert.equal(RF.skewBudget(...bad), null);
   }
 });
+test('the input reflection converts an incident-wave gain to a terminal-referred one', () => {
+  // A matched input makes the two references agree.
+  near(RF.terminalCorrection(-300, 0).db, 0, 1e-9);
+  // In phase the reflection adds to the terminal voltage, out of phase it subtracts.
+  near(RF.terminalCorrection(-10, 0).db, -20 * Math.log10(1 + 10 ** -0.5), 1e-12);
+  near(RF.terminalCorrection(-10, 180).db, -20 * Math.log10(1 - 10 ** -0.5), 1e-9);
+  assert.ok(RF.terminalCorrection(-10, 0).db < 0 && RF.terminalCorrection(-10, 180).db > 0);
+  near(RF.terminalCorrection(-10, 90).denominator, Math.hypot(1, 10 ** -0.5), 1e-12);
+  // A short at the input leaves no terminal voltage at all.
+  const shorted = RF.terminalCorrection(0, 180);
+  assert.equal(shorted.degenerate, true); assert.equal(shorted.db, Infinity);
+  assert.equal(RF.terminalCorrection(0, 0).degenerate, false);
+  for (const bad of [[1, 0], [NaN, 0], [-10, NaN]]) assert.equal(RF.terminalCorrection(...bad), null);
+});
+test('sweep time adds instrument overhead to the dwell floor', () => {
+  const wide = [{ start: 100e6, stop: 10e9, step: 10e6 }];
+  const base = RF.segmentedSweep(wide, { ifbw: 1000 });
+  near(base.sweepTime, .991, 1e-9); near(base.overheadTime, 0); near(base.sweepTimeTotal, .991, 1e-9);
+  const loaded = RF.segmentedSweep(wide, { ifbw: 1000, pointOverhead: 20e-6, segmentOverhead: 5e-3 });
+  near(loaded.overheadTime, 991 * 20e-6 + 5e-3, 1e-12);
+  near(loaded.sweepTimeTotal, base.sweepTime + loaded.overheadTime, 1e-9);
+  // Overhead still gives a figure when no bandwidth is known, and the dwell stays undefined.
+  const noBandwidth = RF.segmentedSweep(wide, { pointOverhead: 20e-6 });
+  assert.ok(Number.isNaN(noBandwidth.sweepTime)); near(noBandwidth.sweepTimeTotal, 991 * 20e-6, 1e-12);
+  assert.ok(Number.isNaN(RF.segmentedSweep(wide, {}).sweepTimeTotal));
+  // Each segment is charged one retune.
+  const decades = [[10e3, 90e3, 10e3], [100e3, 900e3, 100e3]].map(([start, stop, step]) => ({ start, stop, step }));
+  near(RF.segmentedSweep(decades, { segmentOverhead: 5e-3 }).overheadTime, 10e-3, 1e-12);
+  // Nonsense overhead counts as none rather than poisoning the total.
+  assert.equal(RF.segmentedSweep(wide, { pointOverhead: -1, segmentOverhead: NaN }).overheadTime, 0);
+});
 test('blank-as-zero parser changes only empty input, not invalid input', () => {
   assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
   assert.equal(RF.parseZero('0,25'),.25);

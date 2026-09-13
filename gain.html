@@ -8,8 +8,8 @@
   <title>Voltage &amp; power gain &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-6">
-  <link rel="stylesheet" href="css/app.css?v=20260913-6"><link rel="stylesheet" href="css/workbench.css?v=20260913-6">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-7">
+  <link rel="stylesheet" href="css/app.css?v=20260913-7"><link rel="stylesheet" href="css/workbench.css?v=20260913-7">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -100,6 +100,11 @@
   <label for="z1"><span id="text-z1">Input reference Z<sub>d1</sub>, differential (Ω)</span><input id="z1" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Input differential reference impedance in ohms"></label>
   <label for="z2"><span id="text-z2">Output reference Z<sub>d2</sub>, differential (Ω)</span><input id="z2" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Output differential reference impedance in ohms"></label>
 </div>
+<p class="hint">The gain above is referred to the incident wave, which equals the input terminal voltage only when the input is matched. Enter the input reflection to also get the gain referred to the terminal; it needs the phase as well as the magnitude, because the two differ by 1 + S<sub>11</sub>.</p>
+<div class="work-fields">
+  <label for="s11-db">Input reflection S<sub>11</sub> (dB, optional)<input data-signed id="s11-db" value="" placeholder="e.g. -10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Input reflection magnitude in dB"></label>
+  <label for="s11-deg">S<sub>11</sub> phase (deg)<input data-signed id="s11-deg" value="" placeholder="e.g. 180" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Input reflection phase in degrees"></label>
+</div>
 <div class="match-controls" aria-label="Impedance presets">
   <button class="chip" type="button" data-preset="standard">Standard 100 Ω / 50 Ω</button>
   <button class="chip" type="button" data-preset="200">200 Ω differential</button>
@@ -144,6 +149,6 @@
 <p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
 <p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/bench.js?v=20260913-6"></script><script src="js/rf.js?v=20260913-6"></script><script src="js/gain.js?v=20260913-6"></script>
+<script src="js/bench.js?v=20260913-7"></script><script src="js/rf.js?v=20260913-7"></script><script src="js/gain.js?v=20260913-7"></script>
 </body>
 </html>

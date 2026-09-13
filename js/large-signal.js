@@ -90,14 +90,12 @@
   function writeHz(el, hz) {
     el.value = Number.isFinite(hz) ? String(Number((hz / unitScale(el)).toPrecision(12))) : '';
   }
-  // Changing a unit keeps the physical value and normalises the field to a bare number.
+  // Picking a unit keeps the digits and changes what they mean. Any suffix typed into the
+  // field is dropped so the selector is what decides. Solved fields are rewritten by compute().
   function bindUnit(id) {
-    const el = document.getElementById(id), select = document.getElementById(id + '-unit');
-    let previous = select.value;
-    select.addEventListener('change', function () {
-      const hz = RF.parseFrequency(el.value, freqScales[previous]);
-      previous = select.value;
-      if (Number.isFinite(hz)) writeHz(el, hz);
+    const el = document.getElementById(id);
+    document.getElementById(id + '-unit').addEventListener('change', function () {
+      el.value = RF.frequencyDigits(el.value);
       compute();
     });
   }
@@ -428,22 +426,24 @@
       metric('Harmonics used', String(thd.count)),
       ...(Number.isFinite(fund) && Number.isFinite(h2) ? [metric('H2 absolute', `${RF.formatDbm(fund + h2)} dBm`)] : [])
     ].join('');
-    const notes = [];
+    const notes = [], warnings = [];
     if (plan) {
       const unreachable = plan.rows.filter(row => row.aboveInstrument).map(row => row.n);
       const outside = plan.rows.filter(row => row.n > 1 && row.inBand === false).map(row => row.n);
-      if (unreachable.length) notes.push(`H${unreachable.join(', H')} above the analyzer's top frequency and cannot be measured; keep f₀ at or below ${freqText(plan.maxFundamental)} to reach the 5th.`);
-      if (outside.length === plan.rows.filter(row => row.n > 1).length) notes.push('Every harmonic falls outside the DUT passband, so THD understates the nonlinearity by design. Use an in-band intermodulation measurement instead.');
+      if (unreachable.length) warnings.push(`H${unreachable.join(', H')} above the analyzer's top frequency and cannot be measured; keep f₀ at or below ${freqText(plan.maxFundamental)} to reach the 5th.`);
+      if (outside.length === plan.rows.filter(row => row.n > 1).length) warnings.push('Every harmonic falls outside the DUT passband, so THD understates the nonlinearity by design. Use an in-band intermodulation measurement instead.');
       else if (outside.length) notes.push(`H${outside.join(', H')} fall outside the DUT passband.`);
     }
     if (limited) {
       const worst = limited.rows.reduce((a, b) => b.attenuation < a.attenuation ? b : a);
-      notes.push(`The device rolloff hides up to ${RF.formatNumber(-worst.attenuation, 'dB')} dB on H${worst.n}.`);
+      // Below half a decibel the correction is not worth calling attention to.
+      if (-worst.attenuation >= 0.5) notes.push(`The device rolloff hides up to ${RF.formatNumber(-worst.attenuation, 'dB')} dB on H${worst.n}.`);
       const pinned = limited.rows.filter(row => row.saturated);
-      if (pinned.length) notes.push(`With ${poles} pole${poles === 1 ? '' : 's'} the correction is at its limit of ${RF.formatNumber(-pinned[0].asymptote, 'dB')} dB on H${pinned[0].n}; a device that rejects more than that needs more poles, and a stopband that deep is better described by the passband.`);
+      if (pinned.length) warnings.push(`With ${poles} pole${poles === 1 ? '' : 's'} the correction is at its limit of ${RF.formatNumber(-pinned[0].asymptote, 'dB')} dB on H${pinned[0].n}; a device that rejects more than that needs more poles, and a stopband that deep is better described by the passband.`);
     }
-    els.thdStatus.className = notes.length ? 'over-limit' : '';
-    els.thdStatus.textContent = notes.join(' ');
+    // Red is reserved for something being wrong, not for the correction simply having a value.
+    els.thdStatus.className = warnings.length ? 'over-limit' : '';
+    els.thdStatus.textContent = warnings.concat(notes).join(' ');
     els.thdBandMetrics.innerHTML = [
       ...(limited ? [
         metric('Measured THD', `${RF.formatNumber(limited.measured.percent)} %`),

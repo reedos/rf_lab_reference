@@ -547,6 +547,15 @@
     return number * (suffix === '' ? (defaultScale > 0 ? defaultScale : 1) : FREQUENCY_SCALE[suffix]);
   }
 
+  // The numeric part of a frequency entry. Picking a unit strips a typed suffix so the
+  // selector, not stale text, decides what the digits mean.
+  function frequencyDigits(raw) {
+    if (raw == null) return '';
+    const text = String(raw).trim();
+    const match = text.match(/^(.*?)\s*[kKmMgGtT]?(?:[hH][zZ])?$/);
+    return match ? match[1] : text;
+  }
+
   // Frequencies keep up to ten significant digits so sweep boundaries read exactly.
   function formatFrequency(hz) {
     if (!Number.isFinite(hz)) return { value: NaN, unit: 'Hz', text: '—' };
@@ -613,9 +622,15 @@
     const logPoints = ratio => last > first ? Math.ceil(Math.log(last / first) / Math.log(1 + ratio)) + 1 : 1;
     const maxPoints = Number.isInteger(opts.maxPoints) && opts.maxPoints > 0 ? opts.maxPoints : null;
     const ifbw = opts.ifbw > 0 ? opts.ifbw : null;
+    // Dwell is the floor. Real instruments add a fixed cost per point and a retune per segment.
+    const pointOverhead = opts.pointOverhead > 0 ? opts.pointOverhead : 0;
+    const segmentOverhead = opts.segmentOverhead > 0 ? opts.segmentOverhead : 0;
+    const overheadTime = points * pointOverhead + rows.length * segmentOverhead;
     return { rows, boundaries, points, first, last, jumpLimit, mode, maxPoints, ifbw,
       headroom: maxPoints === null ? null : maxPoints - points,
       sweepTime: ifbw === null ? NaN : points / ifbw,
+      pointOverhead, segmentOverhead, overheadTime,
+      sweepTimeTotal: ifbw === null ? (overheadTime > 0 ? overheadTime : NaN) : points / ifbw + overheadTime,
       inexact: rows.filter(r => !r.exact).length,
       decadePoints: { min: Math.min(...rows.map(r => r.decadePoints)), max: Math.max(...rows.map(r => r.decadePoints)) },
       problems: rows.filter(r => !r.exact).length + boundaries.filter(b => b.sharp || b.kind !== 'contiguous').length + (maxPoints !== null && points > maxPoints ? 1 : 0),
@@ -792,9 +807,21 @@
       length: (skew * C_LIGHT) / Math.sqrt(er) };
   }
 
+  // Gain referred to the input terminal rather than to the incident wave. The two differ by
+  // 1 + S11, which needs the reflection's phase as well as its magnitude.
+  function terminalCorrection(s11Db, s11Deg) {
+    if (![s11Db, s11Deg].every(Number.isFinite) || s11Db > 0) return null;
+    const magnitude = 10 ** (s11Db / 20), radians = (s11Deg * Math.PI) / 180;
+    const re = 1 + magnitude * Math.cos(radians), im = magnitude * Math.sin(radians);
+    const denominator = Math.hypot(re, im);
+    const degenerate = denominator < 1e-9;
+    return { magnitude, re, im, denominator, degenerate,
+      db: degenerate ? Infinity : -20 * Math.log10(denominator) };
+  }
+
   const RF = {
-    formatNumber, parseZero, parseFrequency, formatFrequency, sweepPoints, sweepStep, segmentedSweep, logTable,
-    tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget,
+    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable,
+    tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,

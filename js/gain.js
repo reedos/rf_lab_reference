@@ -24,7 +24,7 @@
     d1: 'Input differential reference impedance in ohms', s1: 'Input single-ended reference impedance in ohms',
     d2: 'Output differential reference impedance in ohms', s2: 'Output single-ended reference impedance in ohms'
   };
-  let topology = 'dd', result = null;
+  let topology = 'dd', result = null, terminal = null;
 
   function readQuery() {
     const q = new URLSearchParams(location.search);
@@ -33,10 +33,12 @@
       const value = RF.parseNumber(q.get(key));
       if (value > 0) store[key] = value;
     }
+    for (const id of ['s11-db', 's11-deg']) if (q.has(id)) $(id).value = q.get(id);
   }
   function writeQuery() {
     const q = new URLSearchParams({ t: topology });
     for (const key of Object.keys(store)) q.set(key, String(store[key]));
+    for (const id of ['s11-db', 's11-deg']) q.set(id, Bench.raw(id));
     history.replaceState(null, '', location.pathname + '?' + q);
   }
   function applyTopology() {
@@ -58,14 +60,23 @@
     $('z1').value = String(store[ports.in]);
     $('z2').value = String(store[ports.out]);
   }
+  function readTerminal() {
+    const dbText = $('s11-db').value.trim(), degText = $('s11-deg').value.trim();
+    if (dbText === '' && degText === '') return { ok: true, value: null };
+    if (dbText === '' || degText === '') return { ok: false, value: null, why: 'Enter both the magnitude and the phase of S11, or leave both blank.' };
+    const value = RF.terminalCorrection(Bench.read('s11-db'), Bench.read('s11-deg'));
+    return value ? { ok: true, value } : { ok: false, value: null, why: 'S11 must be a level at or below 0 dB with a finite phase.' };
+  }
   function compute() {
     const ports = PORTS[topology];
     const z1 = Bench.read('z1'), z2 = Bench.read('z2');
     if (z1 > 0) store[ports.in] = z1;
     if (z2 > 0) store[ports.out] = z2;
-    result = RF.gainConversion(topology, z1, z2);
+    const wanted = readTerminal();
+    terminal = wanted.value;
+    result = wanted.ok ? RF.gainConversion(topology, z1, z2) : null;
     if (!result) {
-      $('gain-status').textContent = 'Enter a positive reference impedance for each port.';
+      $('gain-status').textContent = wanted.ok ? 'Enter a positive reference impedance for each port.' : wanted.why;
       $('gain-status').className = 'status-error';
       $('metrics').replaceChildren(); $('gain-equation').replaceChildren(); $('gain-note').textContent = '';
       $('diagram-key').replaceChildren();
@@ -103,6 +114,9 @@
       metric('Output reference', `${PLAIN[ports.out]} ${fmt(result.z2)} Ω`, 'port-out'),
       metric('Power gain', `|${spec.plain}|², unchanged by the impedances`),
       metric('Impedance ratio', `${fmt(result.ratio)} = ${fmt(result.z2)} Ω / ${fmt(result.z1)} Ω`),
+      ...(terminal ? [metric('Referred to the input terminal',
+        terminal.degenerate ? 'Unbounded: S11 = −1 leaves no terminal voltage'
+          : `${spec.plain} × ${fmt(result.factor / terminal.denominator)}  ·  ${result.db + terminal.db > 0 ? '+' : ''}${fmt(result.db + terminal.db, 'dB')} dB`)] : []),
       metric('Per line, if uncoupled', [
         result.perLine1 === null ? null : `in ${fmt(result.perLine1)} Ω`,
         result.perLine2 === null ? null : `out ${fmt(result.perLine2)} Ω`
@@ -123,7 +137,9 @@
       eq('Power ratio carries no impedance term', String.raw`\frac{P_2}{P_{\mathrm{avs}}} &= |${parameter}|^{2}`),
       'Squaring the magnitude cancels the normalisation, which is why the power ratio is the same whatever the reference impedances are, and the voltage ratio is not.',
       eq('Referred to the input terminal voltage', String.raw`\frac{V_2}{V_1} &= \frac{${parameter}}{1+S_{11}}\sqrt{\frac{${outSym}}{${inSym}}}`),
-      'That form needs the input reflection as well, and reduces to the line above when the input is matched.',
+      terminal ? eq('Input terminal correction', String.raw`\left|1+S_{11}\right| &= \left|1+${tex(terminal.magnitude)}e^{j${tex(Bench.read('s11-deg'), 'deg')}}\right|`, tex(terminal.denominator), String.raw`\left|${tex(terminal.re)}+j(${tex(terminal.im)})\right|`)
+        : 'That form needs the input reflection as well, and reduces to the line above when the input is matched.',
+      terminal ? `With this reflection the terminal-referred gain is ${fmt(terminal.db, 'dB')} dB away from the incident-wave figure.` : '',
       result.perLine1 !== null || result.perLine2 !== null
         ? 'A differential reference impedance is twice the per-line value only for an uncoupled pair. A real coupled pair has twice its odd-mode impedance, which is lower.'
         : 'Both ports are single-ended here, so no differential reference is involved.'
@@ -147,7 +163,7 @@
     Object.assign(store, standard ? { d1: 100, s1: 50, d2: 100, s2: 50 } : { d1: 200, s1: 50, d2: 200, s2: 50 });
     applyTopology(); compute();
   }));
-  ['z1', 'z2'].forEach(id => $(id).addEventListener('input', compute));
+  ['z1', 'z2', 's11-db', 's11-deg'].forEach(id => $(id).addEventListener('input', compute));
   $('copy-link').addEventListener('click', () => { if (Bench.valid) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => {
     if (!result) return;

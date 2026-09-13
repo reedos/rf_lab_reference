@@ -17,19 +17,18 @@
       segment('1', 'MHz', '9', 'MHz', '1', 'MHz'), segment('10', 'MHz', '90', 'MHz', '10', 'MHz'),
       segment('100', 'MHz', '10', 'GHz', '100', 'MHz')]
   };
+  const timeScales = { 'µs': 1e-6, ms: 1e-3, s: 1 };
+  const overheadIds = ['point-overhead', 'segment-overhead'];
   const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step'];
   const optionIds = ['mode', 'limit', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points']
-    .concat(frequencyIds, frequencyIds.map(id => id + '-unit'));
+    .concat(frequencyIds, frequencyIds.map(id => id + '-unit'), overheadIds, overheadIds.map(id => id + '-unit'));
   // Every frequency field carries its own unit; changing it keeps the physical value.
   const unitScale = el => scales[document.getElementById(el.id + '-unit').value];
   const readHz = el => RF.parseFrequency(el.value, unitScale(el));
   function bindUnit(id) {
-    const el = $(id), select = $(id + '-unit');
-    let previous = select.value;
-    select.addEventListener('change', function () {
-      const hz = RF.parseFrequency(el.value, scales[previous]);
-      previous = select.value;
-      if (Number.isFinite(hz)) el.value = String(Number((hz / scales[select.value]).toPrecision(12)));
+    const el = $(id);
+    $(id + '-unit').addEventListener('change', function () {
+      el.value = RF.frequencyDigits(el.value);
       compute();
     });
   }
@@ -96,14 +95,23 @@
       stop: RF.parseFrequency(s.stop, scales[segmentUnit(s, 'stopUnit')]), step: RF.parseFrequency(s.step, scales[segmentUnit(s, 'stepUnit')]) }));
     const limitBlank = $('limit').value.trim() === '', ifbwBlank = $('ifbw').value.trim() === '';
     const maxPoints = limitBlank ? null : Bench.read('limit'), ifbw = ifbwBlank ? null : readHz($('ifbw')), jumpLimit = Bench.read('jump'), mode = $('mode').value;
+    const overhead = {};
+    for (const id of overheadIds) {
+      const text = $(id).value.trim();
+      if (text === '') { overhead[id] = 0; continue; }
+      const value = Bench.read(id) * timeScales[$(id + '-unit').value];
+      if (!(value >= 0) || !Number.isFinite(value)) return invalidSweep('Overhead entries must be zero or a positive time. Leave them blank if unknown.');
+      overhead[id] = value;
+    }
     if ((maxPoints !== null && !(Number.isInteger(maxPoints) && maxPoints > 0)) || (ifbw !== null && !(ifbw > 0)) || !(jumpLimit > 1)) {
       return invalidSweep('Point limit must be a positive whole number, IF bandwidth positive, and the step-ratio flag above 1.');
     }
-    result = RF.segmentedSweep(parsed, { maxPoints, ifbw, jumpLimit, mode });
+    result = RF.segmentedSweep(parsed, { maxPoints, ifbw, jumpLimit, mode,
+      pointOverhead: overhead['point-overhead'], segmentOverhead: overhead['segment-overhead'] });
     if (!result) return invalidSweep('Each segment needs a positive start, a stop at or above it, and a positive step. Pick each unit beside its field.');
     const sharp = result.boundaries.filter(b => b.sharp).length, broken = result.boundaries.filter(b => b.kind !== 'contiguous').length;
     const notes = [];
-    if (result.inexact) notes.push(`${result.inexact} segment${result.inexact === 1 ? '' : 's'} do not land on the stop frequency`);
+    if (result.inexact) notes.push(`${result.inexact} ${result.inexact === 1 ? 'segment does' : 'segments do'} not land on the stop frequency`);
     if (broken) notes.push(`${broken} boundar${broken === 1 ? 'y has' : 'ies have'} a gap, overlap, or duplicate point`);
     if (sharp) notes.push(`${sharp} boundar${sharp === 1 ? 'y changes' : 'ies change'} ${mode === 'relative' ? 'the relative step Δf/f at the segment start' : 'the step size'} by more than ${fmt(result.jumpLimit)}×`);
     if (result.headroom !== null && result.headroom < 0) notes.push(`the total exceeds the ${result.maxPoints}-point limit by ${-result.headroom}`);
@@ -117,7 +125,10 @@
     $('sweep-metrics').innerHTML = metric('Total points', String(result.points) + (parked ? ` · ${active.length} of ${segments.length} segments` : ''), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) +
       metric('Points per decade', result.decadePoints.min === result.decadePoints.max ? fmt(result.decadePoints.min) : `${fmt(result.decadePoints.min)} to ${fmt(result.decadePoints.max)} by segment`) +
       metric('Point limit', result.maxPoints === null ? 'None specified' : `${result.maxPoints} · ${result.headroom >= 0 ? `${result.headroom} spare` : `<span class="over-limit">${-result.headroom} over</span>`}`) +
-      metric('Minimum sweep time', result.ifbw === null ? 'Enter IF bandwidth' : `≈ ${seconds(result.sweepTime)}`) +
+      metric(result.overheadTime > 0 ? 'Estimated sweep time' : 'Minimum sweep time',
+        Number.isFinite(result.sweepTimeTotal)
+          ? `≈ ${seconds(result.sweepTimeTotal)}` + (result.overheadTime > 0 && Number.isFinite(result.sweepTime) ? ` · ${seconds(result.sweepTime)} dwell + ${seconds(result.overheadTime)} overhead` : '')
+          : 'Enter IF bandwidth') +
       metric('Log sweep, same coverage', `${result.log.finePoints} points at the finest Δf/f (${fmt(result.log.fine * 100)} %)`) +
       metric('Log sweep, coarsest', `${result.log.coarsePoints} points at ${fmt(result.log.coarse * 100)} %`);
   }
@@ -148,7 +159,7 @@
       ...result.boundaries.flatMap(b => [eq(`Boundary at ${freq(b.frequency)}`, String.raw`\frac{\Delta f_{${b.index + 1}}}{\Delta f_{${b.index}}} &= ${tex(b.stepRatio)} \\ \frac{(\Delta f/f_{\mathrm{start}})_{${b.index + 1}}}{(\Delta f/f_{\mathrm{start}})_{${b.index}}} &= ${tex(b.patternRatio)} \\ f_{\mathrm{start},${b.index + 1}}-f_{\mathrm{last},${b.index}} &= ${tex(b.gap, 'Hz')}`),
         b.sharp ? `${mode === 'relative' ? 'Relative spacing pattern' : 'Step size'} changes by more than ${fmt(result.jumpLimit)}× at ${freq(b.frequency)}.` : '']),
       eq('Total points', String.raw`N &= \sum_i N_i`, tex(result.points), result.rows.map(r => tex(r.points)).join('+')),
-      result.ifbw === null ? 'Enter an IF bandwidth to estimate the minimum sweep time.' : eq('Minimum sweep time', String.raw`t_{\min} &\approx \frac{N}{\mathrm{IFBW}}`, tex(result.sweepTime, 's'), String.raw`\frac{${tex(result.points)}}{${tex(result.ifbw, 'Hz', false)}}\,\mathrm s`),
+      result.ifbw === null ? 'Enter an IF bandwidth to estimate the sweep time.' : eq('Sweep time', String.raw`t &\approx \frac{N}{\mathrm{IFBW}} + N t_{\mathrm{point}} + S t_{\mathrm{seg}}`, tex(result.sweepTimeTotal, 's'), String.raw`\frac{${tex(result.points)}}{${tex(result.ifbw, 'Hz', false)}}+${tex(result.points)}(${tex(result.pointOverhead, 's', false)})+${tex(result.rows.length)}(${tex(result.segmentOverhead, 's', false)})\,\mathrm s`),
       eq('Log sweep with the same relative spacing', String.raw`N_{\log} &= \left\lceil\frac{\ln(f_{\mathrm{last}}/f_{\mathrm{first}})}{\ln(1+r)}\right\rceil+1`, String.raw`${tex(result.log.finePoints)}\text{ for } r=${tex(result.log.fine)},\ ${tex(result.log.coarsePoints)}\text{ for } r=${tex(result.log.coarse)}`),
       `Boundaries are compared by ${mode === 'relative' ? 'relative step at each segment start, which is smooth for a repeating decade pattern' : 'absolute step size'}.`,
       'Sweep time excludes band crossings, source settling, and dwell. Instrument segment limits, point limits, and IF bandwidth per segment are set on the analyzer.',
@@ -165,14 +176,12 @@
       s.enabled = event.target.checked;
       el.classList.toggle('is-off', !s.enabled);
     } else if (key.endsWith('Unit')) {
-      // Changing a unit keeps the physical value, the same as every other unit control here.
-      const base = key.slice(0, -4), hz = RF.parseFrequency(s[base], scales[segmentUnit(s, key)]);
+      // The digits stay and the new unit decides what they mean, as everywhere else here.
+      const base = key.slice(0, -4);
       s[key] = event.target.value;
-      if (Number.isFinite(hz)) {
-        s[base] = String(Number((hz / scales[s[key]]).toPrecision(12)));
-        const input = el.querySelector('[data-key="' + base + '"]');
-        if (input) input.value = s[base];
-      }
+      s[base] = RF.frequencyDigits(s[base]);
+      const input = el.querySelector('[data-key="' + base + '"]');
+      if (input) input.value = s[base];
     } else {
       s[key] = event.target.value;
     }
@@ -192,7 +201,8 @@
   document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     segments = PRESETS[b.dataset.preset].map(s => ({ ...s })); loadError = ''; renderSegments(); compute();
   }));
-  ['mode', 'limit', 'ifbw', 'jump'].forEach(id => $(id).addEventListener(id === 'mode' ? 'change' : 'input', () => { loadError = ''; compute(); }));
+  ['mode', 'limit', 'ifbw', 'jump'].concat(overheadIds, overheadIds.map(id => id + '-unit'))
+    .forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { loadError = ''; compute(); }));
   frequencyIds.forEach(bindUnit);
   ['g-start', 'g-stop', 'g-mult', 'g-tail', 'g-tail-step'].forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { $('generate-status').textContent = ''; if (Bench.valid) writeQuery(); }));
   $('generate').addEventListener('click', () => {

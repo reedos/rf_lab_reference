@@ -123,8 +123,7 @@
   }));
   ['source-power','bandwidth','source-temp'].forEach(id => $(id).addEventListener('input', () => { loadError = ''; compute(); }));
   $('bandwidth-unit').addEventListener('change', () => {
-    const value = n('bandwidth');
-    if (Number.isFinite(value)) Bench.setNumber('bandwidth', value * scales[bandwidthUnit] / scales[$('bandwidth-unit').value], $('bandwidth-unit').value, true);
+    // Bandwidth is an entry, so the digits stay and the unit decides what they mean.
     bandwidthUnit = $('bandwidth-unit').value; loadError = ''; compute();
   });
   $('copy-link').addEventListener('click', () => { if (result) Bench.copy(location.href); });

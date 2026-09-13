@@ -12,7 +12,7 @@
   };
   const metric = (key, value, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${key}</dt><dd>${value}</dd></div>`;
   let source = 'length', dielectric = 'er', current = null, slope = null, skew = null;
-  let units = { 'freq-unit': $('freq-unit').value, 'len-unit': $('len-unit').value, 'delay-unit': $('delay-unit').value, 'skew-unit': $('skew-unit').value };
+
   const phaseIds = ['phase-f1', 'phase-f2', 'phase-p1', 'phase-p2', 'phase-turns', 'phase-mode'];
   const skewIds = ['skew-length', 'skew-unit', 'skew-target'];
   function readQuery() {
@@ -33,7 +33,6 @@
       const el = $(id), value = q.get(id);
       if (el.tagName !== 'SELECT' || Array.from(el.options).some(o => o.value === value)) el.value = value;
     }
-    Object.keys(units).forEach(id => units[id] = $(id).value);
   }
   function writeQuery() {
     const q = new URLSearchParams({ er: String(current.er), f: Bench.raw('freq'), fu: $('freq-unit').value,
@@ -143,13 +142,10 @@
   ['skew-length', 'skew-target'].forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', compute));
   ['er', 'vf'].forEach(id => $(id).addEventListener('input', () => { dielectric = id; compute(); }));
   $('freq').addEventListener('input', compute);
-  const fields = { 'freq-unit': 'freq', 'len-unit': 'length', 'delay-unit': 'delay', 'skew-unit': 'skew-length' };
-  Object.keys(fields).forEach(id => $(id).addEventListener('change', () => {
-    const field = fields[id], value = n(field);
-    if (Number.isFinite(value)) Bench.setNumber(field, value * scales[units[id]] / scales[$(id).value], $(id).value, true);
-    units[id] = $(id).value;
-    compute();
-  }));
+  // Picking a unit keeps the digits that are there and changes what they mean, the way an
+  // analyzer's unit keys do. A field that is solved from another is rewritten by compute() in
+  // the new unit, so its physical value is preserved without any conversion here.
+  ['freq-unit', 'len-unit', 'delay-unit', 'skew-unit'].forEach(id => $(id).addEventListener('change', compute));
   phaseIds.forEach(id => $(id).addEventListener(id === 'phase-mode' ? 'change' : 'input', compute));
   document.querySelectorAll('[data-er]').forEach(b => b.addEventListener('click', () => { dielectric = 'er'; Bench.setNumber('er', Number(b.dataset.er)); compute(); }));
   $('phase-use').addEventListener('click', () => {

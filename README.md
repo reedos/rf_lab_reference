@@ -95,10 +95,14 @@ starts a negative entry so the next digits land after the minus. Fields that mus
 such as impedances, frequencies, temperatures and point counts, have no button.
 
 Every frequency field carries **its own unit**, so a corner in kilohertz sits beside a
-fundamental in gigahertz and a kilohertz step beside a gigahertz stop. Changing a unit keeps
-the physical value and rewrites the number, so 1 GHz becomes 1000000 kHz rather than 1 kHz.
-Typing a unit or SI prefix still works where a keyboard allows it (10k, 100 MHz, 2.4G) and
-overrides the selector for that entry.
+fundamental in gigahertz and a kilohertz step beside a gigahertz stop.
+
+Picking a unit **keeps the digits you typed and changes what they mean**, the way an
+analyzer's unit keys work: type 10, choose GHz, get 10 GHz. Any unit typed into the field
+itself is dropped at that point, so the selector is what decides. A field that is *solved*
+from another one behaves the other way round, because it is rewritten from the physical value
+each time: change the unit on a solved delay and it converts, so the delay itself does not
+move. Typing a unit or SI prefix still works where a keyboard allows it (10k, 100 MHz, 2.4G).
 
 ## VOPP — dBm ↔ peak-to-peak
 

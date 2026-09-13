@@ -500,15 +500,10 @@
   els.vopp.addEventListener("focus", function (event) { event.target.select(); });
 
   els.voppUnit.addEventListener("change", function () {
-    const next = els.voppUnit.value;
-    if (state.source === "vopp") {
-      const typed = Bench.read(els.vopp, true);
-      const volts = RF.unitToVolts(typed, state.unit);
-      state.unit = next;
-      if (Number.isFinite(volts)) state.vopp = volts;
-    } else {
-      state.unit = next;
-    }
+    // The digits you typed stay put; the unit you pick says what they mean. When VOPP is the
+    // solved field instead, compute() rewrites it in the new unit.
+    state.unit = els.voppUnit.value;
+    if (state.source === "vopp") state.vopp = RF.unitToVolts(Bench.read(els.vopp, true), state.unit);
     compute();
   });
 
