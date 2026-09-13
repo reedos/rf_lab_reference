@@ -620,6 +620,7 @@
 
   document.addEventListener('dut-change', function () { pullFromCard(); compute(); });
   Dut.describe('the input side (topology and Z per line) when the VNA drives the DUT, and the output side when the DUT drives the VNA');
+  Bench.exports({ figureTitle: 'Drive schematic', figure: () => [document.querySelector('.schematic-stage'), els.colourKey, els.metrics], caption: resultLine });
   readQuery();
   Bench.setNumber(els.zdut, state.zdut);
   els.voppUnit.value = state.unit;

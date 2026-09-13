@@ -128,5 +128,6 @@
   });
   $('copy-link').addEventListener('click', () => { if (result) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => { if (result) Bench.copy(`CW power chain | Source ${dbm(n('source-power'))}\n` + result.rows.map((r,i) => `${stages[i].name}: ${dbm(r.outputDbm)}; limit ${stages[i].limit.trim() === '' ? 'unspecified' : dbm(RF.parseNumber(stages[i].limit))}; headroom ${r.headroom === null ? 'unspecified' : fmt(r.headroom, 'dB') + ' dB'}`).join('\n') + `\nGain ${fmt(result.gainDb, 'dB')} dB | NF ${fmt(result.nf, 'dB')} dB | B ${fmt(n('bandwidth'))} ${$('bandwidth-unit').value} | Tsource ${fmt(n('source-temp'))} K | Output noise ${dbm(result.noiseDbm)} | SNR ${fmt(result.snr, 'dB')} dB`); });
+  Bench.exports({ figureTitle: 'Power path', figure: () => [$('power-path'), $('noise-metrics')], tableTitle: 'Chain tables', tables: () => Array.from(document.querySelectorAll('#calc .chain-results')) });
   readQuery(); renderStages(); compute();
 })();

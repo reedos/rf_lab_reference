@@ -920,8 +920,177 @@ select:focus-visible {
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-top: 14px;
+}
+
+.export-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+
+.export-theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.export-theme select {
+  padding: 5px 8px;
+  font-size: 0.8rem;
+}
+
+/* ----- Exported images. A header names the page and the DUT, a footer the address and date.
+   The light theme redefines the tokens for paper; the few literal colours follow below. */
+.snap {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  padding: 22px 24px 18px;
+  box-sizing: border-box;
+}
+
+.snap-light {
+  --bg: #ffffff;
+  --bg-elev: #f6f7f9;
+  --bg-inset: #f1f3f6;
+  --bg-well: #e7eaef;
+  --line: rgba(0, 0, 0, 0.12);
+  --line-strong: rgba(0, 0, 0, 0.3);
+  --amber: #a5660a;
+  --amber-soft: rgba(165, 102, 10, 0.12);
+  --cyan: #0b7c73;
+  --cyan-soft: rgba(11, 124, 115, 0.12);
+  --text: #161a22;
+  --muted: #4a5261;
+  --dim: #6b7280;
+  --danger: #b42318;
+  --plus: #a5660a;
+  --minus: #2f5fd0;
+  --port-in: #a5660a;
+  --port-out: #0b7c73;
+  --accent: var(--amber);
+  --accent-soft: var(--amber-soft);
+  --shadow: none;
+}
+
+.snap-light .blk-shell {
+  background: #ffffff;
+}
+
+.snap-light .schematic-stage {
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    var(--bg-inset);
+  background-size: 20px 20px, 20px 20px, auto;
+}
+
+.snap-light #smith .smith-grid {
+  stroke: #b3bac6;
+}
+
+.snap-light .seg-btn.is-active,
+.snap-light .chip.is-active {
+  color: #ffffff;
+}
+
+.snap-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.snap-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+}
+
+.snap-brand span {
+  color: var(--amber);
+}
+
+.snap-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.snap-dut,
+.snap-caption {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.snap-label {
+  display: inline-block;
+  margin-right: 8px;
+  font: 600 10px var(--font-display);
+  letter-spacing: 0.16em;
+  color: var(--dim);
+}
+
+.snap-body {
+  margin-top: 14px;
+}
+
+.snap-body > * + * {
+  margin-top: 12px;
+}
+
+.snap-body .metrics {
+  margin-top: 12px;
+}
+
+.snap-body .chain-results,
+.snap .equation-math,
+.snap .gain-result,
+.snap .power-path,
+.snap .schematic-stage {
+  overflow: visible;
+}
+
+.snap-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.snap-value {
+  font-family: var(--font-mono);
+}
+
+.calculation-export > p {
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .copy,

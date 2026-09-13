@@ -301,5 +301,6 @@
   });
   document.addEventListener('dut-change', () => { labelPresets(); rangeFromCard(); $('generate-status').textContent = ''; compute(); });
   Dut.describe('the operating range: the linear tail and stop of the generated table, the wide preset, and the coverage check on the segment table');
+  Bench.exports({ tableTitle: 'Segment table', tables: () => [$('sweep-metrics'), $('sweep-rows').closest('.chain-results'), $('boundary-rows').closest('.chain-results')] });
   readQuery(); labelPresets(); renderSegments(); compute();
 })();

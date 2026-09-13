@@ -138,8 +138,9 @@
   function substitution(entry, S) {
     const c = Math.abs(entry.terms[0].coefficient);
     const prefix = Math.abs(c - 0.5) < 1e-9 ? '\\tfrac12' : Math.abs(c - Math.SQRT1_2) < 1e-9 ? '\\tfrac{1}{\\sqrt 2}' : '';
-    const body = entry.terms.map((t, k) => `${t.coefficient < 0 ? '-' : k ? '+' : ''}(${rect(S[t.i][t.j])})`).join(' ');
-    return prefix ? `${prefix}\\left[${body}\\right]` : body;
+    const parts = entry.terms.map((t, k) => `${t.coefficient < 0 ? '-' : k ? '+' : ''}(${rect(S[t.i][t.j])})`);
+    const body = parts.length > 2 ? parts.slice(0, 2).join(' ') + ' \\\\ &\\qquad ' + parts.slice(2).join(' ') : parts.join(' ');
+    return prefix ? `${prefix}\\bigl[${body}\\bigr]` : body;
   }
   function renderTransform() {
     const rows = RF.mixedModeRows(sides());
@@ -289,5 +290,8 @@
     Bench.copy(`Mixed-mode | ${LABELS[topology]} | logical 1 = port ${s[0].ports.join(', ')} | logical 2 = port ${s[1].ports.join(', ')}\n` +
       result.rows.map((r, ri) => result.rows.map((c, ci) => { const e = result.entries[ri * result.rows.length + ci]; return `${e.name} ${show(e.value)}`; }).join(' | ')).join('\n'));
   });
+  Bench.exports({ figureTitle: 'Port mapping', figure: () => [$('mixed-diagram'), $('mixed-key'), $('mixed-caption'), $('metrics')],
+    tableTitle: 'Mixed-mode set', tables: () => [$('mm-rows').closest('.chain-results')],
+    equations: () => [$('mixed-transform'), $('mixed-equations'), $('mixed-impedances')] });
   readQuery(); pushToCard(); validateMapping(); renderMapping(); renderGrid(); compute();
 })();

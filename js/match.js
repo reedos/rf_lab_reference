@@ -22,13 +22,13 @@
       for (let i = 0; i <= 160; i++) pts.push(RF.complexMatch((Math.exp(i / 25) - 1) / 5, x, 1));
       curves.push(`<path class="smith-grid" d="${pathOf(pts)}"/>`);
     }
-    svg.innerHTML = `<circle cx="220" cy="220" r="190" fill="#0b0d12" stroke="#687385"/>${curves.join('')}
+    svg.innerHTML = `<circle cx="220" cy="220" r="190" fill="var(--bg-inset)" stroke="var(--dim)"/>${curves.join('')}
       <path d="M30 220 H410" class="smith-grid"/>
       <text x="8" y="236">short</text><text x="402" y="236">open</text><text x="227" y="236">1</text>
       <text x="192" y="16">+jX</text><text x="192" y="435">−jX</text>
       <text x="97" y="216">0.2</text><text x="153" y="216">0.5</text><text x="283" y="216">2</text><text x="346" y="216">5</text>
-      <line id="smith-vector" x1="220" y1="220" x2="220" y2="220" stroke="#f3b63a" stroke-width="1.5"/>
-      <circle id="smith-marker" cx="220" cy="220" r="6" fill="#f3b63a" stroke="#090b10" stroke-width="2"/>`;
+      <line id="smith-vector" x1="220" y1="220" x2="220" y2="220" stroke="var(--port-out)" stroke-width="1.5"/>
+      <circle id="smith-marker" cx="220" cy="220" r="6" fill="var(--port-out)" stroke="var(--bg)" stroke-width="2"/>`;
   }
   function drawRealChart() {
     const z0 = n('z0') > 0 ? n('z0') : 50;
@@ -41,12 +41,12 @@
       pts.push(`${i ? 'L' : 'M'}${xpos(z)},${246 - (Math.max(min, Math.min(max, val)) - min) / (max - min) * 220}`);
     }
     let labels = '';
-    for (const factor of [.05, .2, 1, 5, 20]) labels += `<text x="${xpos(z0 * factor)}" y="265" text-anchor="middle" fill="#9aa1ae" font-size="11">${fmt(z0 * factor)} Ω</text>`;
+    for (const factor of [.05, .2, 1, 5, 20]) labels += `<text x="${xpos(z0 * factor)}" y="265" text-anchor="middle" fill="var(--muted)" font-size="11">${fmt(z0 * factor)} Ω</text>`;
     for (const v of [min, (min + max) / 2, max]) {
       const y = 246 - (v - min) / (max - min) * 220;
-      labels += `<path d="M52 ${y} H696" stroke="#303640"/><text x="44" y="${y + 4}" text-anchor="end" fill="#9aa1ae" font-size="11">${v}</text>`;
+      labels += `<path d="M52 ${y} H696" stroke="var(--line-strong)"/><text x="44" y="${y + 4}" text-anchor="end" fill="var(--muted)" font-size="11">${v}</text>`;
     }
-    $('chart').innerHTML = labels + `<path d="${pts.join(' ')}" fill="none" stroke="#f3b63a" stroke-width="2"/>`;
+    $('chart').innerHTML = labels + `<path d="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
     document.querySelectorAll('[data-chart]').forEach(b => b.classList.toggle('is-active', b.dataset.chart === chart));
   }
   function compute() {
@@ -142,5 +142,6 @@
   });
   $('copy-link').addEventListener('click', () => { if (result) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => { if (result) Bench.copy(`Z₀ ${fmt(result.z0)} Ω | Z ${fmt(result.r)} + j(${fmt(result.x)}) Ω | Γ ${fmt(result.gamma)} ∠ ${result.gamma ? fmt(result.phase, 'deg') : 'undefined'}° | S11 ${fmt(-result.rl, 'dB')} dB | VSWR ${fmt(result.vswr)}`); });
+  Bench.exports({ figureTitle: 'Smith chart', figure: () => [$('smith'), document.querySelector('.colour-key'), $('metrics')] });
   buildSmith(); readQuery(); compute();
 })();

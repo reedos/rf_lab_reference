@@ -156,5 +156,6 @@
   $('copy-result').addEventListener('click', () => {
     if (current && Bench.valid) Bench.copy(`${fmt(current.f / 1e6)} MHz | εeff ${fmt(current.er)} | ${fmt(current.length * 1000)} mm | one-way ${fmt(current.delay * 1e9)} ns | ${fmt(current.degrees)}°\nPhase slope (${$('phase-mode').value}): ${fmt(slope.deltaPhase, 'deg')}° | trace ${fmt(slope.traceDelay * 1e9)} ns | estimated one-way length ${fmt(slope.length * 1000)} mm`);
   });
+  Bench.exports({ figureTitle: 'Results', figureLabel: 'Copy tiles', figure: () => [$('metrics'), $('phase-metrics'), $('skew-metrics')] });
   readQuery(); compute();
 })();

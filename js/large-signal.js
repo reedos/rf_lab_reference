@@ -562,6 +562,10 @@
     if (Bench.valid) { writeQuery(); copyText(window.location.href, "Link copied"); }
   });
 
+  Bench.exports({ figureTitle: 'Spectrum', caption: () => lastLine,
+    figure: () => state.panel === 'twotone' ? [document.getElementById('spectrum'), document.getElementById('imd-metrics')]
+      : state.panel === 'p1db' ? [document.getElementById('p1-metrics')] : [document.getElementById('thd-metrics'), document.getElementById('thd-band-metrics')],
+    tables: () => Array.from(document.querySelectorAll('.ls-panel:not([hidden]) .chain-results')) });
   readQuery();
   els.z0.value = String(state.z0);
   els.toneDbm.value = String(state.toneDbm);

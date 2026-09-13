@@ -146,7 +146,7 @@ button:disabled { opacity: .45; cursor: default; }
 .noise-bar-fill { height: 100%; background: var(--cyan); border-radius: 5px; }
 .smith-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .75fr); gap: 25px; align-items: center; }
 #smith { width: 100%; height: auto; display: block; touch-action: none; }
-#smith .smith-grid { fill: none; stroke: #38414d; stroke-width: .8; }
+#smith .smith-grid { fill: none; stroke: var(--line-strong); stroke-width: .8; }
 #smith text { fill: var(--muted); font: 10px var(--font-mono); }
 .smith-caption { text-align: center; color: var(--muted); font-size: 12px; }
 .match-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }

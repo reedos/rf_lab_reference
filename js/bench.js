@@ -112,10 +112,13 @@
       loadKatex().then(renderCalculation, () => { katexFailed = true; renderCalculation(); });
       return;
     }
-    detail.replaceChildren();
-    for (const line of latest.lines) {
+    renderLines(latest.lines, detail);
+  }
+  function renderLines(lines, container) {
+    container.replaceChildren();
+    for (const line of lines) {
       if (!line) continue;
-      if (typeof line === 'string') { detail.append(paragraph(line)); continue; }
+      if (typeof line === 'string') { container.append(paragraph(line)); continue; }
       const block = document.createElement('section'), label = document.createElement('h3'), math = document.createElement('div');
       block.className = 'equation'; label.textContent = line.label; math.className = 'equation-math';
       math.tabIndex = 0; math.setAttribute('role', 'region'); math.setAttribute('aria-label', line.label);
@@ -123,8 +126,12 @@
         if (katexFailed) throw new Error('unavailable');
         katex.render(line.latex, math, { displayMode: true, output: 'htmlAndMathml', throwOnError: true, trust: false, strict: 'error' });
       } catch (_) { math.classList.add('equation-error'); math.textContent = 'Equation unavailable. The calculator result is shown above.'; }
-      block.append(label, math); detail.append(block);
+      block.append(label, math); container.append(block);
     }
+  }
+  // A fresh render of the current calculation, for an image; the panel itself is untouched.
+  function calculationClone() {
+    return loadKatex().then(() => { const box = document.createElement('div'); box.className = 'calculation-export'; renderLines(latest.lines, box); return box; });
   }
   // Inputs fire on every keystroke; equation rendering is coalesced into one pass.
   function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderCalculation, 60); }
@@ -133,6 +140,7 @@
     scheduleRender();
     if (save) save.disabled = !value.valid;
     ['copy-result', 'copy-link'].forEach(id => { const button = document.getElementById(id); if (button) button.disabled = !value.valid; });
+    document.dispatchEvent(new CustomEvent('bench-valid', { detail: value.valid }));
   }
   function say(message) { if (status) status.textContent = message; }
   async function copy(text) {
@@ -141,7 +149,7 @@
       say('Copied.');
     } catch (_) { say('Clipboard unavailable. Select and copy the address or calculation text.'); }
   }
-  window.Bench = { update, copy, read, raw, setNumber, enhance, math, tex, voltage, equation, tint, mark, PORT, get valid() { return latest.valid; } };
+  window.Bench = { update, copy, read, raw, setNumber, enhance, math, tex, voltage, equation, tint, mark, PORT, calculationClone, get valid() { return latest.valid; } };
   document.addEventListener('DOMContentLoaded', function () {
     const calc = document.getElementById('calc');
     if (!calc) return;

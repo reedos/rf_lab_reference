@@ -188,5 +188,6 @@
   });
   document.addEventListener('dut-change', () => { pullFromCard(); applyTopology(); compute(); });
   Dut.describe('both sides: the topology picks the parameter, and each per-line impedance doubles for a differential reference');
+  Bench.exports({ figureTitle: 'Port topology', figure: () => [$('diagram-' + topology), $('diagram-key'), $('diagram-caption'), $('metrics')], equations: () => [$('gain-equation')] });
   readQuery(); applyTopology(); renderDerivation(); compute();
 })();

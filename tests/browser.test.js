@@ -27,7 +27,10 @@ let checks=0;
       try {
         const context=await browser.newContext({viewport:{width:1280,height:900}});
         await context.addInitScript(() => {
-          Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{writeText: async text => { window.copiedText = text; }}});
+          Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{
+            writeText: async text => { window.copiedText = text; },
+            write: async items => { const type=items[0].types[0]; const blob=await items[0].getType(type); window.copiedImage={type,size:blob.size}; }
+          }});
         });
         const page=await context.newPage(), errors=[];
         page.on('pageerror',e=>errors.push(e.message));
@@ -681,6 +684,46 @@ let checks=0;
           await expect(page.locator('[data-topology="ds"]')).toHaveClass(/is-active/);
           await expect(page.locator('.metric.primary')).toContainText('Sds21');
           assert.match(await page.locator('a[data-dut-link]').getAttribute('href'),/din=se/);
+        });
+        await check('Figures, tables and equations copy as images that stand on their own',async()=>{
+          const status=page.locator('#bench-status');
+          const probe=(sel,theme)=>page.evaluate(async([sel,theme])=>{
+            const canvas=await Snapshot.render({title:'probe',nodes:[document.querySelector(sel)],theme});
+            const d=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+            let light=0,dark=0; for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/3; if(l>235) light++; else if(l<70) dark++;}
+            return {w:canvas.width,h:canvas.height,light,dark,total:d.length/4};
+          },[sel,theme]);
+          await go('gain.html?t=sd&d1=100&s2=50');
+          await page.locator('#export-figure').click();
+          await expect(status).toContainText(/Image copied \(light/);
+          const item=await page.evaluate(()=>window.copiedImage);
+          assert.equal(item.type,'image/png'); assert.ok(item.size>5000,'png has content');
+          // Light paper with real ink on it; the dark theme inverts that.
+          let p=await probe('#diagram-sd','light');
+          assert.ok(p.w>1000&&p.h>200,'rendered at twice the layout size');
+          assert.ok(p.light>p.total*.5,'light background'); assert.ok(p.dark>200,'text and lines are drawn');
+          p=await probe('#diagram-sd','dark');
+          assert.ok(p.dark>p.total*.5,'dark background'); assert.ok(p.light>50,'light text is drawn');
+          // The equations come from a fresh render, so the panel can stay closed.
+          await page.locator('#export-theme').selectOption('dark');
+          await page.locator('#export-equations').click();
+          await expect(status).toContainText(/Image copied \(dark/);
+          assert.equal(await page.locator('.calculation').getAttribute('open'),null);
+          // Tables copy as tab-separated text and as an image.
+          await go('sweep.html');
+          await page.locator('#export-table').click();
+          const tsv=await page.evaluate(()=>window.copiedText);
+          assert.match(tsv,/^#\tStart\tStop\tStep\tPoints/); assert.match(tsv,/\t991\t/); assert.match(tsv,/At\tTransition/);
+          await page.locator('#export-table-image').click();
+          await expect(status).toContainText(/Image copied/);
+          // An invalid page refuses rather than drawing a half result.
+          await go('index.html'); await fill('zdut',0);
+          await expect(page.locator('#export-figure')).toBeDisabled();
+          await fill('zdut',50); await expect(page.locator('#export-figure')).toBeEnabled();
+          await page.locator('#export-figure').click(); await expect(status).toContainText(/Image copied/);
+          for (const file of ['match.html','chain.html','delay.html','large-signal.html','mixed.html']) {
+            await go(file); await page.locator('#export-figure').click(); await expect(status).toContainText(/Image copied/,{timeout:15000});
+          }
         });
         await check('The DUT card travels between pages in the link and binds each page to its side',async()=>{
           const summary=()=>page.locator('#dut-summary').innerText();

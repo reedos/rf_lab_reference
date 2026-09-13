@@ -36,6 +36,20 @@ Storage and clipboard failures are reported without preventing calculation.
 Setups stay on the device. There is no account, backend, or measurement upload, and the
 pages make no external requests.
 
+## Copying figures, tables and equations
+
+Every calculator's toolbar can copy an image as well as text. **Copy figure** takes the
+diagram with the values it carries and the result tiles; **Copy table** copies the result
+tables as tab-separated text for a spreadsheet, and **Table image** copies them as a picture;
+**Copy equations** renders the calculation panel afresh, with the current numbers
+substituted, whether or not the panel is open. Pages whose equations live in the body (Gain,
+Mixed-mode) include those first. Each image carries a header with the page and the DUT
+card, and a footer with the address and the date, so it stands on its own in a report. The
+**Image** selector chooses a light theme for paper and slides or the site's dark theme; both
+keep the port colours. Images are drawn in the browser from the live page, with the site's
+fonts embedded, at twice the layout size; nothing is sent anywhere. If the browser refuses the
+clipboard, the PNG is downloaded instead.
+
 ## The DUT card
 
 Every page opens with the same **DUT card**: input and output port topology, a per-line
