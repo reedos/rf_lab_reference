@@ -106,6 +106,13 @@ move. Typing a unit or SI prefix still works where a keyboard allows it (10k, 10
 
 ## VOPP — dBm ↔ peak-to-peak
 
+The calculation panel follows the direction you actually solved in. Type a level and it runs
+power to voltage; type VOPP and it runs voltage to power, ending in dBm. Every substituted
+value carries its unit, so each line can be checked dimensionally, and the reflection
+coefficient is tied to the power split through P_del/P_avs = 1 − |Γ|² rather than being left
+as a loose number. Differential adds the differential impedance, the pair voltage, and the
+total across both ports.
+
 dBm ↔ voltage at the reference plane. Default unit is **volts**.
 
 - **Z<sub>VNA</sub>** is fixed at 50 Ω (analyzer port).

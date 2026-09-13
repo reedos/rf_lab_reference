@@ -369,20 +369,86 @@
       els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
       els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.formatNumber(r.zDiffDut)} Ω`;
     }
+    // Every substituted value carries its unit, and the chain runs in the direction the page
+    // actually solved: from power when dBm was typed, from voltage when VOPP was.
+    const zS = tint('in', 'Z_{\\mathrm S}'), zL = tint('out', 'Z_{\\mathrm L}');
+    const zSv = tint('in', tex(r.zS, 'Ω')), zLv = tint('out', tex(r.zL, 'Ω'));
+    const fromVoltage = state.source === 'vopp';
+    const diff = r.drive === 'diff';
+    const perPort = diff ? ' per port' : '';
+    const powerName = state.path === 'src' ? 'P_{\\mathrm{avs}}' : 'P_{\\mathrm{del}}';
+    const powerWatts = state.path === 'src' ? r.wattsAvailable : r.wattsDelivered;
+    const fraction = r.gamma < 1 ? 1 - r.gamma * r.gamma : 0;
+    const dbmFromWatts = eq('Power in dBm' + perPort,
+      `P_{\\mathrm{dBm}} &= 10\\log_{10}\\frac{${powerName}}{10^{-3}\\,\\mathrm W}`,
+      tex(r.dbm, 'dBm'), `10\\log_{10}\\frac{${tex(powerWatts, 'W')}}{10^{-3}\\,\\mathrm W}`);
+    const wattsFromDbm = eq((state.path === 'src' ? 'Available source power' : 'Delivered receiver power') + perPort,
+      `${powerName} &= 10^{P_{\\mathrm{dBm}}/10}\\times 10^{-3}\\,\\mathrm W`,
+      tex(powerWatts, 'W'), `10^{${tex(r.dbm, 'dBm', false)}/10}\\times 10^{-3}\\,\\mathrm W`);
+    const perLine = eq('Peak-to-peak voltage per line',
+      `V_{\\mathrm{pp,line}} &= 2\\sqrt{2}\\,V_{\\mathrm{rms,L}}`,
+      volts(r.vppSe), `2\\sqrt{2}\\times ${volts(r.vrmsSe)}`);
+    const rmsFromLine = eq('RMS voltage at the load',
+      `V_{\\mathrm{rms,L}} &= \\frac{V_{\\mathrm{pp,line}}}{2\\sqrt{2}}`,
+      volts(r.vrmsSe), `\\frac{${volts(r.vppSe)}}{2\\sqrt{2}}`);
+    const splitDiff = eq('Per-line voltage from the differential swing',
+      `V_{\\mathrm{pp,line}} &= \\frac{V_{\\mathrm{pp,diff}}}{2}`,
+      volts(r.vppSe), `\\frac{${volts(r.vppDiff)}}{2}`);
+    const joinDiff = eq('Differential peak-to-peak voltage',
+      `V_{\\mathrm{pp,diff}} &= 2\\,V_{\\mathrm{pp,line}}`,
+      volts(r.vppDiff), `2\\times ${volts(r.vppSe)}`);
+    const forward = state.path === 'src'
+      ? [wattsFromDbm,
+         eq('Open-circuit source voltage',
+           `V_{\\mathrm{oc,rms}} &= 2\\sqrt{P_{\\mathrm{avs}}\\,${zS}}`,
+           volts(r.vocRms), `2\\sqrt{${tex(r.wattsAvailable, 'W')}\\times ${zSv}}`),
+         eq('RMS voltage at the load',
+           `V_{\\mathrm{rms,L}} &= V_{\\mathrm{oc,rms}}\\frac{${zL}}{${zS}+${zL}}`,
+           volts(r.vrmsSe), `${volts(r.vocRms)}\\times\\frac{${zLv}}{${zSv}+${zLv}}`),
+         perLine]
+      : [wattsFromDbm,
+         eq('RMS voltage at the load',
+           `V_{\\mathrm{rms,L}} &= \\sqrt{P_{\\mathrm{del}}\\,${zL}}`,
+           volts(r.vrmsSe), `\\sqrt{${tex(r.wattsDelivered, 'W')}\\times ${zLv}}`),
+         perLine];
+    const reverse = state.path === 'src'
+      ? [...(diff ? [splitDiff] : []), rmsFromLine,
+         eq('Open-circuit source voltage from the loaded voltage',
+           `V_{\\mathrm{oc,rms}} &= V_{\\mathrm{rms,L}}\\frac{${zS}+${zL}}{${zL}}`,
+           volts(r.vocRms), `${volts(r.vrmsSe)}\\times\\frac{${zSv}+${zLv}}{${zLv}}`),
+         eq('Available source power' + perPort,
+           `P_{\\mathrm{avs}} &= \\frac{V_{\\mathrm{oc,rms}}^{2}}{4\\,${zS}}`,
+           tex(r.wattsAvailable, 'W'), `\\frac{(${volts(r.vocRms)})^{2}}{4\\times ${zSv}}`),
+         dbmFromWatts]
+      : [...(diff ? [splitDiff] : []), rmsFromLine,
+         eq('Delivered receiver power' + perPort,
+           `P_{\\mathrm{del}} &= \\frac{V_{\\mathrm{rms,L}}^{2}}{${zL}}`,
+           tex(r.wattsDelivered, 'W'), `\\frac{(${volts(r.vrmsSe)})^{2}}{${zLv}}`),
+         dbmFromWatts];
     Bench.update({ valid: true, lines: [
-      'CW sinusoid with real positive source/load impedances. Differential drive uses two equal signals, 180° apart.',
-      `Direction: ${state.path === 'src' ? 'VNA → DUT; power is available source power' : 'DUT → VNA; power is delivered receiver power'}. All powers below are per port.`,
-      eq('Reference impedances', `${tint('in', 'Z_{\\mathrm S}')} &= ${tint('in', tex(r.zS, 'Ω'))} \\\\ ${tint('out', 'Z_{\\mathrm L}')} &= ${tint('out', tex(r.zL, 'Ω'))}`),
-      eq('Power conversion', String.raw`P &= 10^{P_{\mathrm{dBm}}/10}\times 10^{-3}\,\mathrm W`, tex(state.path === 'src' ? r.wattsAvailable : r.wattsDelivered, 'W'), String.raw`10^{${tex(r.dbm,'dBm',false)}/10}\times 10^{-3}\,\mathrm W`),
-      ...(state.path === 'src' ? [
-        eq('Open-circuit source voltage', `V_{\\mathrm{oc,rms}} &= 2\\sqrt{P_{\\mathrm{avs}} ${tint('in', 'Z_{\\mathrm S}')}}`, volts(r.vocRms), `2\\sqrt{${tex(r.wattsAvailable)}\\times ${tint('in', tex(r.zS))}}\\,\\mathrm V`),
-        eq('Loaded RMS voltage', `V_{\\mathrm{rms,L}} &= V_{\\mathrm{oc,rms}}\\frac{${tint('out', 'Z_{\\mathrm L}')}}{${tint('in', 'Z_{\\mathrm S}')}+${tint('out', 'Z_{\\mathrm L}')}}`, volts(r.vrmsSe), `${tex(r.vocRms)}\\frac{${tint('out', tex(r.zL))}}{${tint('in', tex(r.zS))}+${tint('out', tex(r.zL))}}\\,\\mathrm V`)
-      ] : [eq('Loaded RMS voltage', String.raw`V_{\mathrm{rms,L}} &= \sqrt{P_{\mathrm{del}} Z_{\mathrm L}}`, volts(r.vrmsSe), String.raw`\sqrt{${tex(r.wattsDelivered)}\times ${tex(r.zL)}}\,\mathrm V`)]),
-      eq('Peak-to-peak voltage per line', String.raw`V_{\mathrm{pp,line}} &= 2\sqrt{2}\,V_{\mathrm{rms,L}}`, volts(r.vppSe)),
-      eq('Voltage at the selected reference plane', r.drive === 'diff' ? String.raw`V_{\mathrm{pp,diff}} &= 2V_{\mathrm{pp,line}}` : String.raw`V_{\mathrm{pp}} &= V_{\mathrm{pp,line}}`, volts(RF.voppOf(r))),
-      eq('Delivered power per port', String.raw`P_{\mathrm{del}} &= \frac{V_{\mathrm{rms,L}}^2}{Z_{\mathrm L}}`, tex(r.wattsDelivered, 'W'), String.raw`\frac{(${tex(r.vrmsSe)})^2}{${tex(r.zL)}}\,\mathrm W`),
-      eq('Reflection coefficient', `\\Gamma &= \\frac{${tint('out', 'Z_{\\mathrm L}')}-${tint('in', 'Z_{\\mathrm S}')}}{${tint('out', 'Z_{\\mathrm L}')}+${tint('in', 'Z_{\\mathrm S}')}}`, tex(r.gamma), `\\frac{${tint('out', tex(r.zL))}-${tint('in', tex(r.zS))}}{${tint('out', tex(r.zL))}+${tint('in', tex(r.zS))}}`),
-      r.drive === 'diff' ? 'Total power across both ports is twice per-port power (+3.01 dB).' : 'The indicated voltage is at the load reference plane.'
+      'CW sinusoid into real positive impedances. Differential drive is two equal signals 180° apart, so the differential voltage is twice the per-line voltage.',
+      `Direction: ${state.path === 'src' ? 'VNA → DUT, so the level is available source power' : 'DUT → VNA, so the level is delivered receiver power'}. ${fromVoltage ? 'VOPP was typed, so the chain below runs from voltage to power.' : 'The level was typed, so the chain below runs from power to voltage.'}`,
+      eq('Reference impedances',
+        `${zS} &= ${zSv} \\\\ ${zL} &= ${zLv}` + (diff ? ` \\\\ Z_{\\mathrm{diff}} &= 2\\,${zL} = ${tint('out', tex(r.zDiffDut, 'Ω'))}` : '')),
+      ...(fromVoltage ? reverse : forward),
+      ...(diff && !fromVoltage ? [joinDiff] : []),
+      ...(state.path === 'src' ? [eq('Delivered power' + perPort,
+        `P_{\\mathrm{del}} &= \\frac{V_{\\mathrm{rms,L}}^{2}}{${zL}}`,
+        tex(r.wattsDelivered, 'W'), `\\frac{(${volts(r.vrmsSe)})^{2}}{${zLv}}`)] : []),
+      eq('Reflection coefficient at this plane',
+        `\\Gamma &= \\frac{${zL}-${zS}}{${zL}+${zS}}`,
+        tex(r.gamma), `\\frac{${zLv}-${zSv}}{${zLv}+${zSv}}`),
+      eq('Fraction of the available power that is delivered',
+        `\\frac{P_{\\mathrm{del}}}{P_{\\mathrm{avs}}} &= 1-|\\Gamma|^{2}`,
+        `${tex(fraction * 100, '%')}\\ \\left(${tex(fraction > 0 ? 10 * Math.log10(fraction) : -Infinity, 'dB')}\\right)`,
+        `1-(${tex(r.gamma)})^{2}`),
+      ...(diff ? [eq('Total power across both ports',
+        `P_{\\mathrm{total}} &= 2\\,P_{\\mathrm{port}}`,
+        tex(state.path === 'src' ? r.dbmTotalAvailable : r.dbmTotalDelivered, 'dBm'),
+        `${tex(r.dbm, 'dBm', false)}+10\\log_{10}2\\,\\mathrm{dBm}`)] : []),
+      diff
+        ? 'The differential voltage is across the pair, and the differential impedance is twice the per-side value.'
+        : 'The voltage is at the load reference plane, which is the same node as the DUT when they are connected directly.'
     ] });
     renderTable();
   }

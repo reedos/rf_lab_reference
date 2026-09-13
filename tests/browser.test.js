@@ -577,6 +577,50 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
           await fill('z1',100); await expect.poll(valid).toBe(true);
         });
+        await check('The VOPP derivation follows the driver and carries units throughout',async()=>{
+          const open=async file=>{
+            await go(file);
+            await page.locator('.calculation summary').click();
+            await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
+            assert.equal(await page.locator('.equation-error').count(),0,file);
+          };
+          const heads=()=>page.locator('.equation h3').allTextContents();
+          const latexOf=name=>page.locator('.equation')
+            .filter({has:page.getByRole('heading',{name,exact:true})}).locator('annotation').first().textContent();
+          await open('index.html?zd=200&d=0&from=dbm&dir=src&m=se');
+          let h=await heads();
+          assert.deepEqual(h.filter((x,i)=>h.indexOf(x)!==i),[],'a heading is repeated: '+JSON.stringify(h));
+          assert.ok(h.includes('Available source power'),JSON.stringify(h));
+          // The step that restated the previous line is gone.
+          assert.ok(!h.some(x=>/reference plane$/.test(x)),JSON.stringify(h));
+          // Substituted values carry their units, so each line can be checked dimensionally.
+          const oc=await latexOf('Open-circuit source voltage');
+          assert.match(oc,/\\mathrm\{W\}/,oc); assert.match(oc,/\\Omega/,oc);
+          const loaded=await latexOf('RMS voltage at the load');
+          assert.match(loaded,/\\Omega/,loaded);
+          // The reflection is tied to the power split rather than left hanging.
+          const split=await latexOf('Fraction of the available power that is delivered');
+          assert.match(split,/1-\|\\Gamma\|/,split);
+          await expect(page.locator('#calculation-text')).toContainText('64');
+          // Driving from voltage runs the chain the other way round.
+          await open('index.html?zd=200&from=vopp&v=1&u=V&dir=src&m=se');
+          h=await heads();
+          assert.ok(h.includes('Power in dBm'),JSON.stringify(h));
+          assert.ok(h.indexOf('RMS voltage at the load')<h.indexOf('Power in dBm'),'voltage should come before power: '+JSON.stringify(h));
+          await expect(page.locator('#calculation-text')).toContainText('runs from voltage to power');
+          // Differential adds the differential impedance, the pair voltage and the total.
+          await open('index.html?zd=50&d=0&from=dbm&dir=src&m=diff');
+          h=await heads();
+          assert.ok(h.includes('Differential peak-to-peak voltage'),JSON.stringify(h));
+          assert.ok(h.includes('Total power across both ports'),JSON.stringify(h));
+          assert.match(await latexOf('Reference impedances'),/Z_\{\\mathrm\{diff\}\}/);
+          // The receive direction states the delivered level once, not twice.
+          await open('index.html?zd=200&d=0&from=dbm&dir=rx&m=se');
+          h=await heads();
+          assert.deepEqual(h.filter((x,i)=>h.indexOf(x)!==i),[],JSON.stringify(h));
+          assert.ok(h.includes('Delivered receiver power'),JSON.stringify(h));
+          assert.ok(!h.includes('Delivered power'),JSON.stringify(h));
+        });
         await check('Diagrams fit the screen instead of scrolling sideways',async()=>{
           for (const width of [320,390,430,768]) {
             await page.setViewportSize({width,height:900});
