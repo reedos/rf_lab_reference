@@ -8,8 +8,8 @@
   <title>Large-signal · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-6">
-  <link rel="stylesheet" href="css/app.css?v=20260912-6"><link rel="stylesheet" href="css/workbench.css?v=20260912-6">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260912-7">
+  <link rel="stylesheet" href="css/app.css?v=20260912-7"><link rel="stylesheet" href="css/workbench.css?v=20260912-7">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -120,17 +120,8 @@
         <p class="hint">The envelope beats at Δ, so bias and video paths need several times Δ of bandwidth. If the upper and lower IM3 products differ, sweep Δ and watch the asymmetry: that is a memory effect, not a measurement error.</p>
 
         <h3>Intermodulation</h3>
-        <svg class="spec-svg" viewBox="0 0 640 88" aria-hidden="true">
-          <text x="86" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">2f1−f2</text>
-          <text x="220" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">f1</text>
-          <text x="390" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">f2</text>
-          <text x="524" y="14" fill="#9aa1ae" font-size="11" font-family="IBM Plex Mono, monospace">2f2−f1</text>
-          <rect x="78" y="52" width="10" height="22" fill="#7aa2ff"/>
-          <rect x="218" y="22" width="12" height="52" fill="#f3b63a"/>
-          <rect x="388" y="22" width="12" height="52" fill="#f3b63a"/>
-          <rect x="528" y="52" width="10" height="22" fill="#7aa2ff"/>
-          <path d="M20 76 H620" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
-        </svg>
+        <svg class="spec-svg" id="spectrum" viewBox="0 0 640 192" role="img" aria-label="Two-tone spectrum"></svg>
+        <p class="hint">Drawn from the frequencies and the measured IM3 above. Tone and third-order bars carry real levels; higher orders are marked at their frequencies only, because a third-order measurement does not determine them.</p>
         <div class="fields">
           <div class="field compact">
             <div class="field-label"><span>IM3 at DUT output</span>
@@ -285,7 +276,7 @@
     <p class="foot">Static page. Calculations stay in your browser.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/bench.js?v=20260912-6"></script><script src="js/rf.js?v=20260912-6"></script>
-  <script src="js/large-signal.js?v=20260912-6"></script>
+  <script src="js/bench.js?v=20260912-7"></script><script src="js/rf.js?v=20260912-7"></script>
+  <script src="js/large-signal.js?v=20260912-7"></script>
 </body>
 </html>

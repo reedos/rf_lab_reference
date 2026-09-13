@@ -345,8 +345,11 @@
       const port = `${RF.formatDbm(r.dbm)} dBm`;
       els.diffP1Dbm.textContent = port;
       els.diffP2Dbm.textContent = port;
-      els.diffP1Z.innerHTML = `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω`;
-      els.diffP2Z.innerHTML = `Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`;
+      // Both rails run from the source impedance to the load impedance. Splitting the two
+      // labels across the rails read as though each rail had a different impedance.
+      const railZ = `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω → Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`;
+      els.diffP1Z.innerHTML = railZ;
+      els.diffP2Z.innerHTML = railZ;
       els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
       els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.formatNumber(r.zDiffDut)} Ω`;
     }

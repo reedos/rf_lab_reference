@@ -488,6 +488,43 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
           await fill('z1',100); await expect.poll(valid).toBe(true);
         });
+        await check('Diagrams carry the entered values and make no static claims',async()=>{
+          const svgText=async sel=>(await page.locator(sel).textContent()).replace(/\s+/g,' ');
+          // Both differential rails run from the source impedance to the load impedance.
+          await go('index.html?m=diff&zd=200&d=0&from=dbm');
+          for (const id of ['diff-p1-z','diff-p2-z']) {
+            const text=(await page.locator('#'+id).textContent()).replace(/\s+/g,' ');
+            assert.match(text,/ZS 50 Ω → ZL 200 Ω/,`${id} reads "${text}"`);
+          }
+          await go('index.html?m=diff&zd=200&d=0&from=dbm&dir=rx');
+          assert.equal(await page.locator('#diff-p1-z').textContent(),await page.locator('#diff-p2-z').textContent());
+          // The gain diagram shows the entered impedances, and its caption follows them.
+          await go('gain.html?t=sd&d1=100&s2=200');
+          assert.equal(await svgText('#zin-sd'),'Zd1 100 Ω');
+          assert.equal(await svgText('#zout-sd'),'Zs2 200 Ω');
+          await expect(page.locator('#diagram-caption')).toContainText('Zs2 / Zd1 = 2');
+          await expect(page.locator('#diagram-caption')).toContainText('3.01 dB above');
+          await fill('z2',50);
+          await expect.poll(()=>svgText('#zout-sd')).toBe('Zs2 50 Ω');
+          await expect(page.locator('#diagram-caption')).toContainText('3.01 dB below');
+          // The spectrum is drawn from the entered frequencies and the measured IM3.
+          await go('large-signal.html?imd-im3=-25');
+          await expect.poll(()=>svgText('#spectrum')).toContain('-25 dBc');
+          assert.match(await svgText('#spectrum'),/Δ 1 MHz/);
+          assert.match(await svgText('#spectrum'),/f₂ 1.001 GHz/);
+          await fill('tone-delta',5);
+          await expect.poll(()=>svgText('#spectrum')).toContain('Δ 5 MHz');
+          assert.match(await page.locator('#spectrum').getAttribute('aria-label'),/third-order products at/);
+          await fill('imd-im3','bad');
+          await expect.poll(()=>svgText('#spectrum')).toBe('');
+          // The chain path names each stage kind and the step that produced the next level.
+          await go('chain.html');
+          assert.equal(await page.locator('#power-path .power-link').count(),3);
+          await expect(page.locator('#power-path')).toContainText('PASSIVE');
+          await expect(page.locator('#power-path')).toContainText('AMP');
+          await expect(page.locator('#power-path')).toContainText('20 dB');
+          await expect(page.locator('#power-path')).toContainText('-3 dB');
+        });
         await check('Schematic wire runs between the two port nubs at every width',async()=>{
           // The nub is a 10px circle with a 3px ring, so its visible edge is 3px past the box.
           const RING=3, edges=async s=>{const b=await page.locator(s).boundingBox(); return {y:b.y+b.height/2,x1:b.x,x2:b.x+b.width};};

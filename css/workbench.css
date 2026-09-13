@@ -38,6 +38,9 @@ summary { cursor: pointer; font-weight: 500; }
 .gain-svg text { fill: var(--muted); font: 11px var(--font-mono); }
 .gain-svg text.strong { fill: var(--text); font-size: 13px; }
 .gain-svg text.mark { fill: var(--cyan); }
+.gain-svg text.val { fill: var(--accent); }
+.gain-svg text.caption { fill: var(--muted); font-size: 12px; }
+.gain-svg .head { fill: var(--accent); stroke: none; }
 .gain-result { margin: 18px 0; padding: 18px; border-left: 2px solid var(--cyan); background: var(--bg-inset); border-radius: 0 8px 8px 0; overflow-x: auto; }
 .gain-result .katex { font-size: 1.2em; }
 .gain-note { margin: 14px 0 0; }
@@ -83,6 +86,12 @@ button:disabled { opacity: .45; cursor: default; }
 .power-node { border: 1px solid var(--line-strong); border-radius: 10px; padding: 13px 16px; min-width: 140px; max-width: 200px; flex-shrink: 0; }
 .power-node span { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .power-node strong { display: block; font: 17px var(--font-mono); margin-top: 5px; }
+.power-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; flex-shrink: 0; min-width: 82px; }
+.power-link-kind { font: 10px var(--font-mono); letter-spacing: .06em; color: var(--accent); }
+.power-link-gain { font: 11px var(--font-mono); color: var(--muted); }
+.power-arrow { width: 44px; height: 12px; display: block; }
+.power-arrow .line { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+.power-arrow .tip { fill: var(--line-strong); stroke: none; }
 .noise-bars { display: grid; gap: 12px; margin: 18px 0; }
 .noise-bar-label { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
 .noise-bar-track { height: 6px; background: var(--line); margin-top: 5px; border-radius: 5px; }

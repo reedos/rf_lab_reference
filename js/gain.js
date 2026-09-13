@@ -17,6 +17,7 @@
     d2: 'Output reference Z<sub>d2</sub>, differential (Ω)', s2: 'Output reference Z<sub>s2</sub>, single-ended (Ω)'
   };
   const SYMBOLS = { d1: 'Z_{d1}', s1: 'Z_{s1}', d2: 'Z_{d2}', s2: 'Z_{s2}' };
+  const PLAIN = { d1: 'Zd1', s1: 'Zs1', d2: 'Zd2', s2: 'Zs2' };
   const ARIA = {
     d1: 'Input differential reference impedance in ohms', s1: 'Input single-ended reference impedance in ohms',
     d2: 'Output differential reference impedance in ohms', s2: 'Output single-ended reference impedance in ohms'
@@ -70,6 +71,12 @@
     }
     $('gain-status').textContent = ''; $('gain-status').className = '';
     const spec = result.spec, inSym = SYMBOLS[ports.in], outSym = SYMBOLS[ports.out];
+    // The diagram carries the entered values and a caption that cannot contradict them.
+    $('zin-' + topology).textContent = `${PLAIN[ports.in]} ${fmt(result.z1)} Ω`;
+    $('zout-' + topology).textContent = `${PLAIN[ports.out]} ${fmt(result.z2)} Ω`;
+    $('diagram-caption').textContent = result.db === 0
+      ? `${spec.label} · ${PLAIN[ports.out]} = ${PLAIN[ports.in]}, so the voltage ratio equals the parameter`
+      : `${spec.label} · ${PLAIN[ports.out]} / ${PLAIN[ports.in]} = ${fmt(result.ratio)}, so the voltage ratio is ${fmt(Math.abs(result.db), 'dB')} dB ${result.db > 0 ? 'above' : 'below'} the parameter`;
     const parameter = spec.parameter;
     // Headline conclusion, rendered as algebra with the entered impedances substituted.
     Bench.math($('gain-equation'), String.raw`\begin{aligned}

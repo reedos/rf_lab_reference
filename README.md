@@ -19,7 +19,11 @@ No build step. Classic scripts, no bundler.
 | [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
 
-Every calculator has **Show calculation**, with rendered LaTeX equations, substituted
+Diagrams are drawn from the current inputs. The two-tone spectrum places its tones and
+third-order products at the entered frequencies and level, with higher orders marked at their
+frequencies only; the chain path names each stage kind and the gain that produced the next
+level; the gain diagrams carry the entered reference impedances and a caption derived from
+them. Every calculator has **Show calculation**, with rendered LaTeX equations, substituted
 numbers, units, and model assumptions. Equations update with the inputs; long equations
 scroll within their own panel on small screens. KaTeX loads the first time a calculation
 panel opens; it, its fonts, and the page fonts are bundled locally, with MathML included

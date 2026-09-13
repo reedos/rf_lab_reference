@@ -23,6 +23,7 @@
     imdUnit: document.getElementById("imd-unit"),
     imdGain: document.getElementById("imd-gain"),
     imdMetrics: document.getElementById("imd-metrics"),
+    spectrum: document.getElementById("spectrum"),
     p1Gain: document.getElementById("p1-gain"),
     p1Pin: document.getElementById("p1-pin"),
     p1Pout: document.getElementById("p1-pout"),
@@ -74,6 +75,7 @@
   let lastLine = "";
   let calculation = [];
   let previousImdUnit = 'dbc', previousImdPlane = 'input';
+  let plan = null;
   const frequencyIds = ['tone-f1','tone-f2','tone-delta','tone-band-low','tone-band-high','tone-rbw',
     'thd-f0','thd-fmax','thd-band-low','thd-band-high','thd-fc'];
   const savedIds = ['imd-im3','imd-unit','ls-plane','imd-gain','p1-gain','p1-pin','p1-pout','p1-meas','thd-fund','thd-h2','thd-h3','thd-h4','thd-h5',
@@ -225,13 +227,14 @@
     const fail = message => {
       els.toneStatus.textContent = message; els.toneStatus.className = 'status-error';
       els.toneMetrics.replaceChildren(); els.toneRows.replaceChildren();
+      plan = null; drawSpectrum(null);
       return '';
     };
     if (!list.every(field => field.ok)) return fail('Analyzer and passband entries must be numeric. Leave them blank if unknown.');
     if (fields.bandLow.blank !== fields.bandHigh.blank) return fail('Enter both passband edges, or leave both blank.');
     const band = fields.bandLow.blank ? null : { low: fields.bandLow.value, high: fields.bandHigh.value };
     if (band && !(band.high > band.low)) return fail('The passband high edge must be above the low edge.');
-    const plan = RF.tonePlan(f1, f2, { maxOrder: Number(els.toneOrder.value), band,
+    plan = RF.tonePlan(f1, f2, { maxOrder: Number(els.toneOrder.value), band,
       rbw: fields.rbw.blank ? null : fields.rbw.value,
       toneLevel: fields.level.blank ? NaN : fields.level.value,
       toi: fields.toi.blank ? NaN : fields.toi.value,
@@ -272,14 +275,66 @@
       (plan.limit === null ? '' : ` | floor ${RF.formatNumber(plan.limit.dbc, 'dBc')} dBc (${plan.limit.source})`);
   }
 
+  // The spectrum shows what was actually measured: tones at the reference level and the
+  // third-order pair at the entered ratio. Higher orders get frequency ticks without a height,
+  // because a single third-order reading does not determine them.
+  function drawSpectrum(ip3) {
+    const svg = els.spectrum;
+    if (!svg) return;
+    if (!plan || !ip3 || !Number.isFinite(ip3.im3Dbc)) {
+      svg.replaceChildren();
+      svg.setAttribute('aria-label', 'Two-tone spectrum, unavailable until the tones and IM3 are valid');
+      return;
+    }
+    const spread = (plan.maxOrder - 1) / 2;
+    const lo = plan.f1 - spread * plan.delta, hi = plan.f2 + spread * plan.delta;
+    if (!(hi > lo)) { svg.replaceChildren(); return; }
+    const left = 54, right = 626, top = 28, base = 126;
+    const x = f => left + (f - lo) / (hi - lo) * (right - left);
+    const floorDbc = Math.max(-140, Math.min(Math.round(ip3.im3Dbc) - 12, -30));
+    const y = level => top + (0 - Math.max(level, floorDbc)) / (0 - floorDbc) * (base - top);
+    const at = value => value.toFixed(1);
+    const bar = (f, level, cls) => `<rect class="${cls}" x="${at(x(f) - 5)}" y="${at(y(level))}" width="10" height="${at(base - y(level))}"/>`;
+    const parts = [];
+    for (const level of [0, floorDbc / 2, floorDbc]) {
+      parts.push(`<path class="grid" d="M${left} ${at(y(level))} H${right}"/>`,
+        `<text x="${left - 8}" y="${at(y(level) + 3)}" text-anchor="end">${RF.formatNumber(level, 'dBc')}</text>`);
+    }
+    parts.push(`<path class="baseline" d="M${left} ${base} H${right}"/>`);
+    for (let k = 2; k <= spread; k++) {
+      for (const f of [plan.f1 - k * plan.delta, plan.f2 + k * plan.delta]) {
+        if (!(f > 0)) continue;
+        parts.push(`<path class="tick" d="M${at(x(f))} ${base} V${base - 9}"/>`,
+          `<text x="${at(x(f))}" y="${base + 16}" text-anchor="middle">${2 * k + 1}th</text>`);
+      }
+    }
+    for (const [f, label] of [[plan.im3Lower, '2f₁−f₂'], [plan.im3Upper, '2f₂−f₁']]) {
+      if (!(f > 0)) continue;
+      parts.push(bar(f, ip3.im3Dbc, 'im3-bar'),
+        `<text class="im3" x="${at(x(f))}" y="${at(y(ip3.im3Dbc) - 6)}" text-anchor="middle">${RF.formatNumber(ip3.im3Dbc, 'dBc')} dBc</text>`,
+        `<text x="${at(x(f))}" y="${base + 16}" text-anchor="middle">${label}</text>`);
+    }
+    for (const [f, label] of [[plan.f1, 'f₁'], [plan.f2, 'f₂']]) {
+      parts.push(bar(f, 0, 'tone-bar'),
+        `<text class="tone" x="${at(x(f))}" y="${top - 9}" text-anchor="middle">${label} ${freqText(f)}</text>`);
+    }
+    const deltaY = base + 34;
+    parts.push(`<path class="delta" d="M${at(x(plan.f1))} ${deltaY} H${at(x(plan.f2))} M${at(x(plan.f1))} ${deltaY - 4} V${deltaY + 4} M${at(x(plan.f2))} ${deltaY - 4} V${deltaY + 4}"/>`,
+      `<text class="im3" x="${at((x(plan.f1) + x(plan.f2)) / 2)}" y="${deltaY + 18}" text-anchor="middle">Δ ${freqText(plan.delta)}</text>`);
+    svg.innerHTML = parts.join('');
+    svg.setAttribute('aria-label', `Two-tone spectrum: tones at ${freqText(plan.f1)} and ${freqText(plan.f2)}, spaced ${freqText(plan.delta)}; third-order products at ${freqText(plan.im3Lower)} and ${freqText(plan.im3Upper)}, ${RF.formatNumber(-ip3.im3Dbc)} dB below the tones`);
+  }
+
   function computeImd() {
     const tone = state.toneDbm, im3 = Bench.read(els.imdIm3), gain = Bench.read(els.imdGain, true);
     const plane = els.lsPlane.value, unit = els.imdUnit.value;
     const ip3 = RF.ip3Measurement(tone, im3, gain, plane, unit);
     if (!ip3 || (els.imdGain.value.trim() && !Number.isFinite(gain))) {
       els.imdMetrics.innerHTML = metric('Status', 'Enter valid tone and IM3 levels (IM3 ≤ tone). Blank gain means 0 dB; nonblank gain must be numeric.');
+      drawSpectrum(null);
       return '';
     }
+    drawSpectrum(ip3);
     const number = v => Number.isFinite(v) ? RF.formatDbm(v) + ' dBm' : 'enter gain';
     els.imdMetrics.innerHTML = [metric('Δ (output tone − IM3)', RF.formatNumber(ip3.delta, 'dB') + ' dB'),
       metric('IM3 at output', number(ip3.im3Output)), metric('IIP3', number(ip3.iip3)), metric('OIP3', number(ip3.oip3)),

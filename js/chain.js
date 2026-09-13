@@ -64,7 +64,13 @@
     $('chain-status').textContent = exceeded ? `${exceeded} connection${exceeded === 1 ? '' : 's'} exceed the specified CW signal-power limit.` :
       result.rows.some(r => r.headroom !== null) ? 'Estimated CW signal power is within the specified connection limits.' : 'No connection limits specified.';
     const node = (name, p, over) => `<div class="power-node ${over ? 'over-limit' : ''}"><span>${escape(name)}</span><strong>${dbm(p)}</strong></div>`;
-    $('power-path').innerHTML = node('Source', power, false) + result.rows.map((r,i) => node(stages[i].name || `Stage ${i + 1}`, r.outputDbm, r.headroom !== null && r.headroom < 0)).join('');
+    // The connector carries the stage kind and the gain that produced the next level, so the
+    // path reads as a signal chain rather than a row of unrelated boxes.
+    const link = (r, kind) => `<div class="power-link"><span class="power-link-kind">${kind === 'passive' ? 'PASSIVE' : 'AMP'}</span>` +
+      `<svg class="power-arrow" viewBox="0 0 44 12" aria-hidden="true"><path class="line" d="M0 6 H32"/><path class="tip" d="M32 1 L42 6 L32 11 Z"/></svg>` +
+      `<span class="power-link-gain">${fmt(r.gainDb, 'dB')} dB</span></div>`;
+    $('power-path').innerHTML = node('Source', power, false) +
+      result.rows.map((r,i) => link(r, stages[i].kind) + node(stages[i].name || `Stage ${i + 1}`, r.outputDbm, r.headroom !== null && r.headroom < 0)).join('');
     $('power-rows').innerHTML = result.rows.map((r, i) => `<tr class="${r.headroom !== null && r.headroom < 0 ? 'over-limit' : ''}"><td>${escape(stages[i].name || `Stage ${i + 1}`)}</td><td>${fmt(r.gainDb, 'dB')} dB</td><td>${dbm(r.outputDbm)}</td><td>${parsed[i].limit === null ? '—' : dbm(parsed[i].limit)}</td><td>${r.headroom === null ? 'Unspecified' : fmt(r.headroom, 'dB') + ' dB'}</td></tr>`).join('');
     $('noise-metrics').innerHTML = metric('Total gain', fmt(result.gainDb, 'dB') + ' dB') + metric('Cascaded noise figure', fmt(result.nf, 'dB') + ' dB') +
       metric('Equivalent input noise temp.', fmt(result.equivalentTemperature) + ' K') + metric('Input source noise', dbm(result.inputNoiseDbm)) +
