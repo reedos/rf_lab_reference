@@ -249,7 +249,7 @@ let checks=0;
           assert.equal(await page.locator('#setup-list option').count(),1);
         });
         await check('Copied links and results reflect current inputs; clipboard failures are reported',async()=>{
-          for (const file of ['index.html','match.html','large-signal.html','gain.html','delay.html','sweep.html','chain.html']) {
+          for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
             await go(file); await page.locator('#copy-link').click();
             assert.equal(await page.evaluate(()=>window.copiedText),page.url());
             await page.locator('#copy-result').click();
@@ -636,6 +636,52 @@ let checks=0;
           assert.ok(h.includes('Delivered receiver power'),JSON.stringify(h));
           assert.ok(!h.includes('Delivered power'),JSON.stringify(h));
         });
+        await check('Mixed-mode equations follow the port mapping and evaluate a point',async()=>{
+          await go('mixed.html');
+          await expect(page.locator('.metric.primary')).toContainText('Sdd21');
+          await expect(page.locator('#mixed-equations .katex').first()).toBeVisible();
+          await expect(page.locator('#mixed-transform .katex').first()).toBeVisible();
+          assert.equal(await page.locator('.equation-error').count(),0);
+          const all=async()=>(await page.locator('#mixed-equations annotation').allTextContents()).join('\n');
+          // The classic form with 1 and 3 in, 2 and 4 out.
+          await expect.poll(all).toMatch(/S_\{\\mathrm\{dd\}21\} &= \\tfrac12\\left\(S_\{21\} -S_\{23\} -S_\{41\} \+S_\{43\}\\right\)/);
+          await expect.poll(all).toMatch(/S_\{\\mathrm\{dc\}21\} &= \\tfrac12\\left\(S_\{21\} \+S_\{23\} -S_\{41\} -S_\{43\}\\right\)/);
+          // Remapping rewrites every equation and the diagram.
+          await page.locator('select[data-side="in"][data-index="1"]').selectOption('2');
+          await page.locator('select[data-side="out"][data-index="0"]').selectOption('3');
+          await expect.poll(all).toMatch(/S_\{31\} -S_\{32\} -S_\{41\} \+S_\{42\}/);
+          await expect(page.locator('#mixed-caption')).toContainText('port 2 the negative');
+          await page.locator('select[data-side="out"][data-index="1"]').selectOption('3');
+          await expect.poll(valid).toBe(false);
+          await expect(page.locator('#mapping-status')).toContainText(/only once/);
+          await page.locator('select[data-side="out"][data-index="1"]').selectOption('4');
+          await expect.poll(valid).toBe(true);
+          // An ideal balanced through path: 0 dB differential, exact cancellation of conversion.
+          const s=[];
+          for (const i of [1,2,3,4]) for (const j of [1,2,3,4]) s.push(`${i},${j},${(i===2&&j===1)||(i===4&&j===3)?'0':'-300'},0`);
+          await go('mixed.html?p1=1,3&p2=2,4&s='+encodeURIComponent(s.join(';')));
+          await expect(page.locator('.metric.primary')).toContainText('0 dB ∠ 0°');
+          await expect(page.locator('#metrics')).toContainText('−∞ dB');
+          await expect(page.locator('#mm-rows td.is-primary')).toHaveCount(1);
+          // Three ports: the single-ended output reads the differential input through 1/√2.
+          await page.locator('[data-topology="sd"]').click();
+          await expect(page.locator('.metric.primary')).toContainText('Ssd21');
+          await expect(page.locator('.metric.primary')).toContainText('-3.01 dB');
+          await expect.poll(()=>page.locator('#dut-summary').innerText()).toContain('SE out');
+          assert.equal(await page.locator('#s-grid tbody tr').count(),3);
+          await expect.poll(all).toMatch(/S_\{\\mathrm\{sd\}21\} &= \\tfrac\{1\}\{\\sqrt 2\}\\left\(S_\{21\} -S_\{23\}\\right\)/);
+          await page.locator('input[data-cell="2,1,db"]').fill('-6.02');
+          await expect(page.locator('.metric.primary')).toContainText('-9.03 dB');
+          await page.reload(); await expect(page.locator('.metric.primary')).toContainText('-9.03 dB');
+          await expect(page.locator('input[data-cell="2,1,db"]')).toHaveValue('-6.02');
+          await page.locator('input[data-cell="2,1,db"]').fill('x'); await expect.poll(valid).toBe(false);
+          await expect(page.locator('#mixed-status')).toContainText('S21');
+          // The card decides the topology on arrival, and the gain link carries the card.
+          await go('mixed.html?din=se&dout=diff');
+          await expect(page.locator('[data-topology="ds"]')).toHaveClass(/is-active/);
+          await expect(page.locator('.metric.primary')).toContainText('Sds21');
+          assert.match(await page.locator('a[data-dut-link]').getAttribute('href'),/din=se/);
+        });
         await check('The DUT card travels between pages in the link and binds each page to its side',async()=>{
           const summary=()=>page.locator('#dut-summary').innerText();
           await go('');
@@ -761,7 +807,7 @@ let checks=0;
         await check('No heading sits flush against the content above it',async()=>{
           for (const width of [390,1280]) {
             await page.setViewportSize({width,height:900});
-            for (const file of ['index.html','match.html','large-signal.html','gain.html','delay.html','sweep.html','chain.html']) {
+            for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
               await go(file);
               const tight=await page.evaluate(()=>Array.from(document.querySelectorAll('h2, h3, h4')).map(h=>{
                 const prev=h.previousElementSibling;
@@ -858,7 +904,7 @@ let checks=0;
           await page.setViewportSize({width:1280,height:900});
         });
         await check('Every page has working navigation, calculation detail, and responsive layout',async()=>{
-          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','gain.html','delay.html','sweep.html','chain.html']) {
+          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
             await page.setViewportSize({width,height:900}); await go(file);
             assert.equal(await valid(),true,`${file} default invalid`);
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);

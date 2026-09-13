@@ -4,6 +4,42 @@ const RF = require('../js/rf.js');
 const near = (actual, expected, tol = 1e-12) => assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= tol, `${actual} != ${expected}`);
 const VPP_0DBM_50 = 0.6324555320336759;
 
+test('mixed-mode conversion follows the pairing and conserves power between modes', () => {
+  const zero = { re: 0, im: 0 }, one = { re: 1, im: 0 };
+  const S = {};
+  for (const i of [1, 2, 3, 4]) { S[i] = {}; for (const j of [1, 2, 3, 4]) S[i][j] = zero; }
+  S[2][1] = one; S[4][3] = one;
+  const sides = [{ ports: [1, 3] }, { ports: [2, 4] }];
+  let m = RF.mixedMode(S, sides);
+  assert.deepEqual(m.rows.map(r => r.label), ['d1', 'd2', 'c1', 'c2']);
+  near(m.byName.Sdd21.value.mag, 1); near(m.byName.Scc21.value.mag, 1);
+  near(m.byName.Sdc21.value.mag, 0); near(m.byName.Scd21.value.mag, 0);
+  assert.equal(m.byName.Sdc21.value.db, -Infinity);
+  // The classic form: Sdd21 = (S21 - S23 - S41 + S43) / 2 for ports 1,3 in and 2,4 out.
+  assert.deepEqual(m.byName.Sdd21.terms.map(t => [t.i, t.j, Number(t.coefficient.toFixed(6))]), [[2, 1, .5], [2, 3, -.5], [4, 1, -.5], [4, 3, .5]]);
+  // Inverting one line turns the differential signal entirely into common mode.
+  S[4][3] = { re: -1, im: 0 };
+  m = RF.mixedMode(S, sides);
+  near(m.byName.Sdd21.value.mag, 0); near(m.byName.Scd21.value.mag, 1);
+  near(m.byName.Sdd21.value.mag ** 2 + m.byName.Scd21.value.mag ** 2, 1);
+  // Three ports: a single-ended output sees the differential input through 1/sqrt 2.
+  S[4][3] = one;
+  m = RF.mixedMode(S, [{ ports: [1, 3] }, { ports: [2] }]);
+  assert.deepEqual(m.rows.map(r => r.label), ['d1', 's2', 'c1']);
+  near(m.byName.Ssd21.value.mag, Math.SQRT1_2); near(m.byName.Ssd21.value.db, -20 * Math.log10(Math.SQRT2));
+  near(m.byName.Ssc21.value.mag, Math.SQRT1_2);
+  m = RF.mixedMode(S, [{ ports: [1] }, { ports: [2, 4] }]);
+  assert.deepEqual(m.rows.map(r => r.label), ['s1', 'd2', 'c2']);
+  near(m.byName.Sds21.value.mag, Math.SQRT1_2);
+  // Two single-ended ports are just the two-port parameters.
+  m = RF.mixedMode(S, [{ ports: [1] }, { ports: [2] }]);
+  assert.deepEqual(m.rows.map(r => r.label), ['s1', 's2']); near(m.byName.Sss21.value.mag, 1);
+  // Phase and level round-trip through the polar helpers.
+  const p = RF.toPolar(RF.fromPolar(-3, 45)); near(p.db, -3); near(p.deg, 45);
+  assert.equal(RF.mixedMode(S, [{ ports: [1, 3] }, { ports: [3, 4] }]), null);
+  assert.equal(RF.mixedMode(S, [{ ports: [1, 3] }, { ports: [2, 5] }]), null);
+});
+
 test('the noise floor follows IF bandwidth and averaging and sets the trace noise', () => {
   const n = RF.noiseFloor({ floorRef: -120, ifbwRef: 10, ifbw: 1000, signal: -40 });
   near(n.floor, -100);

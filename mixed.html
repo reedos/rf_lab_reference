@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090b10">
+  <meta name="description" content="Mixed-mode S-parameters from single-ended measurements: the general equations for any port mapping, three- and four-port, and a numeric evaluation at one point.">
+  <title>Mixed-mode S-parameters &middot; RF Lab Reference</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-10">
+  <link rel="stylesheet" href="css/app.css?v=20260913-10"><link rel="stylesheet" href="css/workbench.css?v=20260913-10">
+</head>
+<body>
+  <a class="skip" href="#calc">Skip to calculator</a>
+  <div class="shell">
+    <header class="top">
+      <a class="wordmark" href="./">RF<span>/</span>LAB</a>
+      <nav aria-label="Calculators">
+        <a href="./">VOPP</a>
+        <a href="match.html">Match</a>
+        <a href="large-signal.html">Large-signal</a>
+        <a href="gain.html">Gain</a>
+        <a class="is-active" href="mixed.html">Mixed-mode</a>
+        <a href="delay.html">Delay</a>
+        <a href="sweep.html">Sweep</a>
+      <a href="chain.html">Power &amp; noise</a></nav>
+    </header>
+    <div id="dut-card"></div>
+
+<section class="lede"><p class="kicker">Small-signal</p><h1>Mixed-mode S-parameters</h1><p>A balanced measurement is a single-ended one seen through a change of basis. Pick which physical ports make each logical port and the page writes out every mixed-mode parameter in terms of the single-ended ones, then evaluates them at a point if you give it numbers.</p></section>
+
+<section class="board work-board" id="calc">
+<h2>Port topology</h2>
+<div class="seg" role="group" aria-label="Port topology">
+  <button type="button" class="seg-btn is-active" id="btn-dd" data-topology="dd" aria-pressed="true">Diff → Diff</button>
+  <button type="button" class="seg-btn" id="btn-sd" data-topology="sd" aria-pressed="false">Diff → SE</button>
+  <button type="button" class="seg-btn" id="btn-ds" data-topology="ds" aria-pressed="false">SE → Diff</button>
+  <button type="button" class="seg-btn" id="btn-ss" data-topology="ss" aria-pressed="false">SE → SE</button>
+</div>
+
+<h2>Port mapping</h2>
+<p class="hint">Which analyzer ports make up each logical port. The default, 1 and 3 in and 2 and 4 out, is the usual arrangement on a four-port VNA; the first port of a pair is its positive line.</p>
+<div class="work-fields" id="mapping"></div>
+<p id="mapping-status" role="status"></p>
+
+<svg class="gain-svg" id="mixed-diagram" viewBox="0 0 680 230" role="img" aria-label="Port mapping diagram"></svg>
+<p class="hint colour-key" id="mixed-key"></p>
+<p class="hint" id="mixed-caption"></p>
+
+<h2>Definition</h2>
+<p class="hint">The differential and common-mode waves of a pair are the difference and the sum of its two single-ended waves, each divided by √2 so that power is conserved. Collect those rows into T and the whole conversion is one similarity transform.</p>
+<div class="gain-result" id="mixed-transform" tabindex="0" role="region" aria-label="Mixed-mode transform"></div>
+
+<h2>Equations for this mapping</h2>
+<p class="hint">Written out from the transform above with your port numbers substituted, so they can be read straight off an analyzer's single-ended trace set.</p>
+<div id="mixed-equations"></div>
+
+<h2>Reference impedances</h2>
+<div class="gain-result" id="mixed-impedances" tabindex="0" role="region" aria-label="Mode reference impedances"></div>
+<p class="hint">Both lines of a pair are assumed to share the per-line reference from the DUT card, which is what the analyzer's single-ended measurement uses. If the DUT is to be characterised at a different reference, renormalise the whole single-ended matrix first; the transform alone does not do that.</p>
+
+<h2>Evaluate at one point</h2>
+<p class="hint">Optional. Enter the single-ended parameters at one frequency as level and phase, row = to, column = from. The example is a slightly unbalanced differential through path; type a minus sign for negative levels.</p>
+<div class="chain-results"><table class="s-grid" id="s-grid"></table></div>
+<p id="mixed-status" role="status"></p>
+<dl id="metrics" class="metrics" aria-live="polite"></dl>
+<div class="chain-results"><table class="mm-table"><thead id="mm-head"></thead><tbody id="mm-rows"></tbody></table></div>
+<div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button><a class="ghost link-button" data-dut-link href="gain.html">Voltage gain from this parameter →</a></div>
+</section>
+
+<section class="ref">
+  <div class="ref-head"><h2>Rules of thumb</h2><p>Order-of-magnitude only</p></div>
+  <table class="thumbs">
+    <thead><tr><th>Item</th><th>Thumb</th><th>Why it bites you</th></tr></thead>
+    <tbody>
+      <tr><td>Balanced through path</td><td class="num">S<sub>dd21</sub> ≈ S<sub>21</sub> when the pair is symmetric</td><td>The differential gain is the single-ended gain, not 6 dB more; the extra 3 dB per side is in the reference impedance</td></tr>
+      <tr><td>Single-ended out of a pair</td><td class="num">S<sub>sd21</sub> = (S<sub>21</sub> − S<sub>23</sub>)/√2</td><td>An ideal balun-free split reads −3.01 dB; that is the definition, not loss</td></tr>
+      <tr><td>Mode conversion</td><td class="num">S<sub>dc21</sub>, S<sub>cd21</sub> below −30 dB is well balanced</td><td>Skew of 1 ps at 28 GHz converts about −21 dB; conversion is what radiates and what receives interference</td></tr>
+      <tr><td>Power between modes</td><td class="num">|S<sub>dd21</sub>|² + |S<sub>cd21</sub>|² = |S<sub>21</sub>|² for an ideal pair</td><td>What leaves the differential mode goes somewhere; a flat S<sub>dd21</sub> can hide a rising S<sub>cd21</sub></td></tr>
+      <tr><td>Common-mode reference</td><td class="num">Z<sub>c</sub> = Z<sub>0</sub>/2, Z<sub>d</sub> = 2 Z<sub>0</sub></td><td>25 Ω and 100 Ω for a 50 Ω analyzer; a return loss quoted without its mode is ambiguous</td></tr>
+    </tbody>
+  </table>
+</section>
+<section class="panel"><h2>Model and limits</h2>
+<p>Linear network, each single-ended port referenced to the same real impedance on both lines of a pair. The transform is exact under that condition and depends only on the port assignment, not on the DUT. It does not model a physical balun or a source that drives only the differential mode; with a common-mode termination different from Z<sub>0</sub>/2, the common-mode terms change and the differential terms stay.</p>
+<p>Bockelman and Eisenstadt, "Combined differential and common-mode scattering parameters: theory and simulation", IEEE Trans. MTT 43(7), 1995.</p></section>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="js/bench.js?v=20260913-10"></script><script src="js/rf.js?v=20260913-10"></script><script src="js/dut.js?v=20260913-10"></script><script src="js/mixed.js?v=20260913-10"></script>
+</body>
+</html>

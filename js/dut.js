@@ -86,7 +86,7 @@
     if (reset) reset.disabled = params().toString() === '';
   }
   function renderLinks() {
-    document.querySelectorAll('nav a[href], a.wordmark[href]').forEach(a => {
+    document.querySelectorAll('nav a[href], a.wordmark[href], a[data-dut-link]').forEach(a => {
       const href = a.getAttribute('href');
       if (/^(https?:)?\/\//.test(href)) return;
       a.setAttribute('href', stampUrl(href));

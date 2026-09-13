@@ -637,6 +637,60 @@
       log: { fine, coarse, finePoints: logPoints(fine), coarsePoints: logPoints(coarse) } };
   }
 
+  // ----- Single-ended to mixed-mode S-parameters -----
+  // A logical port is one physical port (single-ended) or a pair. The differential and
+  // common-mode waves of a pair are (a_p - a_q)/sqrt 2 and (a_p + a_q)/sqrt 2, so the whole
+  // conversion is Smm = T S T^T with T orthogonal. Rows come out differential first, then
+  // single-ended, then common, which is the block ordering analyzers display.
+  function mixedModeRows(sides) {
+    if (!Array.isArray(sides) || sides.length !== 2) return null;
+    const seen = new Set();
+    for (const side of sides) {
+      if (!side || !Array.isArray(side.ports) || side.ports.length < 1 || side.ports.length > 2) return null;
+      for (const port of side.ports) { if (!Number.isInteger(port) || port < 1 || seen.has(port)) return null; seen.add(port); }
+    }
+    const rows = [];
+    sides.forEach((side, index) => {
+      const [p, q] = side.ports, number = index + 1;
+      if (side.ports.length === 2) rows.push({ side: number, mode: 'd', label: 'd' + number, weights: [{ port: p, w: Math.SQRT1_2 }, { port: q, w: -Math.SQRT1_2 }] });
+      else rows.push({ side: number, mode: 's', label: 's' + number, weights: [{ port: p, w: 1 }] });
+    });
+    sides.forEach((side, index) => {
+      const [p, q] = side.ports, number = index + 1;
+      if (side.ports.length === 2) rows.push({ side: number, mode: 'c', label: 'c' + number, weights: [{ port: p, w: Math.SQRT1_2 }, { port: q, w: Math.SQRT1_2 }] });
+    });
+    return rows;
+  }
+  const fromPolar = (db, deg) => { const m = Math.pow(10, db / 20), a = (deg * Math.PI) / 180; return { re: m * Math.cos(a), im: m * Math.sin(a) }; };
+  const toPolar = z => { const mag = Math.hypot(z.re, z.im); return { re: z.re, im: z.im, mag, db: mag > 0 ? 20 * Math.log10(mag) : -Infinity, deg: mag > 0 ? (Math.atan2(z.im, z.re) * 180) / Math.PI : 0 }; };
+  // S is indexed by physical port number: S[i][j] = { re, im } for i, j in the mapping.
+  function mixedMode(S, sides) {
+    const rows = mixedModeRows(sides);
+    if (!rows) return null;
+    const ports = sides.flatMap(side => side.ports);
+    for (const i of ports) for (const j of ports) {
+      const z = S && S[i] && S[i][j];
+      if (!z || !Number.isFinite(z.re) || !Number.isFinite(z.im)) return null;
+    }
+    const entries = [];
+    rows.forEach((r, ri) => rows.forEach((c, ci) => {
+      const terms = [];
+      let re = 0, im = 0;
+      for (const a of r.weights) for (const b of c.weights) {
+        const coefficient = a.w * b.w;
+        terms.push({ coefficient, i: a.port, j: b.port });
+        re += coefficient * S[a.port][b.port].re; im += coefficient * S[a.port][b.port].im;
+      }
+      // A balanced entry cancels exactly in algebra and to about 1e-17 in floating point;
+      // report that as zero rather than as a -340 dB residue.
+      if (Math.hypot(re, im) < 1e-12) { re = 0; im = 0; }
+      entries.push({ row: ri, col: ci, name: 'S' + r.mode + c.mode + r.side + c.side, from: c, to: r, terms, value: toPolar({ re, im }) });
+    }));
+    const byName = {};
+    entries.forEach(entry => { byName[entry.name] = entry; });
+    return { rows, entries, byName, ports };
+  }
+
   // Receiver noise floor against IF bandwidth and averaging. The datasheet quotes a floor at
   // one bandwidth; it moves 10 dB per decade of bandwidth and drops 10 log10(N) with N averages.
   // A level 'signal' dBm sits some margin above it, and that margin sets the trace noise: the
@@ -845,7 +899,7 @@
   }
 
   const RF = {
-    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor,
+    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, mixedModeRows, mixedMode, fromPolar, toPolar,
     tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,

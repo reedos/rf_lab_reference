@@ -15,6 +15,7 @@ No build step. Classic scripts, no bundler.
 | [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
 | [Gain](https://reedos.github.io/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
+| [Mixed-mode](https://reedos.github.io/rf_lab_reference/mixed.html) | Mixed-mode S-parameters from single-ended ones for any port mapping, three- and four-port, with a numeric evaluation at one point |
 | [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, phase-slope length estimates, intra-pair skew |
 | [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
@@ -235,6 +236,31 @@ terminated in its own reference impedance, and it describes small-signal behavio
 Renormalising a measurement to different impedances needs the whole S-matrix, not the
 transmission term alone. A form referred to the input terminal voltage, which brings in the
 input reflection, is shown alongside and agrees with the first when the input is matched.
+
+## Mixed-mode S-parameters
+
+The differential and common-mode waves of a pair are (a₊ − a₋)/√2 and (a₊ + a₋)/√2, so the
+whole conversion is S_mm = T S Tᵀ with T orthogonal. The page takes the topology from the DUT
+card (or its own selector, which writes back to the card), lets you say which analyzer ports
+make up each logical port (default 1 and 3 in, 2 and 4 out, the first of a pair being its
+positive line), and writes out every mixed-mode parameter in terms of the single-ended ones
+with your port numbers substituted: for the default mapping,
+S_dd21 = ½(S21 − S23 − S41 + S43), S_dc21 = ½(S21 + S23 − S41 − S43), and so on. A
+single-ended side carries a 1/√2, so S_sd21 = (S21 − S23)/√2 reads −3.01 dB for an ideal
+split, which is the same 3.01 dB the Gain page adds back through the reference impedances.
+Both single-ended sides reduce to the two-port set.
+
+Mode reference impedances follow the card: 2 Z₀ for a differential mode and Z₀/2 for a
+common mode, per side. The transform assumes both lines of a pair share their per-line
+reference; renormalising to something else needs the whole single-ended matrix first.
+
+An optional grid takes the single-ended set at one frequency as level and phase (row = to,
+column = from; the example is a slightly unbalanced through path). The mixed-mode table and
+tiles report the transmission term, both return terms, the common-mode through path and the
+mode conversions, with S_cd21 also given relative to S_dd21. An entry that cancels exactly,
+which an ideally balanced pair produces, is reported as −∞ dB rather than as a round-off
+residue. The link at the bottom carries the card to the Gain page to turn the parameter into
+a voltage gain.
 
 ## Match and Smith chart
 

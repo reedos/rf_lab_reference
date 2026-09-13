@@ -48,6 +48,23 @@ summary { cursor: pointer; font-weight: 500; }
 .gain-svg text.out { fill: var(--port-out); }
 .gain-svg text.caption { fill: var(--muted); font-size: 12px; }
 .gain-svg .head { fill: var(--line-strong); stroke: none; }
+/* Mixed-mode page: the single-ended entry grid and the mixed-mode result table. */
+.chain-results .s-grid { width: auto; font-size: 12px; }
+.chain-results .s-grid th, .chain-results .s-grid td { text-align: left; padding: 6px 8px; white-space: nowrap; }
+.chain-results .s-grid th { font-family: var(--font-mono); }
+.s-cell { display: flex; align-items: center; gap: 4px; }
+.s-grid input { width: 5.4em; margin: 0; padding: 8px 8px; font-size: 13px; background: var(--bg-inset); color: var(--text); border: 1px solid var(--line-strong); border-radius: 8px; font-family: var(--font-mono); }
+.s-cell span { color: var(--dim); font-size: 11px; }
+.chain-results .mm-table th { text-align: left; font-family: var(--font-mono); }
+.chain-results .mm-table td { text-align: left; font-family: var(--font-mono); }
+.chain-results .mm-table td.is-primary { color: var(--accent); font-weight: 500; }
+.equation-group { margin: 0 0 8px; font: 500 12px var(--font-display); color: var(--muted); }
+#mixed-equations .gain-result { margin: 12px 0; }
+.link-button { display: inline-flex; align-items: center; text-decoration: none; }
+.link-button:hover { text-decoration: none; color: var(--text); }
+.gain-svg text.port-label { font-size: 12px; }
+.gain-svg .port-sub { font-size: 9px; }
+#mapping label span { display: block; }
 .gain-result { margin: 18px 0; padding: 18px; border-left: 2px solid var(--cyan); background: var(--bg-inset); border-radius: 0 8px 8px 0; overflow-x: auto; }
 .gain-result .katex { font-size: 1.2em; }
 .gain-note { margin: 14px 0 0; }
@@ -146,6 +163,10 @@ button:disabled { opacity: .45; cursor: default; }
   .setup-controls button { min-height: 42px; }
 }
 @media (max-width: 700px) {
+  /* The diagrams scale with the page, so their labels grow to stay legible on a phone. */
+  .gain-svg text { font-size: 14px; }
+  .gain-svg text.strong { font-size: 16px; }
+  .gain-svg text.port-label { font-size: 15px; }
   .segment { grid-template-columns: auto minmax(0, 1fr); }
   .segment-index { grid-row: 1 / span 4; align-self: center; padding-bottom: 0; }
   .segment > .quantity-field, .segment button { grid-column: 2; }
