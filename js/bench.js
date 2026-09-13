@@ -4,11 +4,9 @@
   const storageKey = 'rf-lab:setups:v1:' + page;
   const KATEX_VERSION = '0.18.7';
   // Port identity colours come from the stylesheet so there is never a second copy.
-  const palette = getComputedStyle(document.documentElement);
-  const PORT = {
-    in: palette.getPropertyValue('--port-in').trim() || '#f3b63a',
-    out: palette.getPropertyValue('--port-out').trim() || '#4fd6c8'
-  };
+  // Read on every use, because the theme can change under a page and the colours with it.
+  const token = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  const PORT = { get in() { return token('--port-in', '#f3b63a'); }, get out() { return token('--port-out', '#4fd6c8'); } };
   // Wrap a LaTeX fragment so a quantity keeps its colour inside rendered algebra.
   const tint = (side, latex) => '\\textcolor{' + PORT[side] + '}{' + latex + '}';
   // Same idea for markup outside an equation.
@@ -40,6 +38,7 @@
     numbers.set(el, { exact, shown });
   }
   document.addEventListener('input', event => numbers.delete(event.target), true);
+  document.addEventListener('theme-change', () => scheduleRender());
   // Mobile decimal keypads have no minus key, so signed fields get their own toggle.
   function flipSign(el) {
     const text = el.value.trim();

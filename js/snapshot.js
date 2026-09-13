@@ -54,6 +54,29 @@
     for (const name of names) { const value = computed.getPropertyValue(name); if (value) out[name] = value.trim(); }
     return out;
   }
+  // A token as it resolves under a theme, read from a throwaway element wearing that theme.
+  function themeToken(theme, name) {
+    const probe = document.createElement('div');
+    probe.className = 'snap-' + theme; probe.hidden = true;
+    document.body.append(probe);
+    const value = getComputedStyle(probe).getPropertyValue(name).trim();
+    probe.remove();
+    return value;
+  }
+  // KaTeX bakes \textcolor into inline styles with the colours of the theme the page was in,
+  // so an export in the other theme swaps them for that theme's port colours.
+  // The browser serialises an inline colour as rgb(), so compare through that form.
+  const normalise = colour => { const el = document.createElement('span'); el.style.color = colour; return el.style.color; };
+  function recolour(clone, theme) {
+    const pairs = [['--port-in', Bench.PORT.in], ['--port-out', Bench.PORT.out]].map(([name, from]) => {
+      const to = themeToken(theme, name);
+      return { fromHex: from.toLowerCase(), toHex: to.toLowerCase(), from: normalise(from), to: normalise(to) };
+    }).filter(pair => pair.from && pair.to && pair.from !== pair.to);
+    if (!pairs.length) return clone;
+    clone.querySelectorAll('[style]').forEach(el => { for (const pair of pairs) if (el.style.color === pair.from) el.style.color = pair.to; });
+    clone.querySelectorAll('[mathcolor]').forEach(el => { for (const pair of pairs) if (el.getAttribute('mathcolor').toLowerCase() === pair.fromHex) el.setAttribute('mathcolor', pair.toHex); });
+    return clone;
+  }
   // Form controls do not survive serialisation as their live values; show the value instead.
   function freeze(clone) {
     clone.querySelectorAll('input, select, textarea').forEach(el => {
@@ -81,7 +104,7 @@
   async function render(spec) {
     await document.fonts.ready;
     const theme = spec.theme === 'dark' ? 'dark' : 'light';
-    const nodes = spec.nodes.filter(Boolean).map(node => freeze(node.cloneNode(true)));
+    const nodes = spec.nodes.filter(Boolean).map(node => recolour(freeze(node.cloneNode(true)), theme));
     const root = document.createElement('div');
     root.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     root.className = 'snap-root';
@@ -89,6 +112,9 @@
     const wrap = document.createElement('div');
     wrap.className = 'snap snap-' + theme;
     wrap.style.width = (spec.width || 820) + 'px';
+    // The theme block resets the accent to amber; a differential page keeps its cyan.
+    const drive = document.body.dataset.drive === 'diff' ? 'cyan' : 'amber';
+    wrap.style.setProperty('--accent', `var(--${drive})`); wrap.style.setProperty('--accent-soft', `var(--${drive}-soft)`);
     wrap.innerHTML = header(spec.title, spec.caption);
     const body = document.createElement('div'); body.className = 'snap-body';
     nodes.forEach(node => body.append(node));
@@ -199,6 +225,6 @@
     document.addEventListener('bench-valid', event => enable(event.detail));
     enable(Bench.valid);
   }
-  window.Snapshot = { render, copyImage, tableText, mount };
+  window.Snapshot = { render, copyImage, tableText, mount, prepare: (node, theme) => recolour(freeze(node.cloneNode(true)), theme) };
   window.Bench.exports = mount;
 })();

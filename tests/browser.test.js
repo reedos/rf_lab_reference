@@ -25,7 +25,7 @@ let checks=0;
     for(const browserName of browsers) {
       const browser=await playwright[browserName].launch({headless:true});
       try {
-        const context=await browser.newContext({viewport:{width:1280,height:900}});
+        const context=await browser.newContext({viewport:{width:1280,height:900},colorScheme:'dark'});
         await context.addInitScript(() => {
           Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{
             writeText: async text => { window.copiedText = text; },
@@ -724,6 +724,43 @@ let checks=0;
           for (const file of ['match.html','chain.html','delay.html','large-signal.html','mixed.html']) {
             await go(file); await page.locator('#export-figure').click(); await expect(status).toContainText(/Image copied/,{timeout:15000});
           }
+        });
+        await check('The page follows the system theme, remembers a choice, and exports either theme',async()=>{
+          const theme=()=>page.evaluate(()=>document.documentElement.dataset.theme);
+          const bodyBg=()=>page.evaluate(()=>getComputedStyle(document.body).backgroundColor);
+          const eqColours=()=>page.evaluate(()=>Array.from(document.querySelectorAll('#gain-equation .katex-html [style*="color"]')).map(n=>n.style.color));
+          await go('gain.html'); await expect(page.locator('#gain-equation .katex').first()).toBeVisible();
+          assert.equal(await theme(),'dark'); assert.equal(await bodyBg(),'rgb(9, 11, 16)');
+          // Auto follows the system, and the algebra takes the light port colours with it.
+          await page.emulateMedia({colorScheme:'light'});
+          await expect.poll(theme).toBe('light'); assert.equal(await bodyBg(),'rgb(255, 255, 255)');
+          await expect.poll(eqColours).toContain('rgb(165, 102, 10)');
+          assert.equal(await page.evaluate(()=>document.querySelector('meta[name="theme-color"]').content),'#ffffff');
+          // A pinned choice survives a reload and is the only thing stored.
+          await page.locator('[data-theme-choice="dark"]').click();
+          await expect.poll(theme).toBe('dark'); await expect.poll(eqColours).toContain('rgb(243, 182, 58)');
+          await page.reload(); await page.locator('#calculation-text').waitFor({state:'attached'});
+          assert.equal(await theme(),'dark'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),'dark');
+          await expect(page.locator('[data-theme-choice="dark"]')).toHaveClass(/is-active/);
+          // Exports recolour the algebra for their own theme rather than the page's.
+          const exported=t=>page.evaluate(t=>Array.from(Snapshot.prepare(document.getElementById('gain-equation'),t).querySelectorAll('.katex-html [style*="color"]')).map(n=>n.style.color),t);
+          assert.ok((await exported('light')).includes('rgb(165, 102, 10)'),'light export uses light amber');
+          assert.ok(!(await exported('light')).includes('rgb(243, 182, 58)'),'light export drops dark amber');
+          assert.ok((await exported('dark')).includes('rgb(243, 182, 58)'),'dark export keeps dark amber');
+          // Auto again: back to the system, nothing stored.
+          await page.locator('[data-theme-choice="system"]').click();
+          await expect.poll(theme).toBe('light'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),null);
+          // Every page lays out and renders its equations in the light theme on a phone.
+          await page.setViewportSize({width:390,height:900});
+          for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
+            await go(file); assert.equal(await theme(),'light',file);
+            assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${file} overflows in light`);
+            await page.locator('.calculation summary').click();
+            await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
+            assert.equal(await page.locator('.equation-error').count(),0,file);
+          }
+          await page.setViewportSize({width:1280,height:900});
+          await page.emulateMedia({colorScheme:'dark'});
         });
         await check('The DUT card travels between pages in the link and binds each page to its side',async()=>{
           const summary=()=>page.locator('#dut-summary').innerText();

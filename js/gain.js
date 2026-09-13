@@ -187,6 +187,7 @@
       `Voltage gain = ${result.spec.plain} × ${fmt(result.factor)} (${sign}${fmt(Math.abs(result.db), 'dB')} dB); power gain |${result.spec.plain}|² is unchanged`);
   });
   document.addEventListener('dut-change', () => { pullFromCard(); applyTopology(); compute(); });
+  document.addEventListener('theme-change', () => { renderDerivation(); compute(); });
   Dut.describe('both sides: the topology picks the parameter, and each per-line impedance doubles for a differential reference');
   Bench.exports({ figureTitle: 'Port topology', figure: () => [$('diagram-' + topology), $('diagram-key'), $('diagram-caption'), $('metrics')], equations: () => [$('gain-equation')] });
   readQuery(); applyTopology(); renderDerivation(); compute();

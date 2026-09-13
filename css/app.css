@@ -1,4 +1,6 @@
-:root {
+/* Dark tokens: the page by default, and any dark export drawn from a light page. */
+:root,
+.snap-dark {
   --bg: #090b10;
   --bg-elev: #12151c;
   --bg-inset: #0b0d12;
@@ -44,6 +46,10 @@ html {
   color-scheme: dark;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 html,
 body {
   margin: 0;
@@ -59,6 +65,13 @@ body {
     radial-gradient(900px 480px at 8% -8%, rgba(243, 182, 58, 0.1), transparent 55%),
     radial-gradient(800px 420px at 100% 0%, rgba(79, 214, 200, 0.08), transparent 50%);
   -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(900px 480px at 8% -8%, rgba(165, 102, 10, 0.07), transparent 55%),
+    radial-gradient(800px 420px at 100% 0%, rgba(11, 124, 115, 0.06), transparent 50%);
+  -webkit-font-smoothing: auto;
 }
 
 a {
@@ -135,6 +148,25 @@ nav a {
 nav a.is-active {
   color: var(--text);
   background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="light"] nav a.is-active {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.theme-switch {
+  margin-left: auto;
+}
+
+.theme-switch .seg-btn {
+  padding: 5px 10px;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 700px) {
+  .theme-switch {
+    margin-left: 0;
+  }
 }
 
 nav a:hover {
@@ -962,6 +994,8 @@ select:focus-visible {
   box-sizing: border-box;
 }
 
+/* Light tokens: the light page, and any light export drawn from a dark page. */
+:root[data-theme="light"],
 .snap-light {
   --bg: #ffffff;
   --bg-elev: #f6f7f9;
@@ -986,10 +1020,18 @@ select:focus-visible {
   --shadow: none;
 }
 
+/* Literal colours that the tokens do not reach, in light and dark pairs. The dark pair comes
+   last so a dark export from a light page wins over the page's own light rule. */
+[data-theme="light"] .board {
+  background: linear-gradient(180deg, #ffffff, #fafbfc);
+}
+
+[data-theme="light"] .blk-shell,
 .snap-light .blk-shell {
   background: #ffffff;
 }
 
+[data-theme="light"] .schematic-stage,
 .snap-light .schematic-stage {
   background:
     linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
@@ -998,13 +1040,28 @@ select:focus-visible {
   background-size: 20px 20px, 20px 20px, auto;
 }
 
-.snap-light #smith .smith-grid {
-  stroke: #b3bac6;
-}
-
+[data-theme="light"] .seg-btn.is-active,
+[data-theme="light"] .chip.is-active,
 .snap-light .seg-btn.is-active,
 .snap-light .chip.is-active {
   color: #ffffff;
+}
+
+.snap-dark .blk-shell {
+  background: rgba(23, 27, 36, 0.92);
+}
+
+.snap-dark .schematic-stage {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    var(--bg-inset);
+  background-size: 20px 20px, 20px 20px, auto;
+}
+
+.snap-dark .seg-btn.is-active,
+.snap-dark .chip.is-active {
+  color: #14120c;
 }
 
 .snap-head {

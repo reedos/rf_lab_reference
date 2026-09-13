@@ -94,27 +94,29 @@
   function renderDiagram() {
     const [kin, kout] = kinds();
     const s = sides();
-    const port = (x, y, number, side, align) => `<path class="wire" d="M${align === 'left' ? x : x - 120} ${y} H${align === 'left' ? x + 120 : x}"/>` +
-      `<text class="${side === 'in' ? 'in' : 'out'} port-label" x="${align === 'left' ? x - 6 : x + 6}" y="${y + 4}" text-anchor="${align === 'left' ? 'end' : 'start'}">Port ${number}</text>`;
+    // Left ports: label ends at 164, wire 170 to 256, arrow head at 256..268. Right ports: wire
+    // 412 to 510, arrow head to 510, label from 516. Braces at 100 and 580 with their labels outside.
+    const port = (y, number, side, align) => (align === 'left'
+      ? `<path class="wire" d="M170 ${y} H256"/><path class="head" d="M256 ${y - 6} L268 ${y} L256 ${y + 6} Z"/>`
+      : `<path class="wire" d="M412 ${y} H498"/><path class="head" d="M498 ${y - 6} L510 ${y} L498 ${y + 6} Z"/>`) +
+      `<text class="${side === 'in' ? 'in' : 'out'} port-label" x="${align === 'left' ? 164 : 516}" y="${y + 4}" text-anchor="${align === 'left' ? 'end' : 'start'}">Port ${number}</text>`;
     const group = (x, y1, y2, side, label, sub) => `<path class="brace brace-${side}" d="M${x} ${y1} V${y2} M${x - 6} ${y1} H${x + 6} M${x - 6} ${y2} H${x + 6}"/>` +
       `<text class="${side}" x="${x + (side === 'in' ? -10 : 10)}" y="${(y1 + y2) / 2 - 4}" text-anchor="${side === 'in' ? 'end' : 'start'}">${label}</text>` +
       `<text class="${side}" x="${x + (side === 'in' ? -10 : 10)}" y="${(y1 + y2) / 2 + 12}" text-anchor="${side === 'in' ? 'end' : 'start'}">${sub}</text>`;
     let svg = `<rect class="box" x="268" y="40" width="144" height="150" rx="10"/><text class="strong" x="312" y="110">DUT</text><text x="300" y="132">S<tspan class="port-sub">ij</tspan> single-ended</text>`;
     if (kin === 'diff') {
-      svg += port(148, 78, s[0].ports[0], 'in', 'left') + port(148, 152, s[0].ports[1], 'in', 'left') +
-        `<text x="254" y="70">+</text><text x="254" y="172">−</text>` + group(96, 78, 152, 'in', 'logical 1', 'd1 · c1') +
-        `<path class="head" d="M256 72 L268 78 L256 84 Z"/><path class="head" d="M256 146 L268 152 L256 158 Z"/>`;
+      svg += port(78, s[0].ports[0], 'in', 'left') + port(152, s[0].ports[1], 'in', 'left') +
+        `<text x="254" y="70">+</text><text x="254" y="172">−</text>` + group(100, 78, 152, 'in', 'logical 1', 'd1 · c1');
     } else {
-      svg += port(148, 115, s[0].ports[0], 'in', 'left') + group(96, 100, 130, 'in', 'logical 1', 's1') +
-        `<path class="head" d="M256 109 L268 115 L256 121 Z"/><path class="wire" d="M250 190 H286 M258 198 H278 M264 206 H272"/><path class="wire" d="M268 178 V190"/>`;
+      svg += port(115, s[0].ports[0], 'in', 'left') + group(100, 100, 130, 'in', 'logical 1', 's1') +
+        `<path class="wire" d="M250 190 H286 M258 198 H278 M264 206 H272"/><path class="wire" d="M268 178 V190"/>`;
     }
     if (kout === 'diff') {
-      svg += port(532, 78, s[1].ports[0], 'out', 'right') + port(532, 152, s[1].ports[1], 'out', 'right') +
-        `<text x="418" y="70">+</text><text x="418" y="172">−</text>` + group(584, 78, 152, 'out', 'logical 2', 'd2 · c2') +
-        `<path class="head" d="M520 72 L532 78 L520 84 Z"/><path class="head" d="M520 146 L532 152 L520 158 Z"/>`;
+      svg += port(78, s[1].ports[0], 'out', 'right') + port(152, s[1].ports[1], 'out', 'right') +
+        `<text x="418" y="70">+</text><text x="418" y="172">−</text>` + group(580, 78, 152, 'out', 'logical 2', 'd2 · c2');
     } else {
-      svg += port(532, 115, s[1].ports[0], 'out', 'right') + group(584, 100, 130, 'out', 'logical 2', 's2') +
-        `<path class="head" d="M520 109 L532 115 L520 121 Z"/><path class="wire" d="M394 190 H430 M402 198 H422 M408 206 H416"/><path class="wire" d="M412 178 V190"/>`;
+      svg += port(115, s[1].ports[0], 'out', 'right') + group(580, 100, 130, 'out', 'logical 2', 's2') +
+        `<path class="wire" d="M394 190 H430 M402 198 H422 M408 206 H416"/><path class="wire" d="M412 178 V190"/>`;
     }
     $('mixed-diagram').innerHTML = svg;
     $('mixed-diagram').setAttribute('aria-label', `${LABELS[topology]}: logical port 1 is ${s[0].ports.map(p => 'port ' + p).join(' and ')}, logical port 2 is ${s[1].ports.map(p => 'port ' + p).join(' and ')}`);
@@ -282,6 +284,7 @@
     compute();
   });
   document.addEventListener('dut-change', () => { pullFromCard(); validateMapping(); renderMapping(); renderGrid(); compute(); });
+  document.addEventListener('theme-change', compute);
   Dut.describe('the port topology on each side and the per-line references that set the mode impedances');
   $('copy-link').addEventListener('click', () => { if (Bench.valid) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => {

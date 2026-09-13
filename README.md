@@ -36,6 +36,17 @@ Storage and clipboard failures are reported without preventing calculation.
 Setups stay on the device. There is no account, backend, or measurement upload, and the
 pages make no external requests.
 
+## Light and dark
+
+The pages follow the operating system's colour preference by default, the way an instrument's
+screen and its print mode are two views of the same trace set, and the switch in the header
+pins **Light** or **Dark** or returns to **Auto**. A pinned choice is the one word this site
+keeps in the browser besides named setups. The two palettes share their roles: amber for the
+first quantity and teal for the second, which is the channel-one-yellow, channel-two-cyan
+order of most bench instruments, with every meaning-carrying colour clearing WCAG AA on its
+background in both themes. Exported images pick their theme independently of the page, and
+the rendered algebra is recoloured to match.
+
 ## Copying figures, tables and equations
 
 Every calculator's toolbar can copy an image as well as text. **Copy figure** takes the

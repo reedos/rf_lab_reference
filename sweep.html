@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
+  <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
   <meta name="description" content="Size VNA frequency and power sweeps: points per segment, boundary checks for gaps and step jumps, and power-sweep point counts.">
   <title>Sweep setup &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-11">
-  <link rel="stylesheet" href="css/app.css?v=20260913-11"><link rel="stylesheet" href="css/workbench.css?v=20260913-11">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-12">
+  <link rel="stylesheet" href="css/app.css?v=20260913-12"><link rel="stylesheet" href="css/workbench.css?v=20260913-12">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -77,4 +78,4 @@
   </table>
 </section>
 <section class="panel"><h2>Model and reference</h2><p>N = (stop − start)/step + 1 for a linear segment. Relative spacing Δf/f sets how well narrow features are resolved; points per decade is 1/log₁₀(1 + Δf/f). A log sweep with the same span needs ⌈ln(f<sub>last</sub>/f<sub>first</sub>)/ln(1 + r)⌉ + 1 points for relative spacing r. Minimum sweep time is about N/IFBW before band crossings, settling, and dwell.</p><p>Segment count, total points, and per-segment IF bandwidth or power are instrument settings; check the analyzer's limits.</p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-11"></script><script src="js/rf.js?v=20260913-11"></script><script src="js/dut.js?v=20260913-11"></script><script src="js/snapshot.js?v=20260913-11"></script><script src="js/sweep.js?v=20260913-11"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/theme.js?v=20260913-12"></script><script src="js/bench.js?v=20260913-12"></script><script src="js/rf.js?v=20260913-12"></script><script src="js/dut.js?v=20260913-12"></script><script src="js/snapshot.js?v=20260913-12"></script><script src="js/sweep.js?v=20260913-12"></script></body></html>
