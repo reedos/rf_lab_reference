@@ -111,8 +111,8 @@
   }
   let toastTimer = 0;
 
-  function metric(label, value) {
-    return `<div class="metric"><dt>${label}</dt><dd>${value}</dd></div>`;
+  function metric(label, value, cls) {
+    return `<div class="metric${cls ? ' ' + cls : ''}"><dt>${label}</dt><dd>${value}</dd></div>`;
   }
 
   function showToast(message) {
@@ -201,8 +201,8 @@
       eq('Peak envelope power per port', String.raw`P_{\mathrm{PEP}} &= P_{\mathrm{tone}}+10\log_{10}4`, tex(tt.dbmPortPep, 'dBm')),
       'Peak envelope power is 3.01 dB above two-tone average power.');
     const rows = [
+      metric("Envelope VOPP", RF.formatVoltage(tt.vppEnv), 'primary'),
       metric("CW VOPP, one tone", RF.formatVoltage(tt.vppOne)),
-      metric("Envelope VOPP", RF.formatVoltage(tt.vppEnv)),
       metric("Envelope V<sub>pk</sub>", RF.formatVoltage(tt.vpkEnv)),
       metric(tt.drive === "diff" ? "Per-port average" : "Average (2 tones)", `${RF.formatDbm(tt.dbmPortAvg)} dBm`),
       metric(tt.drive === "diff" ? "Per-port PEP" : "PEP", `${RF.formatDbm(tt.dbmPortPep)} dBm`)
@@ -336,8 +336,9 @@
     }
     drawSpectrum(ip3);
     const number = v => Number.isFinite(v) ? RF.formatDbm(v) + ' dBm' : 'enter gain';
-    els.imdMetrics.innerHTML = [metric('Δ (output tone − IM3)', RF.formatNumber(ip3.delta, 'dB') + ' dB'),
-      metric('IM3 at output', number(ip3.im3Output)), metric('IIP3', number(ip3.iip3)), metric('OIP3', number(ip3.oip3)),
+    els.imdMetrics.innerHTML = [metric('OIP3', number(ip3.oip3), 'primary'),
+      metric('Δ (output tone − IM3)', RF.formatNumber(ip3.delta, 'dB') + ' dB'),
+      metric('IM3 at output', number(ip3.im3Output)), metric('IIP3', number(ip3.iip3)),
       metric('IM3 relative to output tone', RF.formatNumber(ip3.im3Dbc, 'dB') + ' dBc'),
       metric('Approx. OP1dB (cubic model)', number(ip3.oip3 - 10))].join('');
     calculation.push('Small-signal third-order extrapolation with two equal tones; IM3 is measured at the DUT output.',
@@ -373,8 +374,8 @@
       eq('Approximate output intercept', String.raw`\mathrm{OIP3} &\approx \mathrm{OP1dB}+10\,\mathrm{dB}`, tex(p1.pout1dB+10,'dBm')),
       'The intercept estimate is a cubic-model rule of thumb, not a measured intercept.'];
     const rows = [
+      metric("OP1dB", `${RF.formatDbm(p1.pout1dB)} dBm`, 'primary'),
       metric("IP1dB", `${RF.formatDbm(p1.pin1dB)} dBm`),
-      metric("OP1dB", `${RF.formatDbm(p1.pout1dB)} dBm`),
       metric("Linear P<sub>out</sub> at IP1dB", `${RF.formatDbm(p1.poutLinear)} dBm`),
       metric("Thumb OIP3", `${RF.formatDbm(p1.pout1dB + 10)} dBm`)
     ];
@@ -421,7 +422,7 @@
     const contamination = fields.contam.blank ? null : RF.contaminationRange(fields.contam.value);
     const h2 = values[0];
     els.thdMetrics.innerHTML = [
-      metric('THD', `${RF.formatNumber(thd.percent)} %`),
+      metric('THD', `${RF.formatNumber(thd.percent)} %`, 'primary'),
       metric('THD', Number.isFinite(thd.db) ? `${RF.formatNumber(thd.db, 'dB')} dB` : '—'),
       metric('Harmonics used', String(thd.count)),
       ...(Number.isFinite(fund) && Number.isFinite(h2) ? [metric('H2 absolute', `${RF.formatDbm(fund + h2)} dBm`)] : [])

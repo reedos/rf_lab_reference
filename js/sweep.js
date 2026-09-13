@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   const fmt = RF.formatNumber, freq = hz => RF.formatFrequency(hz).text;
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const metric = (label, value) => `<div class="metric"><dt>${label}</dt><dd>${value}</dd></div>`;
+  const metric = (label, value, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${label}</dt><dd>${value}</dd></div>`;
   const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 };
   const segment = (start, startUnit, stop, stopUnit, step, stepUnit) => ({ start, startUnit, stop, stopUnit, step, stepUnit });
   const PRESETS = {
@@ -105,7 +105,7 @@
     $('sweep-rows').innerHTML = result.rows.map((r, i) => `<tr class="${r.exact ? '' : 'over-limit'}"><td>${i + 1}</td><td>${freq(r.start)}</td><td>${freq(r.stop)}</td><td>${freq(r.step)}</td><td>${r.points}</td><td>${freq(r.lastPoint)}${r.exact ? '' : ` · use ${freq(r.stepCeil)} for ${r.pointsCeil} points`}</td><td>${fmt(r.fractionalStart * 100)} → ${fmt(r.fractionalStop * 100)} %</td><td>${fmt(r.decadePoints)}</td><td>${fmt(r.pointsPerDecadeStart)} → ${fmt(r.pointsPerDecadeStop)}</td></tr>`).join('');
     $('boundary-rows').innerHTML = result.boundaries.length ? result.boundaries.map(b => `<tr class="${b.sharp || b.kind !== 'contiguous' ? 'over-limit' : ''}"><td>${freq(b.frequency)}</td><td>${boundaryText(b)}</td><td class="${mode === 'absolute' && b.sharp ? 'over-limit' : ''}">${fmt(b.stepRatio)}×</td><td class="${mode === 'relative' && b.sharp ? 'over-limit' : ''}">${fmt(b.patternRatio)}×</td><td>${b.sharp ? (mode === 'relative' ? 'Pattern change' : 'Sharp step change') : b.kind !== 'contiguous' ? 'Fix boundary' : 'OK'}</td></tr>`).join('')
       : '<tr><td colspan="5">One segment: no boundaries to check.</td></tr>';
-    $('sweep-metrics').innerHTML = metric('Total points', String(result.points)) + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) +
+    $('sweep-metrics').innerHTML = metric('Total points', String(result.points), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) +
       metric('Points per decade', result.decadePoints.min === result.decadePoints.max ? fmt(result.decadePoints.min) : `${fmt(result.decadePoints.min)} to ${fmt(result.decadePoints.max)} by segment`) +
       metric('Point limit', result.maxPoints === null ? 'None specified' : `${result.maxPoints} · ${result.headroom >= 0 ? `${result.headroom} spare` : `<span class="over-limit">${-result.headroom} over</span>`}`) +
       metric('Minimum sweep time', result.ifbw === null ? 'Enter IF bandwidth' : `≈ ${seconds(result.sweepTime)}`) +
@@ -123,7 +123,7 @@
     if (powerSource !== 'points') Bench.setNumber('p-points', power.points, '', true);
     $('power-status').className = power.exact ? '' : 'over-limit';
     $('power-status').textContent = power.exact ? '' : `The step does not divide the span: ${power.points} points end at ${fmt(power.lastPoint, 'dBm')} dBm. Use ${fmt(power.stepCeil, 'dB')} dB for ${power.pointsCeil} points ending at the stop.`;
-    $('power-metrics').innerHTML = metric('Points', String(power.points)) + metric('Step', `${fmt(power.step, 'dB')} dB`) +
+    $('power-metrics').innerHTML = metric('Points', String(power.points), 'primary') + metric('Step', `${fmt(power.step, 'dB')} dB`) +
       metric('Span', `${fmt(power.span, 'dB')} dB`) + metric('Last point', `${fmt(power.lastPoint, 'dBm')} dBm`);
   }
   function compute() {

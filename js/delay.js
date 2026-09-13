@@ -10,7 +10,7 @@
     const [scale, unit] = hz >= 1e12 ? [1e12, 'THz'] : hz >= 1e9 ? [1e9, 'GHz'] : hz >= 1e6 ? [1e6, 'MHz'] : hz >= 1e3 ? [1e3, 'kHz'] : [1, 'Hz'];
     return fmt(hz / scale) + ' ' + unit;
   };
-  const metric = (key, value) => `<div class="metric"><dt>${key}</dt><dd>${value}</dd></div>`;
+  const metric = (key, value, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${key}</dt><dd>${value}</dd></div>`;
   let source = 'length', dielectric = 'er', current = null, slope = null, skew = null;
   let units = { 'freq-unit': $('freq-unit').value, 'len-unit': $('len-unit').value, 'delay-unit': $('delay-unit').value, 'skew-unit': $('skew-unit').value };
   const phaseIds = ['phase-f1', 'phase-f2', 'phase-p1', 'phase-p2', 'phase-turns', 'phase-mode'];
@@ -71,9 +71,10 @@
     if (source !== 'delay') Bench.setNumber('delay', delay / scales[$('delay-unit').value], $('delay-unit').value, true);
     if (source !== 'degrees') Bench.setNumber('degrees', degrees, 'deg', true);
     document.querySelectorAll('[data-er]').forEach(b => b.classList.toggle('is-active', Math.abs(Number(b.dataset.er) - er) < 1e-9));
-    $('metrics').innerHTML = metric('Guided wavelength', show(lambda * 1000, 'mm')) + metric('Half wavelength', show(lambda * 500, 'mm')) + metric('Quarter wavelength', show(lambda * 250, 'mm')) +
+    $('metrics').innerHTML = metric('One-way delay', show(delay * 1e9, 'ns'), 'primary') +
+      metric('Guided wavelength', show(lambda * 1000, 'mm')) + metric('Half wavelength', show(lambda * 500, 'mm')) + metric('Quarter wavelength', show(lambda * 250, 'mm')) +
       metric('Propagation velocity', show(RF.C_LIGHT * RF.vfFromEr(er) / 1e8, '× 10⁸ m/s')) +
-      metric('One-way delay', show(delay * 1e9, 'ns')) + metric('Reflection trace delay', show(delay * 2e9, 'ns'));
+      metric('Reflection trace delay', show(delay * 2e9, 'ns'));
     $('delay-interpretation').textContent = `At ${fmt(f / 1e6)} MHz, transmission phase is ${fmt(-degrees, 'deg')}° and reflection phase is ${fmt(-2 * degrees, 'deg')}° (unwrapped propagation phase). Physical one-way port extension: ${fmt(delay * 1e9)} ns.`;
     const skewOk = computeSkew(er, f);
     slope = RF.phaseDelay(n('phase-f1') * 1e6, n('phase-f2') * 1e6, n('phase-p1'), n('phase-p2'), n('phase-turns'), $('phase-mode').value, RF.vfFromEr(er));
@@ -123,11 +124,11 @@
     const unit = $('skew-unit').value, allowed = show(budget.length / scale, unit);
     const within = mode === 'common' ? skew.commonDb <= limit : skew.differentialDb >= limit;
     $('skew-metrics').innerHTML =
+      metric('Common-mode conversion', show(skew.commonDb, 'dB'), 'primary') +
       metric('Skew', show(skew.skew * 1e12, 'ps')) +
       metric('Phase error at ' + freqText(f), show(skew.degrees, 'deg')) +
       metric('Fraction of a period', show(skew.cycles * 100, '%')) +
       metric('Differential response', show(skew.differentialDb, 'dB')) +
-      metric('Common-mode conversion', show(skew.commonDb, 'dB')) +
       metric('First null', skew.nullFrequency === Infinity ? 'None, the halves are matched' : freqText(skew.nullFrequency)) +
       metric('Budget for this limit', allowed + ' · ' + show(budget.skew * 1e12, 'ps'));
     $('skew-status').className = within && !skew.beyondNull ? '' : 'over-limit';

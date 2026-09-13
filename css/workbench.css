@@ -33,14 +33,17 @@ summary { cursor: pointer; font-weight: 500; }
 .gain-svg { width: 100%; height: auto; display: block; margin: 4px 0 18px; }
 .gain-svg[hidden] { display: none; }
 .gain-svg .box { fill: var(--bg-inset); stroke: var(--line-strong); stroke-width: 1; }
-.gain-svg .wire { stroke: var(--accent); stroke-width: 2; fill: none; }
-.gain-svg .brace { stroke: var(--cyan); stroke-width: 1.5; fill: none; }
+/* Wires, arrows and grounds are structure, so they stay neutral and let the quantities read. */
+.gain-svg .wire { stroke: var(--line-strong); stroke-width: 2; fill: none; }
+.gain-svg .brace { stroke-width: 1.5; fill: none; }
+.gain-svg .brace-in { stroke: var(--port-in); }
+.gain-svg .brace-out { stroke: var(--port-out); }
 .gain-svg text { fill: var(--muted); font: 11px var(--font-mono); }
 .gain-svg text.strong { fill: var(--text); font-size: 13px; }
-.gain-svg text.mark { fill: var(--cyan); }
-.gain-svg text.val { fill: var(--accent); }
+.gain-svg text.in { fill: var(--port-in); }
+.gain-svg text.out { fill: var(--port-out); }
 .gain-svg text.caption { fill: var(--muted); font-size: 12px; }
-.gain-svg .head { fill: var(--accent); stroke: none; }
+.gain-svg .head { fill: var(--line-strong); stroke: none; }
 .gain-result { margin: 18px 0; padding: 18px; border-left: 2px solid var(--cyan); background: var(--bg-inset); border-radius: 0 8px 8px 0; overflow-x: auto; }
 .gain-result .katex { font-size: 1.2em; }
 .gain-note { margin: 14px 0 0; }

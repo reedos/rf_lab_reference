@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id), n = id => Bench.read(id);
   const fmt = RF.formatNumber, dbm = v => RF.formatDbm(v) + ' dBm';
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const metric = (label, value) => `<div class="metric"><dt>${label}</dt><dd>${value}</dd></div>`;
+  const metric = (label, value, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${label}</dt><dd>${value}</dd></div>`;
   const scales = { Hz: 1, kHz: 1e3, MHz: 1e6, GHz: 1e9 };
   let bandwidthUnit = $('bandwidth-unit').value, result = null, loadError = '';
   let stages = [
@@ -72,7 +72,7 @@
     $('power-path').innerHTML = node('Source', power, false) +
       result.rows.map((r,i) => link(r, stages[i].kind) + node(stages[i].name || `Stage ${i + 1}`, r.outputDbm, r.headroom !== null && r.headroom < 0)).join('');
     $('power-rows').innerHTML = result.rows.map((r, i) => `<tr class="${r.headroom !== null && r.headroom < 0 ? 'over-limit' : ''}"><td>${escape(stages[i].name || `Stage ${i + 1}`)}</td><td>${fmt(r.gainDb, 'dB')} dB</td><td>${dbm(r.outputDbm)}</td><td>${parsed[i].limit === null ? '—' : dbm(parsed[i].limit)}</td><td>${r.headroom === null ? 'Unspecified' : fmt(r.headroom, 'dB') + ' dB'}</td></tr>`).join('');
-    $('noise-metrics').innerHTML = metric('Total gain', fmt(result.gainDb, 'dB') + ' dB') + metric('Cascaded noise figure', fmt(result.nf, 'dB') + ' dB') +
+    $('noise-metrics').innerHTML = metric('Cascaded noise figure', fmt(result.nf, 'dB') + ' dB', 'primary') + metric('Total gain', fmt(result.gainDb, 'dB') + ' dB') +
       metric('Equivalent input noise temp.', fmt(result.equivalentTemperature) + ' K') + metric('Input source noise', dbm(result.inputNoiseDbm)) +
       metric('Output noise', dbm(result.noiseDbm)) + metric('Output SNR', fmt(result.snr, 'dB') + ' dB');
     $('noise-rows').innerHTML = result.rows.map((r, i) => `<tr><td>${escape(stages[i].name || `Stage ${i + 1}`)}</td><td>${fmt(r.stageNf, 'dB')} dB</td><td>${fmt(r.nf, 'dB')} dB</td><td>${dbm(r.noiseDbm)}</td></tr>`).join('');

@@ -35,6 +35,22 @@ Storage and clipboard failures are reported without preventing calculation.
 Setups stay on the device. There is no account, backend, or measurement upload, and the
 pages make no external requests.
 
+## Reading the pages
+
+Each calculator has **one answer**. It leads its list of tiles, spans the row, and is the only
+one styled that way; everything after it is supporting detail.
+
+**Colour carries quantity identity, not decoration.** On the gain page the input reference
+impedance and its voltage take one colour and the output reference and its voltage take the
+other, and those same two colours appear in the diagram, inside the rendered algebra, and on
+the matching tiles. Wires, boxes, arrows and grounds are structure, so they stay neutral and
+let the quantities read. A key under the diagram names which symbol is which.
+
+Colour only ever reinforces a written label. Every coloured symbol keeps its text, so nothing
+is lost in greyscale, in print, or to a colour vision deficiency. The port colours are defined
+once in the stylesheet as `--port-in` and `--port-out`, and the scripts read them back rather
+than hardcoding a second copy.
+
 ## Display precision and blank inputs
 
 Linear values display up to four significant figures; dB values and angles use

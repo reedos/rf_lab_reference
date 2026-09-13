@@ -3,7 +3,7 @@
   const eq = Bench.equation, tex = Bench.tex;
   const $ = id => document.getElementById(id);
   const fmt = RF.formatNumber;
-  const metric = (key, value) => `<div class="metric"><dt>${key}</dt><dd>${value}</dd></div>`;
+  const metric = (key, value, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${key}</dt><dd>${value}</dd></div>`;
   // Each side keeps its own differential and single-ended value, so switching topology
   // never reinterprets a number that was entered for the other mode.
   const store = { d1: 100, s1: 50, d2: 100, s2: 50 };
@@ -18,6 +18,14 @@
   };
   const SYMBOLS = { d1: 'Z_{d1}', s1: 'Z_{s1}', d2: 'Z_{d2}', s2: 'Z_{s2}' };
   const PLAIN = { d1: 'Zd1', s1: 'Zs1', d2: 'Zd2', s2: 'Zs2' };
+  // One source of truth for the port colours: the stylesheet. Symbols keep the same colour
+  // in the diagram, in the rendered algebra, and on the tiles.
+  const palette = getComputedStyle(document.documentElement);
+  const COLOUR = {
+    in: palette.getPropertyValue('--port-in').trim() || '#f3b63a',
+    out: palette.getPropertyValue('--port-out').trim() || '#4fd6c8'
+  };
+  const tint = (side, latex) => '\\textcolor{' + COLOUR[side] + '}{' + latex + '}';
   const ARIA = {
     d1: 'Input differential reference impedance in ohms', s1: 'Input single-ended reference impedance in ohms',
     d2: 'Output differential reference impedance in ohms', s2: 'Output single-ended reference impedance in ohms'
@@ -66,14 +74,21 @@
       $('gain-status').textContent = 'Enter a positive reference impedance for each port.';
       $('gain-status').className = 'status-error';
       $('metrics').replaceChildren(); $('gain-equation').replaceChildren(); $('gain-note').textContent = '';
+      $('diagram-key').replaceChildren();
       Bench.update({ valid: false, lines: ['Correct the reference impedances before calculating or saving.'] });
       return;
     }
     $('gain-status').textContent = ''; $('gain-status').className = '';
-    const spec = result.spec, inSym = SYMBOLS[ports.in], outSym = SYMBOLS[ports.out];
+    const spec = result.spec;
+    const inSym = tint('in', SYMBOLS[ports.in]), outSym = tint('out', SYMBOLS[ports.out]);
+    const inVal = tint('in', tex(result.z1, 'Ω')), outVal = tint('out', tex(result.z2, 'Ω'));
     // The diagram carries the entered values and a caption that cannot contradict them.
     $('zin-' + topology).textContent = `${PLAIN[ports.in]} ${fmt(result.z1)} Ω`;
     $('zout-' + topology).textContent = `${PLAIN[ports.out]} ${fmt(result.z2)} Ω`;
+    $('diagram-key').innerHTML =
+      `<span class="key key-in">${PLAIN[ports.in]}</span> and its voltage, input side` +
+      `<span class="key key-out">${PLAIN[ports.out]}</span> and its voltage, output side` +
+      `<span class="key">wires, boxes and arrows carry no value</span>`;
     $('diagram-caption').textContent = result.db === 0
       ? `${spec.label} · ${PLAIN[ports.out]} = ${PLAIN[ports.in]}, so the voltage ratio equals the parameter`
       : `${spec.label} · ${PLAIN[ports.out]} / ${PLAIN[ports.in]} = ${fmt(result.ratio)}, so the voltage ratio is ${fmt(Math.abs(result.db), 'dB')} dB ${result.db > 0 ? 'above' : 'below'} the parameter`;
@@ -81,16 +96,17 @@
     // Headline conclusion, rendered as algebra with the entered impedances substituted.
     Bench.math($('gain-equation'), String.raw`\begin{aligned}
       A_{v} &= ${parameter}\sqrt{\frac{${outSym}}{${inSym}}}
-        = ${parameter}\sqrt{\frac{${tex(result.z2, 'Ω')}}{${tex(result.z1, 'Ω')}}}
+        = ${parameter}\sqrt{\frac{${outVal}}{${inVal}}}
         = ${tex(result.factor)}\,${parameter} \\[4pt]
       20\log_{10}|A_{v}| &= 20\log_{10}|${parameter}| + 10\log_{10}\frac{${outSym}}{${inSym}}
         = 20\log_{10}|${parameter}| ${result.db < 0 ? '-' : '+'}\ ${tex(Math.abs(result.db), 'dB')}
     \end{aligned}`, true);
     const sign = result.db > 0 ? '+' : result.db < 0 ? '−' : '';
     $('metrics').innerHTML = [
+      metric('Voltage gain', `${spec.plain} × ${fmt(result.factor)}  ·  ${sign}${fmt(Math.abs(result.db), 'dB')} dB`, 'primary'),
       metric('Topology', spec.label),
-      metric('Voltage conversion factor', fmt(result.factor)),
-      metric('Add to the parameter in dB', `${sign}${fmt(Math.abs(result.db), 'dB')} dB`),
+      metric('Input reference', `${PLAIN[ports.in]} ${fmt(result.z1)} Ω`, 'port-in'),
+      metric('Output reference', `${PLAIN[ports.out]} ${fmt(result.z2)} Ω`, 'port-out'),
       metric('Power gain', `|${spec.plain}|², unchanged by the impedances`),
       metric('Impedance ratio', `${fmt(result.ratio)} = ${fmt(result.z2)} Ω / ${fmt(result.z1)} Ω`),
       metric('Per line, if uncoupled', [
@@ -121,11 +137,13 @@
     writeQuery();
   }
   function renderDerivation() {
-    Bench.math($('derivation-waves'), String.raw`a_1 = \frac{V_1^{+}}{\sqrt{Z_1}},\qquad b_2 = \frac{V_2^{-}}{\sqrt{Z_2}},\qquad S_{21} = \left.\frac{b_2}{a_1}\right|_{a_2=0}`, true);
-    Bench.math($('derivation-ratio'), String.raw`\frac{V_2^{-}}{V_1^{+}} = \frac{b_2\sqrt{Z_2}}{a_1\sqrt{Z_1}} = S_{21}\sqrt{\frac{Z_2}{Z_1}}`, true);
-    Bench.math($('derivation-gain'), String.raw`A_{v} = \frac{V_2}{V_1^{+}} = S_{21}\sqrt{\frac{Z_2}{Z_1}} \qquad\Longrightarrow\qquad |A_{v}|_{\mathrm{dB}} = |S_{21}|_{\mathrm{dB}} + 10\log_{10}\frac{Z_2}{Z_1}`, true);
-    Bench.math($('derivation-power'), String.raw`\frac{P_2}{P_{\mathrm{avs}}} = \frac{|V_2|^{2}/Z_2}{|V_1^{+}|^{2}/Z_1} = \left|S_{21}\sqrt{\frac{Z_2}{Z_1}}\right|^{2}\frac{Z_1}{Z_2} = |S_{21}|^{2}`, true);
-    Bench.math($('derivation-terminal'), String.raw`V_1 = V_1^{+}\left(1+S_{11}\right) \qquad\Longrightarrow\qquad \frac{V_2}{V_1} = \frac{S_{21}}{1+S_{11}}\sqrt{\frac{Z_2}{Z_1}}`, true);
+    const z1 = tint('in', 'Z_1'), z2 = tint('out', 'Z_2');
+    const v1 = tint('in', 'V_1^{+}'), v2 = tint('out', 'V_2^{-}'), v2t = tint('out', 'V_2');
+    Bench.math($('derivation-waves'), `a_1 = \\frac{${v1}}{\\sqrt{${z1}}},\\qquad b_2 = \\frac{${v2}}{\\sqrt{${z2}}},\\qquad S_{21} = \\left.\\frac{b_2}{a_1}\\right|_{a_2=0}`, true);
+    Bench.math($('derivation-ratio'), `\\frac{${v2}}{${v1}} = \\frac{b_2\\sqrt{${z2}}}{a_1\\sqrt{${z1}}} = S_{21}\\sqrt{\\frac{${z2}}{${z1}}}`, true);
+    Bench.math($('derivation-gain'), `A_{v} = \\frac{${v2t}}{${v1}} = S_{21}\\sqrt{\\frac{${z2}}{${z1}}} \\qquad\\Longrightarrow\\qquad |A_{v}|_{\\mathrm{dB}} = |S_{21}|_{\\mathrm{dB}} + 10\\log_{10}\\frac{${z2}}{${z1}}`, true);
+    Bench.math($('derivation-power'), `\\frac{P_2}{P_{\\mathrm{avs}}} = \\frac{|${v2t}|^{2}/${z2}}{|${v1}|^{2}/${z1}} = \\left|S_{21}\\sqrt{\\frac{${z2}}{${z1}}}\\right|^{2}\\frac{${z1}}{${z2}} = |S_{21}|^{2}`, true);
+    Bench.math($('derivation-terminal'), `V_1 = ${v1}\\left(1+S_{11}\\right) \\qquad\\Longrightarrow\\qquad \\frac{${v2t}}{V_1} = \\frac{S_{21}}{1+S_{11}}\\sqrt{\\frac{${z2}}{${z1}}}`, true);
   }
   document.querySelectorAll('[data-topology]').forEach(button => button.addEventListener('click', () => {
     topology = button.dataset.topology; applyTopology(); compute();

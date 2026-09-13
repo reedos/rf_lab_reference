@@ -488,6 +488,32 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
           await fill('z1',100); await expect.poll(valid).toBe(true);
         });
+        await check('Colour links a quantity across the diagram, the algebra and its tile',async()=>{
+          await go('gain.html?t=sd&d1=100&s2=200');
+          await expect(page.locator('#gain-equation .katex').first()).toBeVisible();
+          assert.equal(await page.locator('.equation-error').count(),0);
+          const token=async sel=>(await page.evaluate(s=>getComputedStyle(document.querySelector(s)).fill||getComputedStyle(document.querySelector(s)).color,sel));
+          const root=await page.evaluate(()=>{const s=getComputedStyle(document.documentElement);
+            const hex=v=>{const d=document.createElement('span');d.style.color=v;document.body.append(d);const c=getComputedStyle(d).color;d.remove();return c;};
+            return {in:hex(s.getPropertyValue('--port-in').trim()),out:hex(s.getPropertyValue('--port-out').trim())};});
+          // The input reference wears the same colour in the diagram and inside the equation.
+          assert.equal(await token('#zin-sd'),root.in,'diagram input value');
+          assert.equal(await token('#zout-sd'),root.out,'diagram output value');
+          const eqColours=await page.evaluate(()=>Array.from(document.querySelectorAll('#gain-equation .katex-html [style*="color"]')).map(n=>getComputedStyle(n).color));
+          assert.ok(eqColours.includes(root.in),'equation carries the input colour');
+          assert.ok(eqColours.includes(root.out),'equation carries the output colour');
+          // Structure stays neutral so the quantities read.
+          assert.notEqual(await page.evaluate(()=>getComputedStyle(document.querySelector('#diagram-sd .wire')).stroke),root.in);
+          // One answer per calculator, and it leads the list.
+          await expect(page.locator('.metric.primary')).toHaveCount(1);
+          await expect(page.locator('#metrics .metric').first()).toHaveClass(/primary/);
+          await expect(page.locator('.metric.primary')).toContainText('Ssd21 × 1.414');
+          await expect(page.locator('#diagram-key')).toContainText('input side');
+          for (const [file,answer] of [['delay.html','One-way delay'],['sweep.html','Total points'],['chain.html','Cascaded noise figure'],['large-signal.html','Envelope VOPP']]) {
+            await go(file);
+            await expect(page.locator('.metric.primary').first()).toContainText(answer,{timeout:5000});
+          }
+        });
         await check('No heading sits flush against the content above it',async()=>{
           for (const width of [390,1280]) {
             await page.setViewportSize({width,height:900});

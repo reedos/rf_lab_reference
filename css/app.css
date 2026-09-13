@@ -15,6 +15,10 @@
   --danger: #ef6a5c;
   --plus: #f3b63a;
   --minus: #7aa2ff;
+  /* Port identity. Literal values, not aliases, so a quantity keeps its colour even on
+     pages where --accent flips with the drive mode, and so scripts can read them back. */
+  --port-in: #f3b63a;
+  --port-out: #4fd6c8;
   --accent: var(--amber);
   --accent-soft: var(--amber-soft);
   --font-ui: "IBM Plex Sans", "Segoe UI", sans-serif;
@@ -850,6 +854,56 @@ select:focus-visible {
   font-family: var(--font-mono);
   font-size: 1rem;
   color: var(--text);
+}
+
+/* One answer per calculator, so the eye lands on it before the supporting numbers. */
+.metric.primary {
+  grid-column: 1 / -1;
+  border-color: var(--accent);
+  background: var(--bg-elev);
+  padding: 14px 16px;
+}
+
+.metric.primary dt {
+  color: var(--accent);
+}
+
+.metric.primary dd {
+  font-size: 1.5rem;
+  margin-top: 2px;
+}
+
+/* A quantity that belongs to a port carries that port's colour everywhere it appears. */
+.metric.port-in {
+  border-left: 3px solid var(--port-in);
+}
+
+.metric.port-out {
+  border-left: 3px solid var(--port-out);
+}
+
+.colour-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: baseline;
+}
+
+.colour-key .key {
+  font-family: var(--font-mono);
+  border-left: 3px solid var(--line-strong);
+  padding-left: 7px;
+  color: var(--text);
+}
+
+.colour-key .key-in {
+  border-left-color: var(--port-in);
+  color: var(--port-in);
+}
+
+.colour-key .key-out {
+  border-left-color: var(--port-out);
+  color: var(--port-out);
 }
 
 .toolbar {
