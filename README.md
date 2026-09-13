@@ -40,11 +40,27 @@ pages make no external requests.
 Each calculator has **one answer**. It leads its list of tiles, spans the row, and is the only
 one styled that way; everything after it is supporting detail.
 
-**Colour carries quantity identity, not decoration.** On the gain page the input reference
-impedance and its voltage take one colour and the output reference and its voltage take the
-other, and those same two colours appear in the diagram, inside the rendered algebra, and on
-the matching tiles. Wires, boxes, arrows and grounds are structure, so they stay neutral and
-let the quantities read. A key under the diagram names which symbol is which.
+**Colour carries quantity identity, not decoration.** One side of a pair takes one colour, the
+other side takes the other, and those same two colours appear in the diagram, inside the
+rendered algebra, and on the matching tiles. Wires, boxes, arrows and grounds are structure,
+so they stay neutral and let the quantities read. Each page that uses the scheme states its
+key in one line.
+
+| Page | One colour | The other |
+| --- | --- | --- |
+| VOPP | source impedance, available power | load impedance, delivered power, loaded voltage |
+| Match | reference impedance Z₀ | the load Z = R + jX |
+| Large-signal | IIP3, input-referred tone | OIP3, IM3, OP1dB, output-referred |
+| Gain | input reference and incident wave | output reference and the voltage at the load |
+
+A readout takes the colour of the side it belongs to rather than the block it happens to sit
+on. In the receive direction the power drawn on the source block is delivered power, a
+load-side quantity, and its colour says so.
+
+The scheme is applied only where a page genuinely pairs two quantities. The sweep, delay and
+power-chain pages have no such pair, so forcing it there would dilute what the colours mean.
+The differential rails keep their own amber and blue for plus and minus, which is a separate
+axis, and every key that appears beside them says so.
 
 Colour only ever reinforces a written label. Every coloured symbol keeps its text, so nothing
 is lost in greyscale, in print, or to a colour vision deficiency. The port colours are defined

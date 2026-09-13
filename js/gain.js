@@ -18,14 +18,8 @@
   };
   const SYMBOLS = { d1: 'Z_{d1}', s1: 'Z_{s1}', d2: 'Z_{d2}', s2: 'Z_{s2}' };
   const PLAIN = { d1: 'Zd1', s1: 'Zs1', d2: 'Zd2', s2: 'Zs2' };
-  // One source of truth for the port colours: the stylesheet. Symbols keep the same colour
-  // in the diagram, in the rendered algebra, and on the tiles.
-  const palette = getComputedStyle(document.documentElement);
-  const COLOUR = {
-    in: palette.getPropertyValue('--port-in').trim() || '#f3b63a',
-    out: palette.getPropertyValue('--port-out').trim() || '#4fd6c8'
-  };
-  const tint = (side, latex) => '\\textcolor{' + COLOUR[side] + '}{' + latex + '}';
+  const VOLTS = { d1: 'Vd1⁺', s1: 'Vs1⁺', d2: 'Vd2', s2: 'Vs2' };
+  const tint = Bench.tint;
   const ARIA = {
     d1: 'Input differential reference impedance in ohms', s1: 'Input single-ended reference impedance in ohms',
     d2: 'Output differential reference impedance in ohms', s2: 'Output single-ended reference impedance in ohms'
@@ -86,8 +80,8 @@
     $('zin-' + topology).textContent = `${PLAIN[ports.in]} ${fmt(result.z1)} Ω`;
     $('zout-' + topology).textContent = `${PLAIN[ports.out]} ${fmt(result.z2)} Ω`;
     $('diagram-key').innerHTML =
-      `<span class="key key-in">${PLAIN[ports.in]}</span> and its voltage, input side` +
-      `<span class="key key-out">${PLAIN[ports.out]}</span> and its voltage, output side` +
+      `<span class="key key-in">${PLAIN[ports.in]} · ${VOLTS[ports.in]}</span> input reference and the incident wave` +
+      `<span class="key key-out">${PLAIN[ports.out]} · ${VOLTS[ports.out]}</span> output reference and the voltage at the load` +
       `<span class="key">wires, boxes and arrows carry no value</span>`;
     $('diagram-caption').textContent = result.db === 0
       ? `${spec.label} · ${PLAIN[ports.out]} = ${PLAIN[ports.in]}, so the voltage ratio equals the parameter`

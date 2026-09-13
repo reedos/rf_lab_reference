@@ -488,6 +488,26 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
           await fill('z1',100); await expect.poll(valid).toBe(true);
         });
+        await check('No diagram label straddles the edge of a box',async()=>{
+          const straddling=async()=>page.evaluate(()=>{
+            const bad=[];
+            for (const svg of document.querySelectorAll('.gain-svg:not([hidden]), .spec-svg')) {
+              const boxes=[...svg.querySelectorAll('rect')].map(r=>r.getBBox());
+              for (const el of svg.querySelectorAll('text')) {
+                const t=el.getBBox();
+                for (const r of boxes) {
+                  const overlaps=t.x < r.x+r.width && t.x+t.width > r.x && t.y < r.y+r.height && t.y+t.height > r.y;
+                  const inside=t.x >= r.x && t.x+t.width <= r.x+r.width && t.y >= r.y && t.y+t.height <= r.y+r.height;
+                  if (overlaps && !inside) bad.push({text:el.textContent, label:Math.round(t.x)+'-'+Math.round(t.x+t.width), box:Math.round(r.x)+'-'+Math.round(r.x+r.width)});
+                }
+              }
+            }
+            return bad;});
+          for (const file of ['gain.html?t=dd','gain.html?t=sd','gain.html?t=ds','large-signal.html']) {
+            await go(file);
+            assert.deepEqual(await straddling(),[],file+' has a label crossing a box edge');
+          }
+        });
         await check('Colour links a quantity across the diagram, the algebra and its tile',async()=>{
           await go('gain.html?t=sd&d1=100&s2=200');
           await expect(page.locator('#gain-equation .katex').first()).toBeVisible();
@@ -508,10 +528,22 @@ let checks=0;
           await expect(page.locator('.metric.primary')).toHaveCount(1);
           await expect(page.locator('#metrics .metric').first()).toHaveClass(/primary/);
           await expect(page.locator('.metric.primary')).toContainText('Ssd21 × 1.414');
-          await expect(page.locator('#diagram-key')).toContainText('input side');
+          await expect(page.locator('#diagram-key')).toContainText('input reference and the incident wave');
           for (const [file,answer] of [['delay.html','One-way delay'],['sweep.html','Total points'],['chain.html','Cascaded noise figure'],['large-signal.html','Envelope VOPP']]) {
             await go(file);
             await expect(page.locator('.metric.primary').first()).toContainText(answer,{timeout:5000});
+          }
+          // A readout wears the colour of the side it belongs to, not the block it is drawn on.
+          const colourOf=sel=>page.evaluate(s=>getComputedStyle(document.querySelector(s)).color,sel);
+          await go('index.html?zd=200&d=0&from=dbm&dir=src');
+          assert.equal(await colourOf('#se-node-power'),root.in,'available power is a source-side quantity');
+          assert.equal(await colourOf('#se-node-vopp'),root.out,'the loaded voltage is a load-side quantity');
+          await go('index.html?zd=200&d=0&from=dbm&dir=rx');
+          assert.equal(await colourOf('#se-node-power'),root.out,'delivered power stays a load-side quantity on the source block');
+          // Every page that pairs two quantities states which is which.
+          for (const file of ['index.html','match.html','large-signal.html','gain.html']) {
+            await go(file);
+            await expect(page.locator('.colour-key')).toHaveCount(1);
           }
         });
         await check('No heading sits flush against the content above it',async()=>{

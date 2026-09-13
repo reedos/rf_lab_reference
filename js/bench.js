@@ -3,6 +3,16 @@
   const page = location.pathname.split('/').pop() || 'index.html';
   const storageKey = 'rf-lab:setups:v1:' + page;
   const KATEX_VERSION = '0.18.7';
+  // Port identity colours come from the stylesheet so there is never a second copy.
+  const palette = getComputedStyle(document.documentElement);
+  const PORT = {
+    in: palette.getPropertyValue('--port-in').trim() || '#f3b63a',
+    out: palette.getPropertyValue('--port-out').trim() || '#4fd6c8'
+  };
+  // Wrap a LaTeX fragment so a quantity keeps its colour inside rendered algebra.
+  const tint = (side, latex) => '\\textcolor{' + PORT[side] + '}{' + latex + '}';
+  // Same idea for markup outside an equation.
+  const mark = (side, html) => '<span class="tint-' + side + '">' + html + '</span>';
   let latest = { valid: false, lines: ['Enter valid inputs to show the calculation.'] };
   let detail, status, list, name, save, setups = [];
   let renderTimer = 0, katexLoading = null, katexFailed = false;
@@ -131,7 +141,7 @@
       say('Copied.');
     } catch (_) { say('Clipboard unavailable. Select and copy the address or calculation text.'); }
   }
-  window.Bench = { update, copy, read, raw, setNumber, enhance, math, tex, voltage, equation, get valid() { return latest.valid; } };
+  window.Bench = { update, copy, read, raw, setNumber, enhance, math, tex, voltage, equation, tint, mark, PORT, get valid() { return latest.valid; } };
   document.addEventListener('DOMContentLoaded', function () {
     const calc = document.getElementById('calc');
     if (!calc) return;

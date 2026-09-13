@@ -1,6 +1,7 @@
 (function () {
   const eq = Bench.equation, tex = Bench.tex, volts = Bench.voltage;
   const RF = window.RF;
+  const tint = Bench.tint;
   const els = {
     body: document.body,
     tabs: Array.prototype.slice.call(document.querySelectorAll("[data-panel]")),
@@ -336,17 +337,17 @@
     }
     drawSpectrum(ip3);
     const number = v => Number.isFinite(v) ? RF.formatDbm(v) + ' dBm' : 'enter gain';
-    els.imdMetrics.innerHTML = [metric('OIP3', number(ip3.oip3), 'primary'),
+    els.imdMetrics.innerHTML = [metric('OIP3', number(ip3.oip3), 'primary port-out'),
       metric('Δ (output tone − IM3)', RF.formatNumber(ip3.delta, 'dB') + ' dB'),
-      metric('IM3 at output', number(ip3.im3Output)), metric('IIP3', number(ip3.iip3)),
+      metric('IM3 at output', number(ip3.im3Output), 'port-out'), metric('IIP3', number(ip3.iip3), 'port-in'),
       metric('IM3 relative to output tone', RF.formatNumber(ip3.im3Dbc, 'dB') + ' dBc'),
-      metric('Approx. OP1dB (cubic model)', number(ip3.oip3 - 10))].join('');
+      metric('Approx. OP1dB (cubic model)', number(ip3.oip3 - 10), 'port-out')].join('');
     calculation.push('Small-signal third-order extrapolation with two equal tones; IM3 is measured at the DUT output.',
       `Tone reference: DUT ${plane}. Absolute IM3 is output dBm; relative IM3 is dBc relative to one output tone.`,
       eq('Measured tone and gain', String.raw`P_{\mathrm{tone}} &= ${tex(tone, 'dBm')} \\ G &= ${tex(gain, 'dB')}`),
       eq('Tone-to-IM3 separation', unit === 'dbc' ? String.raw`\Delta &= -\mathrm{IM3}_{\mathrm{dBc}}` : String.raw`\Delta &= P_{\mathrm{out,tone}}-P_{\mathrm{out,IM3}}`, tex(ip3.delta, 'dB'), unit === 'dbc' ? String.raw`-(${tex(im3, 'dBc')})` : String.raw`${tex(ip3.outputTone,'dBm',false)}-(${tex(im3,'dBm',false)})\,\mathrm{dB}`),
-      eq('Input third-order intercept', String.raw`\mathrm{IIP3} &= P_{\mathrm{in,tone}}+\frac{\Delta}{2}`, tex(ip3.iip3, 'dBm'), String.raw`${tex(plane === 'input' ? tone : tone-gain,'dBm',false)}+\frac{${tex(ip3.delta,'dB',false)}}{2}\,\mathrm{dBm}`),
-      eq('Output third-order intercept', String.raw`\mathrm{OIP3} &= \mathrm{IIP3}+G`, tex(ip3.oip3, 'dBm')),
+      eq('Input third-order intercept', `${tint('in', '\\mathrm{IIP3}')} &= ${tint('in', 'P_{\\mathrm{in,tone}}')}+\\frac{\\Delta}{2}`, tint('in', tex(ip3.iip3, 'dBm')), `${tint('in', tex(plane === 'input' ? tone : tone-gain,'dBm',false))}+\\frac{${tex(ip3.delta,'dB',false)}}{2}\\,\\mathrm{dBm}`),
+      eq('Output third-order intercept', `${tint('out', '\\mathrm{OIP3}')} &= ${tint('in', '\\mathrm{IIP3}')}+G`, tint('out', tex(ip3.oip3, 'dBm'))),
       eq('Approximate compression point', String.raw`\mathrm{OP1dB} &\approx \mathrm{OIP3}-10\,\mathrm{dB}`, tex(ip3.oip3-10, 'dBm')),
       'The compression-point estimate is a cubic-model rule of thumb, not a measurement.');
     return `IMD3 | tones at DUT ${plane}: ${RF.formatNumber(tone, 'dB')} dBm | output IM3 ${RF.formatNumber(ip3.im3Dbc, 'dB')} dBc | IIP3 ${number(ip3.iip3)} | OIP3 ${number(ip3.oip3)}`;

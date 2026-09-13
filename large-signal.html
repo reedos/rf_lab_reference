@@ -8,8 +8,8 @@
   <title>Large-signal · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-3">
-  <link rel="stylesheet" href="css/app.css?v=20260913-3"><link rel="stylesheet" href="css/workbench.css?v=20260913-3">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-4">
+  <link rel="stylesheet" href="css/app.css?v=20260913-4"><link rel="stylesheet" href="css/workbench.css?v=20260913-4">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -136,6 +136,7 @@
           </div>
         </div>
         <dl class="metrics" id="imd-metrics"></dl>
+        <p class="hint colour-key"><span class="key key-in">IIP3 · P<sub>in,tone</sub></span> referred to the DUT input<span class="key key-out">OIP3 · IM3 · OP1dB</span> referred to the DUT output</p>
         <p class="hint">dBc is relative to one output tone; absolute IM3 dBm is measured at the DUT output. With the tone level at the DUT input, IIP3 = P<sub>in,tone</sub> + Δ/2; at the output, OIP3 = P<sub>out,tone</sub> + Δ/2. OIP3 = IIP3 + G. Use the small-signal cubic region, below compression. <a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Swept_IMD_and_IM_Spectrum_Concepts.htm">Measurement reference</a>.</p>
       </div>
 
@@ -276,7 +277,7 @@
     <p class="foot">Static page. Calculations stay in your browser.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/bench.js?v=20260913-3"></script><script src="js/rf.js?v=20260913-3"></script>
-  <script src="js/large-signal.js?v=20260913-3"></script>
+  <script src="js/bench.js?v=20260913-4"></script><script src="js/rf.js?v=20260913-4"></script>
+  <script src="js/large-signal.js?v=20260913-4"></script>
 </body>
 </html>

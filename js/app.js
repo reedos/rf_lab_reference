@@ -53,6 +53,7 @@
     diffSrcZ: document.getElementById("diff-src-z"),
     diffLoadZ: document.getElementById("diff-load-z"),
     calc: document.getElementById("calc"),
+    colourKey: document.getElementById("colour-key"),
     schematicSe: document.getElementById("schematic-se"),
     schematicDiff: document.getElementById("schematic-diff"),
     seLineDbm: document.getElementById("se-line-dbm"),
@@ -229,9 +230,13 @@
     writeQuery();
   }
 
-  function metric(label, value) {
-    return `<div class="metric"><dt>${label}</dt><dd>${value}</dd></div>`;
+  function metric(label, value, cls) {
+    return `<div class="metric${cls ? ' ' + cls : ''}"><dt>${label}</dt><dd>${value}</dd></div>`;
   }
+  const tint = Bench.tint, mark = Bench.mark;
+
+  const railLabel = r => mark('in', `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω`) + ' → ' +
+    mark('out', `Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`);
 
   function render(ok) {
     els.body.setAttribute("data-drive", state.drive);
@@ -292,10 +297,18 @@
     const zdTxt = zLabel("Z<sub>DUT</sub>", state.zdut);
     const leftZ = state.path === "src" ? zpTxt : zdTxt;
     const rightZ = state.path === "src" ? zdTxt : zpTxt;
-    if (els.seSrcZ) els.seSrcZ.innerHTML = leftZ;
-    if (els.seLoadZ) els.seLoadZ.innerHTML = rightZ;
-    if (els.diffSrcZ) els.diffSrcZ.innerHTML = leftZ;
-    if (els.diffLoadZ) els.diffLoadZ.innerHTML = rightZ;
+    if (els.seSrcZ) els.seSrcZ.innerHTML = mark('in', leftZ);
+    if (els.seLoadZ) els.seLoadZ.innerHTML = mark('out', rightZ);
+    if (els.diffSrcZ) els.diffSrcZ.innerHTML = mark('in', leftZ);
+    if (els.diffLoadZ) els.diffLoadZ.innerHTML = mark('out', rightZ);
+    if (els.colourKey) {
+      const srcName = state.path === 'src' ? 'the VNA' : 'the DUT';
+      const loadName = state.path === 'src' ? 'the DUT' : 'the VNA';
+      els.colourKey.innerHTML =
+        `<span class="key key-in">Z<sub>S</sub> · available power</span> source side, ${srcName}` +
+        `<span class="key key-out">Z<sub>L</sub> · delivered power · loaded voltage</span> load side, ${loadName}` +
+        `<span class="key">+ and − mark rail polarity, not a quantity</span>`;
+    }
 
     if (document.activeElement !== els.dbm) {
       if (ok) Bench.setNumber(els.dbm, state.dbm, 'dBm', state.source !== 'dbm');
@@ -324,21 +337,23 @@
       els.metrics.innerHTML = [
         metric("V<sub>rms</sub> at load", RF.formatVoltage(r.vrmsSe)),
         metric("V<sub>pk</sub> at load", RF.formatVoltage(r.vpkSe)),
-        metric("Available", `${RF.formatDbm(r.dbmAvailable)} dBm`),
-        metric("Delivered", `${RF.formatDbm(r.dbmDelivered)} dBm`),
+        metric("Available", `${RF.formatDbm(r.dbmAvailable)} dBm`, 'port-in'),
+        metric("Delivered", `${RF.formatDbm(r.dbmDelivered)} dBm`, 'port-out'),
         metric("Γ", gammaTxt),
         metric("V<sub>oc</sub> pk-pk", RF.formatVoltage(r.vocVpp))
       ].join("");
+      els.seNodeVopp.className = 'tint-out';
+      els.seNodePower.className = state.path === 'rx' ? 'tint-out' : 'tint-in';
       els.seLineDbm.textContent = `${RF.formatDbm(r.dbm)} dBm`;
-      els.seLineZ.innerHTML = `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω → Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`;
+      els.seLineZ.innerHTML = railLabel(r);
       els.seNodeVopp.textContent = RF.formatVoltage(voppShow);
       els.seNodePower.textContent = RF.formatPowerWatts(state.path === "rx" ? r.wattsDelivered : r.wattsAvailable);
     } else {
       els.metrics.innerHTML = [
         metric("VOPP / line", RF.formatVoltage(r.vppSe)),
         metric("V<sub>rms</sub> diff", RF.formatVoltage(r.vrmsDiff)),
-        metric("Available / port", `${RF.formatDbm(r.dbmAvailable)} dBm`),
-        metric("Delivered / port", `${RF.formatDbm(r.dbmDelivered)} dBm`),
+        metric("Available / port", `${RF.formatDbm(r.dbmAvailable)} dBm`, 'port-in'),
+        metric("Delivered / port", `${RF.formatDbm(r.dbmDelivered)} dBm`, 'port-out'),
         metric("Γ (per side)", gammaTxt),
         metric("Z<sub>diff</sub> DUT", `${RF.formatNumber(r.zDiffDut)} Ω`)
       ].join("");
@@ -347,25 +362,26 @@
       els.diffP2Dbm.textContent = port;
       // Both rails run from the source impedance to the load impedance. Splitting the two
       // labels across the rails read as though each rail had a different impedance.
-      const railZ = `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω → Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`;
+      const railZ = railLabel(r);
       els.diffP1Z.innerHTML = railZ;
       els.diffP2Z.innerHTML = railZ;
+      els.diffNodeVopp.className = 'tint-out';
       els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
       els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.formatNumber(r.zDiffDut)} Ω`;
     }
     Bench.update({ valid: true, lines: [
       'CW sinusoid with real positive source/load impedances. Differential drive uses two equal signals, 180° apart.',
       `Direction: ${state.path === 'src' ? 'VNA → DUT; power is available source power' : 'DUT → VNA; power is delivered receiver power'}. All powers below are per port.`,
-      eq('Reference impedances', String.raw`Z_{\mathrm S} &= ${tex(r.zS, 'Ω')} \\ Z_{\mathrm L} &= ${tex(r.zL, 'Ω')}`),
+      eq('Reference impedances', `${tint('in', 'Z_{\\mathrm S}')} &= ${tint('in', tex(r.zS, 'Ω'))} \\\\ ${tint('out', 'Z_{\\mathrm L}')} &= ${tint('out', tex(r.zL, 'Ω'))}`),
       eq('Power conversion', String.raw`P &= 10^{P_{\mathrm{dBm}}/10}\times 10^{-3}\,\mathrm W`, tex(state.path === 'src' ? r.wattsAvailable : r.wattsDelivered, 'W'), String.raw`10^{${tex(r.dbm,'dBm',false)}/10}\times 10^{-3}\,\mathrm W`),
       ...(state.path === 'src' ? [
-        eq('Open-circuit source voltage', String.raw`V_{\mathrm{oc,rms}} &= 2\sqrt{P_{\mathrm{avs}} Z_{\mathrm S}}`, volts(r.vocRms), String.raw`2\sqrt{${tex(r.wattsAvailable)}\times ${tex(r.zS)}}\,\mathrm V`),
-        eq('Loaded RMS voltage', String.raw`V_{\mathrm{rms,L}} &= V_{\mathrm{oc,rms}}\frac{Z_{\mathrm L}}{Z_{\mathrm S}+Z_{\mathrm L}}`, volts(r.vrmsSe), String.raw`${tex(r.vocRms)}\frac{${tex(r.zL)}}{${tex(r.zS)}+${tex(r.zL)}}\,\mathrm V`)
+        eq('Open-circuit source voltage', `V_{\\mathrm{oc,rms}} &= 2\\sqrt{P_{\\mathrm{avs}} ${tint('in', 'Z_{\\mathrm S}')}}`, volts(r.vocRms), `2\\sqrt{${tex(r.wattsAvailable)}\\times ${tint('in', tex(r.zS))}}\\,\\mathrm V`),
+        eq('Loaded RMS voltage', `V_{\\mathrm{rms,L}} &= V_{\\mathrm{oc,rms}}\\frac{${tint('out', 'Z_{\\mathrm L}')}}{${tint('in', 'Z_{\\mathrm S}')}+${tint('out', 'Z_{\\mathrm L}')}}`, volts(r.vrmsSe), `${tex(r.vocRms)}\\frac{${tint('out', tex(r.zL))}}{${tint('in', tex(r.zS))}+${tint('out', tex(r.zL))}}\\,\\mathrm V`)
       ] : [eq('Loaded RMS voltage', String.raw`V_{\mathrm{rms,L}} &= \sqrt{P_{\mathrm{del}} Z_{\mathrm L}}`, volts(r.vrmsSe), String.raw`\sqrt{${tex(r.wattsDelivered)}\times ${tex(r.zL)}}\,\mathrm V`)]),
       eq('Peak-to-peak voltage per line', String.raw`V_{\mathrm{pp,line}} &= 2\sqrt{2}\,V_{\mathrm{rms,L}}`, volts(r.vppSe)),
       eq('Voltage at the selected reference plane', r.drive === 'diff' ? String.raw`V_{\mathrm{pp,diff}} &= 2V_{\mathrm{pp,line}}` : String.raw`V_{\mathrm{pp}} &= V_{\mathrm{pp,line}}`, volts(RF.voppOf(r))),
       eq('Delivered power per port', String.raw`P_{\mathrm{del}} &= \frac{V_{\mathrm{rms,L}}^2}{Z_{\mathrm L}}`, tex(r.wattsDelivered, 'W'), String.raw`\frac{(${tex(r.vrmsSe)})^2}{${tex(r.zL)}}\,\mathrm W`),
-      eq('Reflection coefficient', String.raw`\Gamma &= \frac{Z_{\mathrm L}-Z_{\mathrm S}}{Z_{\mathrm L}+Z_{\mathrm S}}`, tex(r.gamma), String.raw`\frac{${tex(r.zL)}-${tex(r.zS)}}{${tex(r.zL)}+${tex(r.zS)}}`),
+      eq('Reflection coefficient', `\\Gamma &= \\frac{${tint('out', 'Z_{\\mathrm L}')}-${tint('in', 'Z_{\\mathrm S}')}}{${tint('out', 'Z_{\\mathrm L}')}+${tint('in', 'Z_{\\mathrm S}')}}`, tex(r.gamma), `\\frac{${tint('out', tex(r.zL))}-${tint('in', tex(r.zS))}}{${tint('out', tex(r.zL))}+${tint('in', tex(r.zS))}}`),
       r.drive === 'diff' ? 'Total power across both ports is twice per-port power (+3.01 dB).' : 'The indicated voltage is at the load reference plane.'
     ] });
     renderTable();

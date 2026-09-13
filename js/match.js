@@ -3,7 +3,8 @@
   const eq = Bench.equation, tex = Bench.tex;
   const $ = id => document.getElementById(id), n = id => Bench.read(id, ['z', 'x', 'phase'].includes(id));
   const fmt = RF.formatNumber;
-  const metric = (k, v) => `<div class="metric"><dt>${k}</dt><dd>${v}</dd></div>`;
+  const metric = (k, v, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${k}</dt><dd>${v}</dd></div>`;
+  const tint = Bench.tint;
   const textNum = id => { const v = $(id).value.trim(); return ['∞', 'Infinity'].includes(v) ? Infinity : ['-∞','-Infinity'].includes(v) ? -Infinity : n(id); };
   let source = 'z', chart = 'rl', result = null;
   let re = 0, im = 0;
@@ -80,15 +81,15 @@
     $('smith-vector').setAttribute('x2', 220 + re * 190); $('smith-vector').setAttribute('y2', 220 - im * 190);
     const zText = m.r === Infinity ? 'Open' : `${fmt(m.r)} ${m.x < 0 ? '−' : '+'} j${fmt(Math.abs(m.x))} Ω`;
     $('real-solutions').textContent = `For this |Γ|, the two purely real solutions are Z₀ × VSWR = ${fmt(z0 * m.vswr)} Ω and Z₀ / VSWR = ${fmt(z0 / m.vswr)} Ω. These assume X = 0.`;
-    $('metrics').innerHTML = metric('Load impedance', zText) + metric('Return loss', `${fmt(m.rl, 'dB')} dB`) + metric('VSWR', fmt(m.vswr)) +
+    $('metrics').innerHTML = metric('Load impedance', zText, 'port-out') + metric('Return loss', `${fmt(m.rl, 'dB')} dB`) + metric('VSWR', fmt(m.vswr)) +
       metric('Delivered fraction', `${fmt(m.delivered * 100)} %`) + metric('Γ real', fmt(re)) + metric('Γ imaginary', fmt(im));
     const q = new URLSearchParams({ z0: String(z0), from: source, re: String(re), im: String(im), chart,
       z: String(m.r), x: String(m.x), g: String(m.gamma), phase: String(m.phase),
       rl: String(-m.rl), vswr: String(m.vswr), ml: String(m.mloss) });
     history.replaceState(null, '', location.pathname + '?' + q);
     Bench.update({ valid: true, lines: ['Passive load, real positive reference impedance; matched source at the reference plane.',
-      eq('Load and reference impedances', String.raw`Z &= R+jX \\ &= ${tex(m.r)}+j(${tex(m.x)})\,\Omega \\ Z_0 &= ${tex(z0, 'Ω')}`),
-      eq('Complex reflection coefficient', String.raw`\Gamma &= \frac{Z-Z_0}{Z+Z_0}`, String.raw`${tex(re)}+j(${tex(im)})`),
+      eq('Load and reference impedances', `${tint('out', 'Z')} &= R+jX \\\\ &= ${tint('out', tex(m.r))}+j(${tint('out', tex(m.x))})\\,\\Omega \\\\ ${tint('in', 'Z_0')} &= ${tint('in', tex(z0, 'Ω'))}`),
+      eq('Complex reflection coefficient', `\\Gamma &= \\frac{${tint('out', 'Z')}-${tint('in', 'Z_0')}}{${tint('out', 'Z')}+${tint('in', 'Z_0')}}`, `${tex(re)}+j(${tex(im)})`),
       eq('Reflection magnitude', String.raw`|\Gamma| &= \sqrt{(\operatorname{Re}\Gamma)^2+(\operatorname{Im}\Gamma)^2}`, tex(m.gamma)),
       m.gamma === 0 ? 'Reflection phase is undefined at a perfect match; the editing convention is 0°.' : eq('Reflection phase', String.raw`\angle\Gamma &= \operatorname{atan2}(\operatorname{Im}\Gamma,\operatorname{Re}\Gamma)`, tex(m.phase, 'deg')),
       eq('S11 magnitude in dB', String.raw`S_{11,\mathrm{dB}} &= 20\log_{10}|\Gamma|`, tex(-m.rl, 'dB'), String.raw`20\log_{10}(${tex(m.gamma)})\,\mathrm{dB}`),

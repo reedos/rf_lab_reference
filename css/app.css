@@ -882,6 +882,18 @@ select:focus-visible {
   border-left: 3px solid var(--port-out);
 }
 
+.tint-in,
+.node-readout strong.tint-in,
+.vopp-callout strong.tint-in {
+  color: var(--port-in);
+}
+
+.tint-out,
+.node-readout strong.tint-out,
+.vopp-callout strong.tint-out {
+  color: var(--port-out);
+}
+
 .colour-key {
   display: flex;
   flex-wrap: wrap;
