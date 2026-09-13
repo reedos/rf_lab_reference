@@ -10,8 +10,38 @@
   // A segment can be parked without losing its values. Everything downstream, including the
   // boundary checks, sees only the enabled ones, so switching one off genuinely opens a gap.
   const isOn = s => s.enabled !== false;
+  // The wide preset spans the DUT's range. 10 MHz steps when that gives a sensible count,
+  // otherwise a round thousandth of the span.
+  function wideStep(dut) {
+    const span = dut.fmax - dut.fmin, tenMeg = span / 1e7;
+    if (tenMeg >= 100 && tenMeg <= 20000) return { text: '10', unit: 'MHz' };
+    const step = RF.formatFrequency(Number((span / 1000).toPrecision(1)));
+    return { text: String(step.value), unit: step.unit };
+  }
+  function widePreset() {
+    const dut = Dut.get(), step = wideStep(dut);
+    return segment(dut.fminText, dut.fminUnit, dut.fmaxText, dut.fmaxUnit, step.text, step.unit);
+  }
+  function labelPresets() {
+    const s = widePreset();
+    document.querySelector('[data-preset="wide"]').textContent = `${s.start} ${s.startUnit}–${s.stop} ${s.stopUnit}, ${s.step} ${s.stepUnit}`;
+  }
+  function rangeFromCard() {
+    const dut = Dut.get();
+    $('g-tail').value = dut.fminText; $('g-tail-unit').value = dut.fminUnit;
+    $('g-stop').value = dut.fmaxText; $('g-stop-unit').value = dut.fmaxUnit;
+  }
+  function coverage() {
+    const dut = Dut.get();
+    const low = result.first <= dut.fmin * (1 + 1e-9), high = result.last >= dut.fmax * (1 - 1e-9);
+    if (low && high) return `Covered · ${freq(dut.fmin)} – ${freq(dut.fmax)}`;
+    const gaps = [];
+    if (!low) gaps.push(`starts ${freq(result.first - dut.fmin)} above ${freq(dut.fmin)}`);
+    if (!high) gaps.push(`ends ${freq(dut.fmax - result.last)} below ${freq(dut.fmax)}`);
+    return `<span class="over-limit">Not covered: ${gaps.join('; ')}</span>`;
+  }
   const PRESETS = {
-    wide: [segment('100', 'MHz', '10', 'GHz', '10', 'MHz')],
+    get wide() { return [widePreset()]; },
     decades: [
       segment('10', 'kHz', '90', 'kHz', '10', 'kHz'), segment('100', 'kHz', '900', 'kHz', '100', 'kHz'),
       segment('1', 'MHz', '9', 'MHz', '1', 'MHz'), segment('10', 'MHz', '90', 'MHz', '10', 'MHz'),
@@ -19,8 +49,8 @@
   };
   const timeScales = { 'µs': 1e-6, ms: 1e-3, s: 1 };
   const overheadIds = ['point-overhead', 'segment-overhead'];
-  const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step'];
-  const optionIds = ['mode', 'limit', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points']
+  const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step', 'nf-ref-bw'];
+  const optionIds = ['mode', 'limit', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points', 'nf-ref', 'nf-avg', 'nf-signal']
     .concat(frequencyIds, frequencyIds.map(id => id + '-unit'), overheadIds, overheadIds.map(id => id + '-unit'));
   // Every frequency field carries its own unit; changing it keeps the physical value.
   const unitScale = el => scales[document.getElementById(el.id + '-unit').value];
@@ -33,7 +63,7 @@
     });
   }
   const segmentUnit = (s, key) => Object.hasOwn(scales, s[key]) ? s[key] : 'MHz';
-  let segments = PRESETS.wide.map(s => ({ ...s })), powerSource = 'step', result = null, power = null, loadError = '', active = [];
+  let segments = PRESETS.wide, powerSource = 'step', result = null, power = null, noise = null, loadError = '', active = [];
   function readQuery() {
     const q = new URLSearchParams(location.search);
     for (const id of optionIds) if (q.has(id)) {
@@ -41,6 +71,7 @@
       if (el.tagName !== 'SELECT' || Array.from(el.options).some(o => o.value === value)) el.value = value;
     }
     if (q.get('pfrom') === 'points') powerSource = 'points';
+    if (!q.has('g-tail') && !q.has('g-stop')) rangeFromCard();
     if (q.has('segments')) {
       try {
         const data = JSON.parse(q.get('segments'));
@@ -122,7 +153,7 @@
     $('sweep-rows').innerHTML = result.rows.map((r, i) => `<tr class="${r.exact ? '' : 'over-limit'}"><td>${active[i].i + 1}</td><td>${freq(r.start)}</td><td>${freq(r.stop)}</td><td>${freq(r.step)}</td><td>${r.points}</td><td>${freq(r.lastPoint)}${r.exact ? '' : ` · use ${freq(r.stepCeil)} for ${r.pointsCeil} points`}</td><td>${fmt(r.fractionalStart * 100)} → ${fmt(r.fractionalStop * 100)} %</td><td>${fmt(r.decadePoints)}</td><td>${fmt(r.pointsPerDecadeStart)} → ${fmt(r.pointsPerDecadeStop)}</td></tr>`).join('');
     $('boundary-rows').innerHTML = result.boundaries.length ? result.boundaries.map(b => `<tr class="${b.sharp || b.kind !== 'contiguous' ? 'over-limit' : ''}"><td>${freq(b.frequency)}</td><td>${boundaryText(b)}</td><td class="${mode === 'absolute' && b.sharp ? 'over-limit' : ''}">${fmt(b.stepRatio)}×</td><td class="${mode === 'relative' && b.sharp ? 'over-limit' : ''}">${fmt(b.patternRatio)}×</td><td>${b.sharp ? (mode === 'relative' ? 'Pattern change' : 'Sharp step change') : b.kind !== 'contiguous' ? 'Fix boundary' : 'OK'}</td></tr>`).join('')
       : '<tr><td colspan="5">One segment: no boundaries to check.</td></tr>';
-    $('sweep-metrics').innerHTML = metric('Total points', String(result.points) + (parked ? ` · ${active.length} of ${segments.length} segments` : ''), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) +
+    $('sweep-metrics').innerHTML = metric('Total points', String(result.points) + (parked ? ` · ${active.length} of ${segments.length} segments` : ''), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) + metric('DUT range', coverage()) +
       metric('Points per decade', result.decadePoints.min === result.decadePoints.max ? fmt(result.decadePoints.min) : `${fmt(result.decadePoints.min)} to ${fmt(result.decadePoints.max)} by segment`) +
       metric('Point limit', result.maxPoints === null ? 'None specified' : `${result.maxPoints} · ${result.headroom >= 0 ? `${result.headroom} spare` : `<span class="over-limit">${-result.headroom} over</span>`}`) +
       metric(result.overheadTime > 0 ? 'Estimated sweep time' : 'Minimum sweep time',
@@ -131,6 +162,33 @@
           : 'Enter IF bandwidth') +
       metric('Log sweep, same coverage', `${result.log.finePoints} points at the finest Δf/f (${fmt(result.log.fine * 100)} %)`) +
       metric('Log sweep, coarsest', `${result.log.coarsePoints} points at ${fmt(result.log.coarse * 100)} %`);
+  }
+  // The floor follows the sweep's IF bandwidth; without one there is nothing to place it at.
+  function computeNoise() {
+    noise = null;
+    const status = $('noise-status'), metrics = $('noise-metrics');
+    const ifbw = $('ifbw').value.trim() === '' ? null : readHz($('ifbw'));
+    const blankRef = $('nf-ref').value.trim() === '', blankSignal = $('nf-signal').value.trim() === '';
+    const averages = $('nf-avg').value.trim() === '' ? 1 : Bench.read('nf-avg');
+    if (blankRef) { status.textContent = 'Enter the datasheet floor to place the noise floor.'; status.className = ''; metrics.replaceChildren(); return true; }
+    if (ifbw === null) { status.textContent = 'Enter an IF bandwidth above to place the noise floor.'; status.className = ''; metrics.replaceChildren(); return true; }
+    noise = RF.noiseFloor({ floorRef: Bench.read('nf-ref'), ifbwRef: readHz($('nf-ref-bw')), ifbw, averages, signal: blankSignal ? NaN : Bench.read('nf-signal') });
+    if (!noise || (!blankSignal && !Number.isFinite(noise.signal)) || !Number.isInteger(averages)) {
+      noise = null; status.textContent = 'The floor needs a finite level at a positive bandwidth, a whole-number averaging factor of 1 or more, and a finite receiver level if one is given.';
+      status.className = 'status-error'; metrics.replaceChildren(); return false;
+    }
+    const tiles = [metric('Noise floor at this IF bandwidth', `${fmt(noise.floor, 'dBm')} dBm` + (noise.averages > 1 ? ` · ${noise.averages} averages` : ''))];
+    if (noise.snr !== null) {
+      const low = noise.snr < 20;
+      tiles.push(metric('Margin above the floor', `<span class="${low ? 'over-limit' : ''}">${fmt(noise.snr, 'dB')} dB</span> at ${fmt(noise.signal, 'dBm')} dBm`),
+        metric('Trace noise', `${fmt(noise.traceNoiseDb, 'dB')} dB rms · ${fmt(noise.traceNoiseDeg, 'deg')}° rms`),
+        metric('IF bandwidth for 20 dB margin', noise.ifbwFor(20) >= noise.ifbw ? `up to ${freq(noise.ifbwFor(20))}` : `<span class="over-limit">${freq(noise.ifbwFor(20))}, narrower than set</span>`));
+      status.className = low ? 'over-limit' : '';
+      status.textContent = low ? `Only ${fmt(noise.snr, 'dB')} dB above the floor: expect about ${fmt(noise.traceNoiseDb, 'dB')} dB of trace noise. Narrow the IF bandwidth or add averaging.` : '';
+    } else { status.textContent = ''; status.className = ''; }
+    if (result && Number.isFinite(result.sweepTimeTotal) && noise.averages > 1) tiles.push(metric('Sweep time with averaging', `≈ ${seconds(result.sweepTimeTotal * noise.averages)} for ${noise.averages} sweeps`));
+    metrics.innerHTML = tiles.join('');
+    return true;
   }
   function computePower() {
     const start = Bench.read('p-start'), stop = Bench.read('p-stop');
@@ -148,7 +206,8 @@
   }
   function compute() {
     computeSweep(); computePower();
-    const valid = Boolean(result && power);
+    const noiseOk = computeNoise();
+    const valid = Boolean(result && power && noiseOk);
     const lines = valid ? [
       'Linear segments with equal steps. Points include both ends. A step that divides the span lands exactly on the stop frequency.',
       ...result.rows.flatMap((r, i) => [`Segment ${i + 1}: ${freq(r.start)} to ${freq(r.stop)} in ${freq(r.step)} steps.`,
@@ -163,7 +222,17 @@
       eq('Log sweep with the same relative spacing', String.raw`N_{\log} &= \left\lceil\frac{\ln(f_{\mathrm{last}}/f_{\mathrm{first}})}{\ln(1+r)}\right\rceil+1`, String.raw`${tex(result.log.finePoints)}\text{ for } r=${tex(result.log.fine)},\ ${tex(result.log.coarsePoints)}\text{ for } r=${tex(result.log.coarse)}`),
       `Boundaries are compared by ${mode === 'relative' ? 'relative step at each segment start, which is smooth for a repeating decade pattern' : 'absolute step size'}.`,
       'Sweep time excludes band crossings, source settling, and dwell. Instrument segment limits, point limits, and IF bandwidth per segment are set on the analyzer.',
-      eq('Power sweep points', String.raw`N_{P} &= \frac{P_{\mathrm{stop}}-P_{\mathrm{start}}}{\Delta P}+1`, tex(power.points), String.raw`\frac{${tex(power.stop, 'dBm', false)}-(${tex(power.start, 'dBm', false)})}{${tex(power.step, 'dB', false)}}+1`)
+      eq('Power sweep points', String.raw`N_{P} &= \frac{P_{\mathrm{stop}}-P_{\mathrm{start}}}{\Delta P}+1`, tex(power.points), String.raw`\frac{${tex(power.stop, 'dBm', false)}-(${tex(power.start, 'dBm', false)})}{${tex(power.step, 'dB', false)}}+1`),
+      ...(noise ? [
+        eq('Noise floor at the working IF bandwidth', String.raw`P_{\mathrm{floor}} &= P_{\mathrm{ref}} + 10\log_{10}\frac{\mathrm{IFBW}}{\mathrm{IFBW}_{\mathrm{ref}}} - 10\log_{10}N`, tex(noise.floor, 'dBm'),
+          String.raw`${tex(noise.floorRef, 'dBm', false)} + 10\log_{10}\frac{${tex(noise.ifbw, 'Hz', false)}}{${tex(noise.ifbwRef, 'Hz', false)}} - 10\log_{10}${tex(noise.averages)}\,\mathrm{dBm}`),
+        ...(noise.snr !== null ? [
+          eq('Margin above the floor', String.raw`\mathrm{SNR} &= P_{\mathrm{rx}} - P_{\mathrm{floor}}`, tex(noise.snr, 'dB'), String.raw`${tex(noise.signal, 'dBm', false)} - (${tex(noise.floor, 'dBm', false)})\,\mathrm{dB}`),
+          eq('Trace noise from the in-phase noise component', String.raw`\sigma_{\mathrm{dB}} &\approx \frac{20}{\ln 10}\cdot\frac{10^{-\mathrm{SNR}/20}}{\sqrt 2} \\ \sigma_{\phi} &\approx \frac{180}{\pi}\cdot\frac{10^{-\mathrm{SNR}/20}}{\sqrt 2}`,
+            String.raw`${tex(noise.traceNoiseDb, 'dB')}\ \text{rms},\ ${tex(noise.traceNoiseDeg, 'deg')}\ \text{rms}`),
+          eq('Widest IF bandwidth for a 20 dB margin', String.raw`\mathrm{IFBW}_{20} &= \mathrm{IFBW}_{\mathrm{ref}}\,N\,10^{(P_{\mathrm{rx}} - P_{\mathrm{ref}} - 20)/10}`, tex(noise.ifbwFor(20), 'Hz'))] : []),
+        'The floor scales as white noise in the IF filter and averaging is treated as coherent, so N sweeps buy 10 log10 N. Real receivers add a fixed residual at the narrowest bandwidths, and the datasheet figure is typically a specification at one frequency range.'
+      ] : ['Enter the datasheet floor and an IF bandwidth to place the noise floor.'])
     ] : ['Correct the sweep inputs before calculating or saving.'];
     Bench.update({ valid, lines });
     if (valid) writeQuery();
@@ -201,7 +270,7 @@
   document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     segments = PRESETS[b.dataset.preset].map(s => ({ ...s })); loadError = ''; renderSegments(); compute();
   }));
-  ['mode', 'limit', 'ifbw', 'jump'].concat(overheadIds, overheadIds.map(id => id + '-unit'))
+  ['mode', 'limit', 'ifbw', 'jump', 'nf-ref', 'nf-avg', 'nf-signal'].concat(overheadIds, overheadIds.map(id => id + '-unit'))
     .forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { loadError = ''; compute(); }));
   frequencyIds.forEach(bindUnit);
   ['g-start', 'g-stop', 'g-mult', 'g-tail', 'g-tail-step'].forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { $('generate-status').textContent = ''; if (Bench.valid) writeQuery(); }));
@@ -226,7 +295,11 @@
     Bench.copy(`Frequency sweep | ${result.points} points | ${freq(result.first)} → ${freq(result.last)}\n` +
       result.rows.map((r, i) => `Segment ${active[i].i + 1}: ${freq(r.start)} → ${freq(r.stop)} step ${freq(r.step)} = ${r.points} points${r.exact ? '' : ' (ends at ' + freq(r.lastPoint) + ')'}`).join('\n') +
       (result.boundaries.length ? '\n' + result.boundaries.map(b => `Boundary ${freq(b.frequency)}: ${boundaryText(b)}, step ratio ${fmt(b.stepRatio)}×, Δf/f-at-start ratio ${fmt(b.patternRatio)}×${b.sharp ? ' (flagged)' : ''}`).join('\n') : '') +
-      `\nPower sweep | ${fmt(power.start, 'dBm')} → ${fmt(power.stop, 'dBm')} dBm step ${fmt(power.step, 'dB')} dB = ${power.points} points`);
+      `\nPower sweep | ${fmt(power.start, 'dBm')} → ${fmt(power.stop, 'dBm')} dBm step ${fmt(power.step, 'dB')} dB = ${power.points} points` +
+      (noise ? `\nNoise floor | ${fmt(noise.floor, 'dBm')} dBm at ${freq(noise.ifbw)} IFBW, ${noise.averages} average${noise.averages === 1 ? '' : 's'}` +
+        (noise.snr !== null ? ` | ${fmt(noise.snr, 'dB')} dB margin at ${fmt(noise.signal, 'dBm')} dBm | trace noise ${fmt(noise.traceNoiseDb, 'dB')} dB rms` : '') : ''));
   });
-  readQuery(); renderSegments(); compute();
+  document.addEventListener('dut-change', () => { labelPresets(); rangeFromCard(); $('generate-status').textContent = ''; compute(); });
+  Dut.describe('the operating range: the linear tail and stop of the generated table, the wide preset, and the coverage check on the segment table');
+  readQuery(); labelPresets(); renderSegments(); compute();
 })();

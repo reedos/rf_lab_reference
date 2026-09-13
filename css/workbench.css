@@ -21,7 +21,7 @@ summary { cursor: pointer; font-weight: 500; }
 .muted, .hint { color: var(--muted); }
 .setup-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-top: 16px; }
 .setup-controls label { flex: 1 1 180px; }
-.setup-controls input, .setup-controls select, .work-fields input, .work-fields select, .stage input, .stage select, .segment input {
+.setup-controls input, .setup-controls select, .work-fields input, .work-fields select, .stage input, .stage select, .segment input, .dut-body input, .dut-body select {
   display: block; width: 100%; margin-top: 7px; background: var(--bg-inset); color: var(--text); border: 1px solid var(--line-strong); border-radius: 8px; padding: 11px 12px; font: 15px var(--font-mono); min-width: 0;
 }
 .work-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 18px 0; }
@@ -75,6 +75,29 @@ button.sign:hover { color: var(--text); border-color: var(--accent); }
 .work-board > h2:first-child { margin-top: 0; }
 .work-board + .work-board { margin-top: 20px; }
 .status-error { color: var(--danger); }
+/* The DUT card: one line collapsed, a small form open. It rides in the link, not in storage. */
+.dut-card { margin: -4px 0 18px; }
+.dut-details { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-elev); }
+.dut-details > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 11px 16px; font-size: 13px; list-style: none; }
+.dut-details > summary::-webkit-details-marker { display: none; }
+.dut-kicker { font: 600 11px var(--font-display); letter-spacing: .16em; color: var(--dim); }
+.dut-summary { flex: 1 1 240px; font: 12.5px var(--font-mono); color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.dut-summary strong { font-weight: 500; }
+.dut-edit { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; }
+.dut-details[open] .dut-edit { color: var(--text); border-color: var(--line-strong); }
+.dut-body { padding: 4px 16px 16px; border-top: 1px solid var(--line); }
+.dut-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 18px; margin-top: 12px; }
+.dut-side { display: grid; gap: 8px; align-content: start; }
+.dut-side-label { font: 500 11px var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+.dut-body .seg { justify-self: start; }
+.dut-body .seg-btn { padding: 6px 12px; font-size: .8rem; }
+.dut-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; grid-column: 1 / -1; max-width: 480px; }
+.dut-range .unit-pair select { width: 76px; flex-basis: 76px; }
+@media (min-width: 900px) { .dut-grid { grid-template-columns: 1.1fr 1fr 1fr 1.7fr; } .dut-range { grid-column: auto; max-width: none; } }
+.dut-body label, .dut-body .quantity-field label { font-size: 12px; color: var(--muted); }
+.dut-body .hint { margin: 12px 0 0; font-size: 12.5px; }
+.dut-body .toolbar { margin-top: 12px; }
+@media (max-width: 700px) { .dut-details > summary { padding: 10px 12px; } .dut-body { padding: 4px 12px 14px; } }
 button:disabled { opacity: .45; cursor: default; }
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 .stage { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-inset); padding: 18px; margin: 12px 0; }

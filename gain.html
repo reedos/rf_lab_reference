@@ -8,8 +8,8 @@
   <title>Voltage &amp; power gain &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-8">
-  <link rel="stylesheet" href="css/app.css?v=20260913-8"><link rel="stylesheet" href="css/workbench.css?v=20260913-8">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-9">
+  <link rel="stylesheet" href="css/app.css?v=20260913-9"><link rel="stylesheet" href="css/workbench.css?v=20260913-9">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -25,6 +25,7 @@
         <a href="sweep.html">Sweep</a>
       <a href="chain.html">Power &amp; noise</a></nav>
     </header>
+    <div id="dut-card"></div>
 
 <section class="lede"><p class="kicker">Small-signal</p><h1>Voltage &amp; power gain</h1><p>A transmission parameter is a wave ratio. Its magnitude squared is a power ratio whatever the port impedances are, but the voltage ratio carries a square root of impedance with it.</p></section>
 
@@ -34,6 +35,7 @@
   <button type="button" class="seg-btn is-active" id="btn-dd" data-topology="dd" aria-pressed="true">Diff → Diff</button>
   <button type="button" class="seg-btn" id="btn-sd" data-topology="sd" aria-pressed="false">Diff → SE</button>
   <button type="button" class="seg-btn" id="btn-ds" data-topology="ds" aria-pressed="false">SE → Diff</button>
+  <button type="button" class="seg-btn" id="btn-ss" data-topology="ss" aria-pressed="false">SE → SE</button>
 </div>
 
 <svg class="gain-svg" id="diagram-dd" viewBox="0 0 680 200" role="img" aria-label="Differential source into a differential DUT input, differential DUT output into a differential load">
@@ -91,6 +93,23 @@
   <text class="out" x="480" y="114">Vd2</text>
 </svg>
 
+<svg class="gain-svg" id="diagram-ss" viewBox="0 0 680 200" role="img" aria-label="Single-ended source into a single-ended DUT input, single-ended DUT output into a single-ended load" hidden>
+  <rect class="box" x="16" y="78" width="104" height="64" rx="10"/>
+  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
+  <rect class="box" x="560" y="78" width="104" height="64" rx="10"/>
+  <text class="strong" x="36" y="106">Source</text><text class="in" id="zin-ss" x="36" y="128">Zs1</text>
+  <text class="strong" x="312" y="104">DUT</text><text x="300" y="126">S21</text>
+  <text class="strong" x="580" y="106">Load</text><text class="out" id="zout-ss" x="580" y="128">Zs2</text>
+  <path class="wire" d="M120 110 H256"/><path class="head" d="M256 104 L268 110 L256 116 Z"/>
+  <path class="wire" d="M412 110 H548"/><path class="head" d="M548 104 L560 110 L548 116 Z"/>
+  <path class="brace brace-in" d="M196 110 V162 M190 110 H202"/>
+  <text class="in" x="206" y="140">Vs1⁺</text>
+  <path class="wire" d="M178 170 H214 M186 178 H206 M192 186 H200"/>
+  <path class="brace brace-out" d="M470 110 V162 M464 110 H476"/>
+  <text class="out" x="480" y="140">Vs2</text>
+  <path class="wire" d="M452 170 H488 M460 178 H480 M466 186 H474"/>
+</svg>
+
 <p class="hint colour-key" id="diagram-key"></p>
 <p class="hint" id="diagram-caption">Differential in, differential out</p>
 
@@ -139,6 +158,7 @@
       <tr><td>Diff → Diff</td><td class="num">S<sub>dd21</sub></td><td class="num">100 Ω</td><td class="num">100 Ω</td><td class="num">1</td><td class="num">0.00 dB</td></tr>
       <tr><td>Diff → SE</td><td class="num">S<sub>sd21</sub></td><td class="num">100 Ω</td><td class="num">50 Ω</td><td class="num">0.7071</td><td class="num">−3.01 dB</td></tr>
       <tr><td>SE → Diff</td><td class="num">S<sub>ds21</sub></td><td class="num">50 Ω</td><td class="num">100 Ω</td><td class="num">1.414</td><td class="num">+3.01 dB</td></tr>
+      <tr><td>SE → SE</td><td class="num">S<sub>21</sub></td><td class="num">50 Ω</td><td class="num">50 Ω</td><td class="num">1</td><td class="num">0.00 dB</td></tr>
     </tbody>
   </table>
 </section>
@@ -149,6 +169,6 @@
 <p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
 <p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/bench.js?v=20260913-8"></script><script src="js/rf.js?v=20260913-8"></script><script src="js/gain.js?v=20260913-8"></script>
+<script src="js/bench.js?v=20260913-9"></script><script src="js/rf.js?v=20260913-9"></script><script src="js/dut.js?v=20260913-9"></script><script src="js/gain.js?v=20260913-9"></script>
 </body>
 </html>

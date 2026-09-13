@@ -4,6 +4,20 @@ const RF = require('../js/rf.js');
 const near = (actual, expected, tol = 1e-12) => assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) <= tol, `${actual} != ${expected}`);
 const VPP_0DBM_50 = 0.6324555320336759;
 
+test('the noise floor follows IF bandwidth and averaging and sets the trace noise', () => {
+  const n = RF.noiseFloor({ floorRef: -120, ifbwRef: 10, ifbw: 1000, signal: -40 });
+  near(n.floor, -100);
+  near(n.snr, 60);
+  near(n.traceNoiseDb, (20 / Math.LN10) * 1e-3 / Math.SQRT2);
+  near(n.traceNoiseDeg, (180 / Math.PI) * 1e-3 / Math.SQRT2);
+  near(n.ifbwFor(20), 1e7, 1e-3);
+  near(RF.noiseFloor({ floorRef: -120, ifbwRef: 10, ifbw: 1000, averages: 10 }).floor, -110);
+  near(RF.noiseFloor({ floorRef: -120, ifbwRef: 10, ifbw: 1000, averages: 16, signal: -60 }).ifbwFor(20), 16 * 1e5, 1e-6);
+  assert.equal(RF.noiseFloor({ floorRef: -120, ifbwRef: 10, ifbw: 1000 }).snr, null);
+  assert.equal(RF.noiseFloor({ floorRef: -120, ifbwRef: 0, ifbw: 1000 }), null);
+  assert.equal(RF.noiseFloor({ floorRef: -120, ifbwRef: 10, ifbw: 1000, averages: 0.5 }), null);
+});
+
 test('0 dBm into 50 Ω gives textbook single-ended voltages', () => {
   const se0 = RF.seFromDbm(0, 50);
   near(se0.watts, 0.001, 1e-15);

@@ -637,6 +637,30 @@
       log: { fine, coarse, finePoints: logPoints(fine), coarsePoints: logPoints(coarse) } };
   }
 
+  // Receiver noise floor against IF bandwidth and averaging. The datasheet quotes a floor at
+  // one bandwidth; it moves 10 dB per decade of bandwidth and drops 10 log10(N) with N averages.
+  // A level 'signal' dBm sits some margin above it, and that margin sets the trace noise: the
+  // in-phase noise component has an amplitude 10^(-SNR/20)/sqrt(2) of the signal, which reads
+  // as (20/ln 10) times that in dB rms and (180/pi) times it in degrees rms.
+  function noiseFloor(opts) {
+    const o = opts || {};
+    const averages = o.averages === undefined ? 1 : o.averages;
+    if (![o.floorRef, o.ifbwRef, o.ifbw].every(Number.isFinite) || !(o.ifbwRef > 0) || !(o.ifbw > 0) || !(averages >= 1) || !Number.isFinite(averages)) return null;
+    const bandwidthTerm = 10 * Math.log10(o.ifbw / o.ifbwRef), averagingTerm = -10 * Math.log10(averages);
+    const floor = o.floorRef + bandwidthTerm + averagingTerm;
+    const result = { floorRef: o.floorRef, ifbwRef: o.ifbwRef, ifbw: o.ifbw, averages, bandwidthTerm, averagingTerm, floor,
+      signal: null, snr: null, amplitude: null, traceNoiseDb: null, traceNoiseDeg: null, ifbwFor: null };
+    if (Number.isFinite(o.signal)) {
+      const snr = o.signal - floor, amplitude = Math.pow(10, -snr / 20) / Math.SQRT2;
+      result.signal = o.signal; result.snr = snr; result.amplitude = amplitude;
+      result.traceNoiseDb = (20 / Math.LN10) * amplitude;
+      result.traceNoiseDeg = (180 / Math.PI) * amplitude;
+      // The widest bandwidth that still leaves a given margin, with the same averaging.
+      result.ifbwFor = margin => o.ifbwRef * averages * Math.pow(10, (o.signal - o.floorRef - margin) / 10);
+    }
+    return result;
+  }
+
   // Log-style table: points at 1, 1+k, 1+2k, ... times each decade (k = multiplierStep), one linear
   // segment per decade, optionally followed by a linear tail from tailStart to stop.
   function logTable(start, stop, multiplierStep, tailStart, tailStep) {
@@ -762,7 +786,8 @@
   const GAIN_TOPOLOGIES = {
     dd: { key: 'dd', label: 'Differential in, differential out', parameter: 'S_{dd21}', plain: 'Sdd21', input: 'diff', output: 'diff' },
     sd: { key: 'sd', label: 'Differential in, single-ended out', parameter: 'S_{sd21}', plain: 'Ssd21', input: 'diff', output: 'se' },
-    ds: { key: 'ds', label: 'Single-ended in, differential out', parameter: 'S_{ds21}', plain: 'Sds21', input: 'se', output: 'diff' }
+    ds: { key: 'ds', label: 'Single-ended in, differential out', parameter: 'S_{ds21}', plain: 'Sds21', input: 'se', output: 'diff' },
+    ss: { key: 'ss', label: 'Single-ended in, single-ended out', parameter: 'S_{21}', plain: 'S21', input: 'se', output: 'se' }
   };
   function gainConversion(topology, z1, z2) {
     const spec = Object.hasOwn(GAIN_TOPOLOGIES, topology) ? GAIN_TOPOLOGIES[topology] : null;
@@ -820,7 +845,7 @@
   }
 
   const RF = {
-    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable,
+    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor,
     tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,

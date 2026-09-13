@@ -141,6 +141,20 @@
 
   let toastTimer = 0;
 
+  // VNA → DUT looks at the DUT input, DUT → VNA at its output; that side of the shared card
+  // is what this page edits and reads.
+  const cardSide = () => state.path === 'src' ? 'in' : 'out';
+  function pullFromCard() {
+    const dut = Dut.get(), side = cardSide();
+    state.drive = side === 'in' ? dut.din : dut.dout;
+    state.zdut = side === 'in' ? dut.zin : dut.zout;
+    Bench.setNumber(els.zdut, state.zdut);
+  }
+  function pushToCard() {
+    const side = cardSide();
+    Dut.set(side === 'in' ? { din: state.drive, zin: state.zdut } : { dout: state.drive, zout: state.zdut }, { silent: true });
+  }
+
   function readQuery() {
     const q = new URLSearchParams(window.location.search);
     const drive = q.get("m");
@@ -163,6 +177,8 @@
       state.dbm = dbm;
       els.dbm.value = q.get("d").trim();
     }
+    // A link without the page's own drive and impedance takes them from the DUT card.
+    if (!q.has('m') && !q.has('zd')) pullFromCard();
   }
 
   function writeQuery() {
@@ -198,6 +214,7 @@
       render(false);
       return;
     }
+    pushToCard();
 
     if (state.source === "vopp") {
       if (!(state.vopp >= 0) || !Number.isFinite(state.vopp)) {
@@ -534,6 +551,7 @@
     if (pathBtn && els.calc.contains(pathBtn)) {
       event.preventDefault();
       state.path = pathBtn.getAttribute("data-path");
+      pullFromCard();
       compute();
       return;
     }
@@ -600,6 +618,8 @@
     copyText(window.location.href, "Link copied");
   });
 
+  document.addEventListener('dut-change', function () { pullFromCard(); compute(); });
+  Dut.describe('the input side (topology and Z per line) when the VNA drives the DUT, and the output side when the DUT drives the VNA');
   readQuery();
   Bench.setNumber(els.zdut, state.zdut);
   els.voppUnit.value = state.unit;

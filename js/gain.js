@@ -10,8 +10,20 @@
   const PORTS = {
     dd: { in: 'd1', out: 'd2' },
     sd: { in: 'd1', out: 's2' },
-    ds: { in: 's1', out: 'd2' }
+    ds: { in: 's1', out: 'd2' },
+    ss: { in: 's1', out: 's2' }
   };
+  const TOPOLOGY_OF = { diff: { diff: 'dd', se: 'sd' }, se: { diff: 'ds', se: 'ss' } };
+  // The shared DUT card holds one per-line value per side; a differential reference is twice it.
+  function pullFromCard() {
+    const dut = Dut.get();
+    topology = TOPOLOGY_OF[dut.din][dut.dout];
+    Object.assign(store, { d1: 2 * dut.zin, s1: dut.zin, d2: 2 * dut.zout, s2: dut.zout });
+  }
+  function pushToCard() {
+    const spec = RF.GAIN_TOPOLOGIES[topology];
+    Dut.set({ din: spec.input, dout: spec.output, zin: store.s1, zout: store.s2 }, { silent: true });
+  }
   const LABELS = {
     d1: 'Input reference Z<sub>d1</sub>, differential (Ω)', s1: 'Input reference Z<sub>s1</sub>, single-ended (Ω)',
     d2: 'Output reference Z<sub>d2</sub>, differential (Ω)', s2: 'Output reference Z<sub>s2</sub>, single-ended (Ω)'
@@ -33,6 +45,7 @@
       const value = RF.parseNumber(q.get(key));
       if (value > 0) store[key] = value;
     }
+    if (!q.has('t') && !Object.keys(store).some(key => q.has(key))) pullFromCard();
     for (const id of ['s11-db', 's11-deg']) if (q.has(id)) $(id).value = q.get(id);
   }
   function writeQuery() {
@@ -49,7 +62,7 @@
       button.setAttribute('aria-pressed', String(active));
     });
     // SVG elements do not implement the hidden property, so toggle the attribute itself.
-    for (const key of ['dd', 'sd', 'ds']) {
+    for (const key of Object.keys(PORTS)) {
       const svg = $('diagram-' + key);
       if (key === topology) svg.removeAttribute('hidden'); else svg.setAttribute('hidden', '');
     }
@@ -70,8 +83,10 @@
   function compute() {
     const ports = PORTS[topology];
     const z1 = Bench.read('z1'), z2 = Bench.read('z2');
-    if (z1 > 0) store[ports.in] = z1;
-    if (z2 > 0) store[ports.out] = z2;
+    // Each side keeps its differential and single-ended values in step: one per-line value.
+    if (z1 > 0) { store[ports.in] = z1; store[ports.in === 'd1' ? 's1' : 'd1'] = ports.in === 'd1' ? z1 / 2 : 2 * z1; }
+    if (z2 > 0) { store[ports.out] = z2; store[ports.out === 'd2' ? 's2' : 'd2'] = ports.out === 'd2' ? z2 / 2 : 2 * z2; }
+    pushToCard();
     const wanted = readTerminal();
     terminal = wanted.value;
     result = wanted.ok ? RF.gainConversion(topology, z1, z2) : null;
@@ -171,5 +186,7 @@
     Bench.copy(`${result.spec.label} | ${result.spec.plain} | Z1 ${fmt(result.z1)} Ω | Z2 ${fmt(result.z2)} Ω\n` +
       `Voltage gain = ${result.spec.plain} × ${fmt(result.factor)} (${sign}${fmt(Math.abs(result.db), 'dB')} dB); power gain |${result.spec.plain}|² is unchanged`);
   });
+  document.addEventListener('dut-change', () => { pullFromCard(); applyTopology(); compute(); });
+  Dut.describe('both sides: the topology picks the parameter, and each per-line impedance doubles for a differential reference');
   readQuery(); applyTopology(); renderDerivation(); compute();
 })();

@@ -35,6 +35,26 @@ Storage and clipboard failures are reported without preventing calculation.
 Setups stay on the device. There is no account, backend, or measurement upload, and the
 pages make no external requests.
 
+## The DUT card
+
+Every page opens with the same **DUT card**: input and output port topology, a per-line
+reference impedance for each side, and the operating range, with an optional name. It lives
+only in the page link. Navigation links carry it, a copied link carries it, and nothing is
+written to the device, so it disappears when the tab closes and can be pinned with a
+bookmark. Only values that differ from the default (50 Ω differential both sides, 100 MHz to
+10 GHz) appear in the link, so ordinary links stay short.
+
+Pages that use the card are bound to it both ways. VOPP looks at the input side when the VNA
+drives the DUT and at the output side when the DUT drives the VNA, so switching direction
+switches the impedance and drive mode as well; editing Z<sub>DUT</sub> or the drive on the
+page writes that side back to the card. Gain takes both sides: the topology picks the
+parameter, and each per-line impedance doubles for a differential reference. Sweep takes the
+range: the generated table's linear tail starts where the DUT lives and stops at the top of its
+range, the wide preset spans it, and a coverage tile reports whether the segment table reaches
+both ends. Each card states what the current page takes from it. Links from before the card
+existed keep their own values, because a link that names the page's drive or impedance wins
+over the default card.
+
 ## Reading the pages
 
 Each calculator has **one answer**. It leads its list of tiles, spans the row, and is the only
@@ -276,6 +296,16 @@ band crossings, settling, and dwell.
 
 Power sweeps use the same count: −20 dBm to −4 dBm in 0.1 dB steps is 161 points. Enter the
 step or the number of points; the other updates.
+
+**Noise floor and trace noise** use the same IF bandwidth as the sweep time. Enter the floor
+your analyzer's datasheet quotes at one bandwidth; it rises 10 dB per decade of bandwidth and
+falls 10 log₁₀ N with N averages, and the sweep time multiplies by N. Enter the level you need
+to see at the receiver (source power plus the DUT's |S21| at that point) and the page reports
+the margin above the floor, the trace noise it produces (about 6.1 dB × 10^(−SNR/20) rms in
+magnitude and 57° × the same factor in phase, from the in-phase noise component), and the
+widest IF bandwidth that still leaves a 20 dB margin. A margin under 20 dB is flagged. The
+model treats the floor as white noise in the IF filter and averaging as coherent; real
+receivers add a fixed residual at the narrowest bandwidths.
 
 ## Intra-pair skew
 

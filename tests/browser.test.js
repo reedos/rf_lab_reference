@@ -45,7 +45,9 @@ let checks=0;
         };
         const valid=()=>page.evaluate(()=>window.Bench.valid);
         await check('VOPP drive, units, zero voltage, invalid impedance, and driver restoration',async()=>{
-          await go(''); await numeric('vopp',.6325);
+          // The DUT card defaults to a differential device, so the page opens differential.
+          await go(''); await numeric('vopp',1.265);
+          await page.locator('#btn-se').click(); await numeric('vopp',.6325);
           await page.locator('#btn-diff').click(); await numeric('vopp',1.265);
           await page.locator('#vopp-unit').selectOption('mV'); await numeric('vopp',1265);
           await fill('vopp',1000); await expect(page).toHaveURL(/from=vopp/); const saved=page.url();
@@ -314,7 +316,7 @@ let checks=0;
           await fill('length','1,000'); assert.equal(await page.locator('#length').inputValue(),'1,000');
           await numeric('delay',3.336); await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('L'))).toBe(1000);
           await fill('length','0x10'); await expect.poll(valid).toBe(false);
-          await go('index.html?d=-10.123456789&from=dbm'); assert.equal(await page.locator('#dbm').inputValue(),'-10.123456789');
+          await go('index.html?d=-10.123456789&from=dbm&m=se'); assert.equal(await page.locator('#dbm').inputValue(),'-10.123456789');
           await numeric('vopp',0.1972);
         });
         await check('Signed fields can be made negative without a minus key',async()=>{
@@ -361,6 +363,19 @@ let checks=0;
           await expect.poll(timeTile).toContain('dwell');
           await fill('segment-overhead',5);
           await expect.poll(timeTile).toContain('12.75 s');
+          // The same IF bandwidth places the noise floor, and averaging moves it.
+          await expect(page.locator('#noise-metrics')).toContainText('-100 dBm');
+          await expect(page.locator('#noise-metrics')).toContainText('40 dB at -60 dBm');
+          await expect(page.locator('#noise-metrics')).toContainText('0.06 dB rms');
+          await expect(page.locator('#noise-metrics')).toContainText('up to 100 kHz');
+          await fill('nf-avg',16);
+          await expect(page.locator('#noise-metrics')).toContainText('-112.04 dBm');
+          await expect(page.locator('#noise-metrics')).toContainText(/Sweep time with averaging/);
+          await fill('nf-signal',-95);
+          await expect(page.locator('#noise-status')).toContainText(/Only 17.04 dB above the floor/);
+          await fill('nf-avg','2.5'); await expect.poll(valid).toBe(false);
+          await fill('nf-avg','1'); await fill('nf-signal','-60'); await expect.poll(valid).toBe(true);
+          await page.reload(); await expect(page.locator('#nf-signal')).toHaveValue('-60');
           await fill('point-overhead','bad'); await expect.poll(valid).toBe(false);
           await fill('point-overhead',''); await fill('segment-overhead','');
           await expect.poll(timeTile).toContain('minimum sweep time');
@@ -621,6 +636,56 @@ let checks=0;
           assert.ok(h.includes('Delivered receiver power'),JSON.stringify(h));
           assert.ok(!h.includes('Delivered power'),JSON.stringify(h));
         });
+        await check('The DUT card travels between pages in the link and binds each page to its side',async()=>{
+          const summary=()=>page.locator('#dut-summary').innerText();
+          await go('');
+          await expect.poll(summary).toContain('Diff in · 50 Ω/line');
+          await expect.poll(summary).toContain('100 MHz – 10 GHz');
+          // Editing the card changes the page; editing the page changes the card.
+          await page.locator('.dut-details > summary').click();
+          await page.locator('[data-dut="din"][data-value="se"]').click();
+          await numeric('vopp',.6325);
+          await expect(page).toHaveURL(/din=se/);
+          await fill('zdut',75);
+          await expect.poll(summary).toContain('SE in · 75 Ω');
+          await expect(page).toHaveURL(/zin=75/);
+          // The other direction looks at the output side of the device.
+          await page.locator('#btn-rx').click();
+          await numeric('zdut',50); await expect(page.locator('#btn-diff')).toHaveClass(/is-active/);
+          await fill('zdut',100);
+          await expect.poll(summary).toContain('Diff out · 100 Ω/line');
+          // Every navigation link carries the card, and the next page reads it.
+          const href=await page.locator('nav a[href^="gain"]').getAttribute('href');
+          assert.match(href,/din=se/); assert.match(href,/zin=75/); assert.match(href,/zout=100/);
+          await page.locator('nav a[href^="gain"]').click(); await page.locator('#calculation-text').waitFor({state:'attached'});
+          await expect(page.locator('[data-topology="ds"]')).toHaveClass(/is-active/);
+          await expect(page.locator('#z1')).toHaveValue('75'); await expect(page.locator('#z2')).toHaveValue('200');
+          await fill('z2',300); await expect.poll(summary).toContain('Diff out · 150 Ω/line');
+          await page.locator('[data-topology="ss"]').click();
+          await expect(page.locator('#z2')).toHaveValue('150'); await expect.poll(summary).toContain('SE out · 150 Ω');
+          await expect(page.locator('.metric.primary')).toContainText('S21 × 1.414');
+          // Defaults leave the link clean; the sweep page checks coverage against the range.
+          await go('sweep.html');
+          assert.equal(new URL(page.url()).searchParams.has('fmax'),false);
+          await expect(page.locator('#sweep-metrics')).toContainText('Covered · 100 MHz – 10 GHz');
+          await page.locator('.dut-details > summary').click();
+          await fill('dut-fmax',200);
+          await expect(page.locator('#sweep-metrics')).toContainText(/Not covered: ends 75 GHz below 200 GHz/);
+          await expect(page.locator('[data-preset="wide"]')).toHaveText('100 MHz–200 GHz, 10 MHz');
+          await expect(page.locator('#g-stop')).toHaveValue('200');
+          await page.reload(); await expect.poll(summary).toContain('100 MHz – 200 GHz');
+          await page.locator('.dut-details > summary').click();
+          await fill('dut-fmin','abc');
+          await expect(page.locator('#dut-status')).toContainText(/Not applied/);
+          await expect.poll(summary).toContain('100 MHz – 200 GHz');
+          await page.locator('#dut-reset').click();
+          await expect.poll(summary).toContain('100 MHz – 10 GHz');
+          assert.equal(new URL(page.url()).searchParams.has('fmax'),false);
+          // Old links without card keys keep their own drive and impedance.
+          await go('index.html?zd=200&d=0&from=dbm&dir=src');
+          await expect(page.locator('#btn-se')).toHaveClass(/is-active/); await numeric('zdut',200);
+          await expect.poll(summary).toContain('SE in · 200 Ω');
+        });
         await check('Diagrams fit the screen instead of scrolling sideways',async()=>{
           for (const width of [320,390,430,768]) {
             await page.setViewportSize({width,height:900});
@@ -777,7 +842,7 @@ let checks=0;
           const RING=3, edges=async s=>{const b=await page.locator(s).boundingBox(); return {y:b.y+b.height/2,x1:b.x,x2:b.x+b.width};};
           for (const width of [390,768,1440]) {
             await page.setViewportSize({width,height:900});
-            for (const [url,block,rails] of [['index.html','.blk-se',['']],['index.html?dir=rx','.blk-se',['']],['index.html?m=diff','.blk-diff',['.plus','.minus']]]) {
+            for (const [url,block,rails] of [['index.html?m=se','.blk-se',['']],['index.html?m=se&dir=rx','.blk-se',['']],['index.html?m=diff','.blk-diff',['.plus','.minus']]]) {
               await go(url);
               for (const rail of rails) {
                 const where=`${url}${rail} at ${width}px`;

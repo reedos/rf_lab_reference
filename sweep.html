@@ -8,8 +8,8 @@
   <title>Sweep setup &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-8">
-  <link rel="stylesheet" href="css/app.css?v=20260913-8"><link rel="stylesheet" href="css/workbench.css?v=20260913-8">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-9">
+  <link rel="stylesheet" href="css/app.css?v=20260913-9"><link rel="stylesheet" href="css/workbench.css?v=20260913-9">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -25,6 +25,7 @@
         <a class="is-active" href="sweep.html">Sweep</a>
       <a href="chain.html">Power &amp; noise</a></nav>
     </header>
+    <div id="dut-card"></div>
 
 <section class="lede"><p class="kicker">VNA setup</p><h1>Sweep setup</h1><p>Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, and power-sweep sizing.</p></section>
 <section class="board work-board" id="calc"><h2>Frequency sweep segments</h2>
@@ -33,8 +34,13 @@
 <div class="quantity-field"><label for="point-overhead">Per-point overhead (optional)</label><div class="unit-pair"><input id="point-overhead" value="" placeholder="e.g. 20" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Per-point overhead"><select id="point-overhead-unit" aria-label="Per-point overhead unit"><option value="µs" selected>µs</option><option value="ms">ms</option><option value="s">s</option></select></div></div>
 <div class="quantity-field"><label for="segment-overhead">Per-segment retune (optional)</label><div class="unit-pair"><input id="segment-overhead" value="" placeholder="e.g. 5" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Per-segment retune time"><select id="segment-overhead-unit" aria-label="Per-segment retune unit"><option value="µs">µs</option><option value="ms" selected>ms</option><option value="s">s</option></select></div></div></div>
 <p class="hint">Dwell alone is points divided by IF bandwidth, which is a floor. Add your analyzer's per-point cost and per-segment retune to get a figure you can plan around; both are instrument-specific, so they are yours to supply rather than guessed here.</p>
+<h2>Noise floor and trace noise</h2>
+<p class="hint">The IF bandwidth above sets the floor as well as the time. Take the floor your analyzer's datasheet quotes at one bandwidth; it rises 10 dB per decade of bandwidth and falls 10 log₁₀ N with N averages. Enter the level you need to see at the receiver, source power plus the DUT's |S21| at that point, to get the margin and the trace noise it produces.</p>
+<div class="work-fields"><label>Datasheet noise floor (dBm)<input data-signed id="nf-ref" value="-120" inputmode="decimal" autocomplete="off" aria-label="Datasheet noise floor in dBm"></label><div class="quantity-field"><label for="nf-ref-bw">at IF bandwidth</label><div class="unit-pair"><input id="nf-ref-bw" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Datasheet IF bandwidth"><select id="nf-ref-bw-unit" aria-label="Datasheet IF bandwidth unit"><option value="Hz" selected>Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><label>Averaging factor<input id="nf-avg" value="1" inputmode="numeric" autocomplete="off" aria-label="Averaging factor"></label><label>Level at the receiver (dBm, optional)<input data-signed id="nf-signal" value="-60" placeholder="source + |S21|" inputmode="decimal" autocomplete="off" aria-label="Level at the receiver in dBm"></label></div>
+<p id="noise-status" role="status"></p>
+<dl id="noise-metrics" class="metrics" aria-live="polite"></dl>
 <h2>Build a log-style table</h2>
-<p class="hint">Points at 1, 1+k, 1+2k … times each decade, one linear segment per decade, so every frequency is a round number. Add a linear tail where the DUT lives. Generating replaces the segment rows below.</p>
+<p class="hint">Points at 1, 1+k, 1+2k … times each decade, one linear segment per decade, so every frequency is a round number. The linear tail starts where the DUT lives and the table stops at the top of its range, both from the DUT card; the decades below give coarse coverage. Generating replaces the segment rows below.</p>
 <div class="work-fields"><div class="quantity-field"><label for="g-start">Start</label><div class="unit-pair"><input id="g-start" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Log table start"><select id="g-start-unit" aria-label="Log table start unit"><option value="Hz">Hz</option><option value="kHz" selected>kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><div class="quantity-field"><label for="g-stop">Stop</label><div class="unit-pair"><input id="g-stop" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Log table stop"><select id="g-stop-unit" aria-label="Log table stop unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div><label>In-decade step k<select id="g-mult" aria-label="In-decade multiplier step"><option value="1">1, 2 … 9 (9/decade)</option><option value="0.5">1, 1.5 … 9.5 (18)</option><option value="0.2">1, 1.2 … 9.8 (45)</option><option value="0.1">1, 1.1 … 9.9 (90)</option><option value="2">1, 3, 5, 7, 9 (5)</option><option value="3">1, 4, 7 (3)</option></select></label><div class="quantity-field"><label for="g-tail">Linear tail from (optional)</label><div class="unit-pair"><input id="g-tail" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Linear tail start"><select id="g-tail-unit" aria-label="Linear tail start unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz" selected>MHz</option><option value="GHz">GHz</option></select></div></div><div class="quantity-field"><label for="g-tail-step">Tail step</label><div class="unit-pair"><input id="g-tail-step" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Linear tail step"><select id="g-tail-step-unit" aria-label="Linear tail step unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz" selected>MHz</option><option value="GHz">GHz</option></select></div></div></div>
 <div class="toolbar"><button id="generate" class="ghost" type="button">Generate segments</button></div><p id="generate-status" role="status"></p>
 <h2>Segments</h2>
@@ -60,6 +66,8 @@
     <tbody>
       <tr><td>Sweep time</td><td class="num">≈ N / IFBW</td><td>991 points at 1 kHz is about 12.5 s before any overhead</td></tr>
       <tr><td>IF bandwidth</td><td class="num">÷10 lowers the floor 10 dB and costs 10× the time</td><td>The trade you make on every single sweep</td></tr>
+      <tr><td>Averaging</td><td class="num">N sweeps lower the floor 10 log₁₀ N</td><td>16 averages buy 12 dB at 16× the time, the same trade as IF bandwidth</td></tr>
+      <tr><td>Trace noise</td><td class="num">≈ 6.1 dB × 10<sup>−SNR/20</sup> rms</td><td>60 dB above the floor is 0.006 dB rms; 20 dB above is 0.6 dB and the trace looks furry</td></tr>
       <tr><td>More points</td><td class="num">change resolution, not the noise floor</td><td>Adding points will not clean up a noisy trace</td></tr>
       <tr><td>Narrow features</td><td class="num">at least 5 points across the 3 dB bandwidth</td><td>Fewer and you will under-report the depth of a notch</td></tr>
       <tr><td>Long cables or fixtures</td><td class="num">Δf &lt; 1/(2τ)</td><td>Otherwise the phase wraps between points and unwrapping is guesswork</td></tr>
@@ -68,4 +76,4 @@
   </table>
 </section>
 <section class="panel"><h2>Model and reference</h2><p>N = (stop − start)/step + 1 for a linear segment. Relative spacing Δf/f sets how well narrow features are resolved; points per decade is 1/log₁₀(1 + Δf/f). A log sweep with the same span needs ⌈ln(f<sub>last</sub>/f<sub>first</sub>)/ln(1 + r)⌉ + 1 points for relative spacing r. Minimum sweep time is about N/IFBW before band crossings, settling, and dwell.</p><p>Segment count, total points, and per-segment IF bandwidth or power are instrument settings; check the analyzer's limits.</p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-8"></script><script src="js/rf.js?v=20260913-8"></script><script src="js/sweep.js?v=20260913-8"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/bench.js?v=20260913-9"></script><script src="js/rf.js?v=20260913-9"></script><script src="js/dut.js?v=20260913-9"></script><script src="js/sweep.js?v=20260913-9"></script></body></html>
