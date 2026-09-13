@@ -488,6 +488,22 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/positive reference impedance/);
           await fill('z1',100); await expect.poll(valid).toBe(true);
         });
+        await check('No heading sits flush against the content above it',async()=>{
+          for (const width of [390,1280]) {
+            await page.setViewportSize({width,height:900});
+            for (const file of ['index.html','match.html','large-signal.html','gain.html','delay.html','sweep.html','chain.html']) {
+              await go(file);
+              const tight=await page.evaluate(()=>Array.from(document.querySelectorAll('h2, h3, h4')).map(h=>{
+                const prev=h.previousElementSibling;
+                if (!prev || prev.hidden || !prev.getClientRects().length) return null;
+                const gap=h.getBoundingClientRect().top - prev.getBoundingClientRect().bottom;
+                return gap < 12 ? {heading:h.textContent.trim().slice(0,40), gap:Math.round(gap)} : null;
+              }).filter(Boolean));
+              assert.deepEqual(tight,[],`${file} at ${width}px has headings flush against the element above`);
+            }
+          }
+          await page.setViewportSize({width:1280,height:900});
+        });
         await check('Intra-pair skew tracks frequency and reports a budget',async()=>{
           await go('delay.html?er=4.3&f=10&fu=GHz');
           await expect(page.locator('#skew-metrics')).toContainText('-31.18 dB');
