@@ -224,6 +224,7 @@
   function diagramSpec(r, ok) {
     const copy = PATH_COPY[state.path], dash = '—';
     const zpTxt = zLabel("Z<sub>VNA</sub>", state.zvna), zdTxt = zLabel("Z<sub>DUT</sub>", state.zdut > 0 ? state.zdut : NaN);
+    const leftZ = state.path === "src" ? zpTxt : zdTxt, rightZ = state.path === "src" ? zdTxt : zpTxt;
     const dbm = ok ? `${RF.formatDbm(r.dbm)} dBm` : dash, rail = ok ? railLabel(r) : '';
     const readout = (kicker, id, cls, value) => `<div class="node-readout"><span>${kicker}</span><strong id="${id}" class="${cls}">${value}</strong></div>`;
     if (state.drive !== "diff") {
