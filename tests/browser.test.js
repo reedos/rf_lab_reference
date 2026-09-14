@@ -780,10 +780,10 @@ let checks=0;
           const bodyBg=()=>page.evaluate(()=>getComputedStyle(document.body).backgroundColor);
           const eqColours=()=>page.evaluate(()=>Array.from(document.querySelectorAll('#gain-equation .katex-html [style*="color"]')).map(n=>n.style.color));
           await go('gain.html'); await expect(page.locator('#gain-equation .katex').first()).toBeVisible();
-          assert.equal(await theme(),'dark'); assert.equal(await bodyBg(),'rgb(9, 11, 16)');
+          assert.equal(await theme(),'dark'); await expect.poll(bodyBg).toBe('rgb(9, 11, 16)');
           // Auto follows the system, and the algebra takes the light port colours with it.
           await page.emulateMedia({colorScheme:'light'});
-          await expect.poll(theme).toBe('light'); assert.equal(await bodyBg(),'rgb(255, 255, 255)');
+          await expect.poll(theme).toBe('light'); await expect.poll(bodyBg).toBe('rgb(255, 255, 255)');
           await expect.poll(eqColours).toContain('rgb(180, 83, 9)');
           assert.equal(await page.evaluate(()=>document.querySelector('meta[name="theme-color"]').content),'#ffffff');
           // A pinned choice survives a reload and is the only thing stored.

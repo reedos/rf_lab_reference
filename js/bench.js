@@ -191,6 +191,11 @@
     const calc = document.getElementById('calc');
     if (!calc) return;
     enhance(document);
+    // The toolbar buttons carry a small icon each; the mask lives in the stylesheet.
+    for (const [id, icon] of Object.entries({ 'copy-result': 'copy', 'copy-link': 'link', 'export-figure': 'image', 'export-table': 'table', 'export-table-image': 'image', 'export-equations': 'math' })) {
+      const el = document.getElementById(id); if (el) el.setAttribute('data-icon', icon);
+    }
+    document.querySelectorAll('a[data-dut-link]').forEach(a => a.setAttribute('data-icon', 'gain'));
     const area = document.createElement('section');
     area.className = 'bench-tools';
     area.setAttribute('aria-label', 'Calculation and saved setups');

@@ -4,7 +4,7 @@
 .field-label { flex-wrap: wrap; }
 #chart { width: 100%; height: auto; display: block; }
 @media (min-width: 720px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.bench-tools details, .reference-details { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-elev); margin: 10px 0; padding: 15px 18px; }
+.bench-tools details, .reference-details { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-card); box-shadow: inset 0 1px 0 var(--edge), var(--shadow-card); margin: 10px 0; padding: 15px 20px; }
 summary { cursor: pointer; font-weight: 500; }
 .calculation { min-width: 0; }
 #calculation-text { margin-top: 22px; }
@@ -21,7 +21,7 @@ summary { cursor: pointer; font-weight: 500; }
 .setup-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-top: 16px; }
 .setup-controls label { flex: 1 1 180px; }
 .setup-controls input, .setup-controls select, .work-fields input, .work-fields select, .stage input, .stage select, .segment input, .dut-body input, .dut-body select {
-  display: block; width: 100%; margin-top: 7px; background: var(--bg-inset); color: var(--text); border: 1px solid var(--line-strong); border-radius: 8px; padding: 11px 12px; font: 15px var(--font-mono); min-width: 0;
+  display: block; width: 100%; margin-top: 7px; background: var(--bg-well); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; padding: 11px 12px; font: 15px var(--font-mono); font-variant-numeric: tabular-nums; min-width: 0; box-shadow: var(--shadow-inset);
 }
 .work-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 18px 0; }
 .work-fields label, .stage label, .setup-controls label, .segment label { font-size: 12px; color: var(--muted); min-width: 0; }
@@ -35,7 +35,8 @@ summary { cursor: pointer; font-weight: 500; }
 .sweep-hint { margin: 6px 0 0; }
 .gain-svg { width: 100%; height: auto; display: block; margin: 4px 0 18px; }
 .gain-svg[hidden] { display: none; }
-.gain-svg .box { fill: var(--bg-inset); stroke: var(--line-strong); stroke-width: 1; }
+/* Boxes match the VOPP schematic's block shells: elevated fill, hairline, same corner. */
+.gain-svg .box { fill: var(--bg-elev); stroke: var(--line-strong); stroke-width: 1; }
 /* Wires, arrows and grounds are structure, so they stay neutral and let the quantities read. */
 .gain-svg .wire { stroke: var(--line-strong); stroke-width: 2; fill: none; }
 .gain-svg .brace { stroke-width: 1.5; fill: none; }
@@ -52,7 +53,7 @@ summary { cursor: pointer; font-weight: 500; }
 .chain-results .s-grid th, .chain-results .s-grid td { text-align: center; padding: 6px 8px; white-space: nowrap; }
 .chain-results .s-grid th { font-family: var(--font-mono); }
 .s-cell { display: flex; align-items: center; gap: 4px; }
-.s-grid input { width: 5.4em; margin: 0; padding: 8px 8px; font-size: 13px; background: var(--bg-inset); color: var(--text); border: 1px solid var(--line-strong); border-radius: 8px; font-family: var(--font-mono); }
+.s-grid input { width: 5.4em; margin: 0; padding: 8px 8px; font-size: 13px; background: var(--bg-well); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; font-family: var(--font-mono); box-shadow: var(--shadow-inset); }
 .s-cell span { color: var(--dim); font-size: 11px; }
 .chain-results .mm-table th { text-align: center; font-family: var(--font-mono); }
 .chain-results .mm-table td { text-align: center; font-family: var(--font-mono); }
@@ -60,7 +61,7 @@ summary { cursor: pointer; font-weight: 500; }
 .equation-group { margin: 0 0 8px; font: 500 12px var(--font-display); color: var(--muted); }
 #mixed-equations .gain-result { margin: 12px 0; }
 .link-button { display: inline-flex; align-items: center; text-decoration: none; }
-.link-button:hover { text-decoration: none; color: var(--text); }
+.link-button:hover { text-decoration: none; }
 .gain-svg text.port-label { font-size: 12px; }
 .gain-svg .port-sub { font-size: 9px; }
 #mapping label span { display: block; }
@@ -78,8 +79,8 @@ summary { cursor: pointer; font-weight: 500; }
 .work-fields .signed-field > input, .stage .signed-field > input { margin-top: 0; }
 .work-fields .signed-field, .stage .signed-field { margin-top: 7px; }
 button.sign {
-  flex: 0 0 44px; width: 44px; min-height: 42px; border: 1px solid var(--line-strong); border-radius: 8px;
-  background: var(--bg-well); color: var(--muted); font: 1rem var(--font-mono); cursor: pointer;
+  flex: 0 0 44px; width: 44px; min-height: 42px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-well); color: var(--muted); font: 1rem var(--font-mono); box-shadow: var(--shadow-control); cursor: pointer;
 }
 button.sign:hover { color: var(--text); border-color: var(--accent); }
 .field-row .signed-field { gap: 8px; }
@@ -87,13 +88,13 @@ button.sign:hover { color: var(--text); border-color: var(--accent); }
 .delay-page .work-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .work-board hr { border: 0; border-top: 1px solid var(--line-strong); margin: 28px 0; }
 .work-board { padding: 24px; }
-.work-board h2 { margin: 30px 0 10px; font-family: var(--font-display); font-size: 19px; }
+.work-board h2 { margin: 30px 0 10px; font-family: var(--font-display); font-size: 1.2rem; letter-spacing: -0.01em; }
 .work-board > h2:first-child { margin-top: 0; }
 .work-board + .work-board { margin-top: 20px; }
 .status-error { color: var(--danger); }
 /* The DUT card: one line collapsed, a small form open. It rides in the link, not in storage. */
 .dut-card { margin: -4px 0 18px; }
-.dut-details { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-elev); }
+.dut-details { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-card); box-shadow: inset 0 1px 0 var(--edge), var(--shadow-card); }
 .dut-details > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 11px 16px; font-size: 13px; list-style: none; }
 .dut-details > summary::-webkit-details-marker { display: none; }
 .dut-kicker { font: 600 11px var(--font-display); letter-spacing: .16em; color: var(--dim); }
@@ -116,7 +117,7 @@ button.sign:hover { color: var(--text); border-color: var(--accent); }
 @media (max-width: 700px) { .dut-details > summary { padding: 10px 12px; } .dut-body { padding: 4px 12px 14px; } }
 button:disabled { opacity: .45; cursor: default; }
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
-.stage { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-inset); padding: 18px; margin: 12px 0; }
+.stage { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-inset); box-shadow: inset 0 1px 0 var(--edge); padding: 18px; margin: 12px 0; }
 .stage-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
 .stage-head strong { font-family: var(--font-mono); color: var(--accent); font-size: 12px; }
 .stage-actions { display: flex; gap: 6px; }
@@ -130,7 +131,7 @@ button:disabled { opacity: .45; cursor: default; }
 .chain-results th { color: var(--muted); font-weight: 400; }
 .over-limit { color: var(--danger); }
 .power-path { display: flex; gap: 8px; overflow-x: auto; padding: 14px 0 22px; }
-.power-node { border: 1px solid var(--line-strong); border-radius: 10px; padding: 13px 16px; min-width: 140px; max-width: 200px; flex-shrink: 0; }
+.power-node { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-inset); box-shadow: inset 0 1px 0 var(--edge); padding: 13px 16px; min-width: 140px; max-width: 200px; flex-shrink: 0; }
 .power-node span { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .power-node strong { display: block; font: 17px var(--font-mono); margin-top: 5px; }
 .power-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; flex-shrink: 0; min-width: 82px; }
@@ -157,7 +158,7 @@ button:disabled { opacity: .45; cursor: default; }
   .work-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .delay-page .work-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .work-fields label { min-width: 0; }
-  nav { justify-content: flex-start; letter-spacing: .05em; }
+  nav { justify-content: flex-start; }
   nav a { padding: 8px; }
   .setup-controls button { min-height: 42px; }
 }

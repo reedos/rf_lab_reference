@@ -24,11 +24,17 @@
   --accent: var(--amber);
   --accent-soft: var(--amber-soft);
   --scroll-fade: rgba(255, 255, 255, 0.16);
+  /* Depth comes from a one-pixel edge highlight and soft shadows, never from blur. */
+  --edge: rgba(255, 255, 255, 0.05);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 24px 48px -28px rgba(0, 0, 0, 0.7);
+  --shadow-control: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 1px rgba(0, 0, 0, 0.25);
+  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  --surface-card: var(--bg-elev);
   --font-ui: "IBM Plex Sans", "Segoe UI", sans-serif;
   --font-display: Sora, "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --radius: 14px;
-  --radius-sm: 10px;
+  --radius: 18px;
+  --radius-sm: 12px;
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
 }
 
@@ -111,15 +117,34 @@ a:hover {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  padding: 12px 4px 18px;
-  margin-bottom: 18px;
+  padding: 12px 12px;
+  margin: 0 -12px 18px;
   border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 700px) {
+  .top {
+    margin: 0 0 18px;
+    padding: 12px 4px;
+  }
+}
+
+/* The one glass gesture: on a desktop the header stays put and blurs what scrolls beneath it. */
+@media (min-width: 701px) {
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
 }
 
 .wordmark {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   letter-spacing: 0.16em;
   color: var(--text);
   text-decoration: none;
@@ -136,25 +161,20 @@ nav {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 4px;
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 0.86rem;
+  font-weight: 500;
 }
 
 nav a {
   color: var(--muted);
   text-decoration: none;
-  padding: 6px 10px;
+  padding: 7px 12px;
   border-radius: 999px;
 }
 
 nav a.is-active {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-[data-theme="light"] nav a.is-active {
-  background: rgba(0, 0, 0, 0.07);
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* One round button at the top right cycles Auto, Light and Dark. */
@@ -169,8 +189,9 @@ nav a.is-active {
   justify-content: center;
   border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--bg-elev);
+  background: var(--bg-well);
   color: var(--muted);
+  box-shadow: var(--shadow-control);
   cursor: pointer;
 }
 
@@ -208,19 +229,19 @@ nav a:hover {
 
 .kicker {
   font-family: var(--font-display);
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--muted);
   margin: 0 0 8px;
 }
 
 h1 {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: clamp(1.85rem, 4vw, 2.55rem);
-  letter-spacing: -0.03em;
-  margin: 0 0 8px;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  letter-spacing: -0.035em;
+  margin: 0 0 10px;
 }
 
 .lede p {
@@ -230,11 +251,11 @@ h1 {
 }
 
 .board {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 18px 18px 16px;
+  box-shadow: inset 0 1px 0 var(--edge), var(--shadow-card);
+  padding: 22px 22px 20px;
   margin-bottom: 22px;
 }
 
@@ -254,10 +275,11 @@ h1 {
 .seg {
   display: inline-flex;
   flex-wrap: wrap;
-  padding: 4px;
+  padding: 3px;
   background: var(--bg-inset);
   border: 1px solid var(--line);
   border-radius: 999px;
+  box-shadow: var(--shadow-inset);
 }
 
 .seg-btn {
@@ -266,9 +288,9 @@ h1 {
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   font-weight: 500;
-  padding: 8px 14px;
+  padding: 7px 14px;
   border-radius: 999px;
   cursor: pointer;
   pointer-events: auto;
@@ -277,8 +299,9 @@ h1 {
 }
 
 .seg-btn.is-active {
-  background: var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 90%, #ffffff), var(--accent));
   color: #14120c;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .z-ctrl {
@@ -302,8 +325,9 @@ h1 {
   gap: 8px;
   background: var(--bg-inset);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
+  box-shadow: inset 0 1px 0 var(--edge);
 }
 
 .z-fixed {
@@ -352,13 +376,15 @@ h1 {
 
 .z-field input {
   width: 4.6rem;
-  background: var(--bg-inset);
-  border: 1px solid var(--line);
+  background: var(--bg-well);
+  border: 1px solid var(--line-strong);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
   padding: 8px 8px;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-inset);
 }
 
 .chips {
@@ -375,14 +401,16 @@ h1 {
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 0.82rem;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-control);
   cursor: pointer;
 }
 
 .chip.is-active {
   color: #14120c;
-  background: var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 90%, #ffffff), var(--accent));
   border-color: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .schematic-stage {
@@ -390,9 +418,10 @@ h1 {
     linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
     var(--bg-inset);
-  background-size: 20px 20px, 20px 20px, auto;
+  background-size: 24px 24px, 24px 24px, auto;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 var(--edge);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   margin-bottom: 16px;
@@ -437,19 +466,20 @@ h1 {
   border: 1px solid var(--line-strong);
   border-radius: 12px;
   background: rgba(23, 27, 36, 0.92);
+  box-shadow: inset 0 1px 0 var(--edge), 0 10px 24px -14px rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
 
 .blk-shell.src {
   grid-column: 1;
   grid-row: 1 / -1;
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--edge), 0 10px 24px -14px rgba(0, 0, 0, 0.6);
 }
 
 .blk-shell.dut {
   grid-column: 3;
   grid-row: 1 / -1;
-  box-shadow: inset -3px 0 0 var(--accent);
+  box-shadow: inset -3px 0 0 var(--accent), inset 0 1px 0 var(--edge), 0 10px 24px -14px rgba(0, 0, 0, 0.6);
 }
 
 .blk-head,
@@ -488,7 +518,8 @@ h1 {
 .node-title {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.12rem;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
   font-weight: 600;
   margin-top: 2px;
 }
@@ -794,15 +825,16 @@ h1 {
   background: var(--bg-inset);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 12px 14px 14px;
+  padding: 14px 16px 16px;
+  box-shadow: inset 0 1px 0 var(--edge);
 }
 
 .field-label {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 6px;
@@ -817,6 +849,7 @@ h1 {
 .field input[type="text"] {
   flex: 1;
   min-width: 0;
+  font-variant-numeric: tabular-nums;
   background: transparent;
   border: 0;
   outline: none;
@@ -841,7 +874,8 @@ h1 {
   border: 1px solid var(--line);
   color: var(--text);
   padding: 7px 10px;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-control);
   font: inherit;
   font-family: var(--font-mono);
   font-size: 0.9rem;
@@ -856,7 +890,8 @@ h1 {
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 1.1rem;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-control);
   cursor: pointer;
 }
 
@@ -889,20 +924,21 @@ select:focus-visible {
 .metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 14px;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .metric {
-  background: var(--bg-well);
+  background: var(--bg-inset);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px 13px;
   margin: 0;
+  box-shadow: inset 0 1px 0 var(--edge);
 }
 
 .metric dt {
-  font-size: 0.66rem;
+  font-size: 0.6rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--dim);
@@ -912,16 +948,17 @@ select:focus-visible {
 .metric dd {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 1rem;
+  font-size: 1.08rem;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
 /* One answer per calculator, so the eye lands on it before the supporting numbers. */
 .metric.primary {
   grid-column: 1 / -1;
-  border-color: var(--accent);
-  background: var(--bg-elev);
-  padding: 14px 16px;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: linear-gradient(180deg, var(--accent-soft), transparent 75%), var(--surface-card);
+  padding: 16px 18px;
 }
 
 .metric.primary dt {
@@ -929,7 +966,8 @@ select:focus-visible {
 }
 
 .metric.primary dd {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
+  letter-spacing: -0.01em;
   margin-top: 2px;
 }
 
@@ -991,17 +1029,13 @@ select:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding-left: 8px;
-  border-left: 1px solid var(--line);
 }
 
 .export-theme {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.8rem;
   color: var(--dim);
 }
 
@@ -1046,15 +1080,16 @@ select:focus-visible {
   --accent: var(--amber);
   --accent-soft: var(--amber-soft);
   --scroll-fade: rgba(0, 0, 0, 0.22);
+  --edge: #ffffff;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 24px 48px -30px rgba(16, 24, 40, 0.28);
+  --shadow-control: inset 0 1px 0 #ffffff, 0 1px 1px rgba(16, 24, 40, 0.08);
+  --shadow-inset: inset 0 1px 2px rgba(16, 24, 40, 0.06);
+  --surface-card: #ffffff;
   --shadow: none;
 }
 
 /* Literal colours that the tokens do not reach, in light and dark pairs. The dark pair comes
    last so a dark export from a light page wins over the page's own light rule. */
-[data-theme="light"] .board {
-  background: linear-gradient(180deg, #ffffff, #fafbfc);
-}
-
 [data-theme="light"] .blk-shell,
 .snap-light .blk-shell {
   background: #ffffff;
@@ -1180,19 +1215,53 @@ select:focus-visible {
 }
 
 .copy,
-.ghost {
+.ghost,
+.link-button {
   appearance: none;
-  background: transparent;
-  color: var(--muted);
+  background: var(--bg-well);
+  color: var(--text);
   border: 1px solid var(--line);
   padding: 8px 12px;
   font: inherit;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  border-radius: 10px;
+  box-shadow: var(--shadow-control);
   cursor: pointer;
 }
+
+.copy:hover,
+.ghost:hover,
+.link-button:hover {
+  background: var(--bg-elev);
+}
+
+/* Icons are masks in the current colour, so they follow the theme and the hover state. */
+[data-icon] {
+  position: relative;
+  padding-left: 32px;
+}
+
+[data-icon]::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  background: currentColor;
+  opacity: 0.75;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+[data-icon="copy"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='12' height='12' rx='2'/%3E%3Cpath d='M5 15V5a2 2 0 0 1 2-2h10'/%3E%3C/svg%3E"); }
+[data-icon="link"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5'/%3E%3C/svg%3E"); }
+[data-icon="image"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Ccircle cx='9' cy='10' r='2'/%3E%3Cpath d='M21 16l-5-5-8 8'/%3E%3C/svg%3E"); }
+[data-icon="table"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M3 10h18M3 15h18M10 4v16'/%3E%3C/svg%3E"); }
+[data-icon="math"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 5H8l6 7-6 7h10'/%3E%3C/svg%3E"); }
+[data-icon="gain"] { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 18L20 6M13 6h7v7'/%3E%3C/svg%3E"); }
 
 .copy.is-copied {
   color: var(--accent);
@@ -1288,17 +1357,18 @@ select:focus-visible {
 
 .panel,
 .ref {
-  background: var(--bg-elev);
+  background: var(--surface-card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px 18px 18px;
+  box-shadow: inset 0 1px 0 var(--edge), var(--shadow-card);
+  padding: 18px 20px 20px;
 }
 
 .panel h2,
 .ref h2 {
   font-family: var(--font-display);
-  font-size: 0.78rem;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   margin: 0 0 12px;
 }
@@ -1445,6 +1515,25 @@ td.num {
   margin-top: 28px;
   color: var(--dim);
   font-size: 0.8rem;
+}
+
+body,
+.board,
+.panel,
+.ref,
+.metric,
+.field,
+.z-block,
+.top {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
 }
 
 .toast {
