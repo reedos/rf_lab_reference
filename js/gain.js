@@ -78,9 +78,9 @@
     const subs = { d1: 'V<sub>d1</sub><sup>+</sup>', s1: 'V<sub>s1</sub><sup>+</sup>', d2: 'V<sub>d2</sub>', s2: 'V<sub>s2</sub>' };
     Bench.diagram($('gain-diagram'), { id: 'gain-figure', caption: spec.label, ariaLabel: `${spec.label}: source into DUT input, DUT output into load`,
       blocks: [
-        { kicker: 'Input', title: 'Source', z: `<span class="tint-in" id="zin">${PLAIN[ports.in]} ${fmt(z1)} Ω</span>`, accent: 'in' },
+        { kicker: 'Port 1 reference', title: 'Source', sub: 'termination the parameter assumes', z: `<span class="tint-in" id="zin">${PLAIN[ports.in]} ${fmt(z1)} Ω</span>`, accent: 'in' },
         { kicker: 'Two-port', title: 'DUT', sub: spec.plain.replace(/^S(.+)$/, 'S<sub>$1</sub>') },
-        { kicker: 'Output', title: 'Load', z: `<span class="tint-out" id="zout">${PLAIN[ports.out]} ${fmt(z2)} Ω</span>`, accent: 'out' } ],
+        { kicker: 'Port 2 reference', title: 'Load', sub: 'termination the parameter assumes', z: `<span class="tint-out" id="zout">${PLAIN[ports.out]} ${fmt(z2)} Ω</span>`, accent: 'out' } ],
       buses: [
         { rails: spec.input === 'diff' ? pair('right') : single('in', subs[ports.in]), brace: spec.input === 'diff' ? { side: 'in', label: subs[ports.in] } : null },
         { rails: spec.output === 'diff' ? pair('left') : single('out', subs[ports.out]), brace: spec.output === 'diff' ? { side: 'out', label: subs[ports.out] } : null } ] });
@@ -121,9 +121,10 @@
       `<span class="key key-in">${PLAIN[ports.in]} · ${VOLTS[ports.in]}</span> input reference and the incident wave` +
       `<span class="key key-out">${PLAIN[ports.out]} · ${VOLTS[ports.out]}</span> output reference and the voltage at the load` +
       `<span class="key">wires, boxes and arrows carry no value</span>`;
-    $('diagram-caption').textContent = result.db === 0
-      ? `${spec.label} · ${PLAIN[ports.out]} = ${PLAIN[ports.in]}, so the voltage ratio equals the parameter`
-      : `${spec.label} · ${PLAIN[ports.out]} / ${PLAIN[ports.in]} = ${fmt(result.ratio)}, so the voltage ratio is ${fmt(Math.abs(result.db), 'dB')} dB ${result.db > 0 ? 'above' : 'below'} the parameter`;
+    $('diagram-caption').textContent = (result.db === 0
+      ? `${spec.label} · ${PLAIN[ports.out]} = ${PLAIN[ports.in]}, so the voltage ratio equals the parameter.`
+      : `${spec.label} · ${PLAIN[ports.out]} / ${PLAIN[ports.in]} = ${fmt(result.ratio)}, so the voltage ratio is ${fmt(Math.abs(result.db), 'dB')} dB ${result.db > 0 ? 'above' : 'below'} the parameter.`) +
+      ` ${PLAIN[ports.in]} and ${PLAIN[ports.out]} are the terminations the parameter is referenced to, not the analyzer: a raw measurement is referenced to the analyzer's own ports, and after port-impedance conversion the references are the device's impedances.`;
     const parameter = spec.parameter;
     // Headline conclusion, rendered as algebra with the entered impedances substituted.
     // One line per identity on a desktop; one line per step on a phone.

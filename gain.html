@@ -9,8 +9,8 @@
   <title>Voltage &amp; power gain &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-17">
-  <link rel="stylesheet" href="css/app.css?v=20260913-17"><link rel="stylesheet" href="css/workbench.css?v=20260913-17">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-1">
+  <link rel="stylesheet" href="css/app.css?v=20260914-1"><link rel="stylesheet" href="css/workbench.css?v=20260914-1">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -46,7 +46,7 @@
 <p class="hint" id="diagram-caption">Differential in, differential out</p>
 
 <h2>Reference impedances</h2>
-<p class="hint">These are the reference impedances of the parameter you already have. If the analyzer measured in its own reference, enter that. Renormalising a measurement to different impedances needs the whole S-matrix, not the transmission term alone.</p>
+<p class="hint">These are the reference impedances of the parameter you already have, which are the source and load terminations it assumes. A raw measurement is referenced to the analyzer's own ports (100 Ω differential, 50 Ω single-ended), so enter those and the factor is one. After port-impedance conversion on the analyzer, the references are the device's own impedances; enter those and use the converted S<sub>11</sub> below. Renormalising needs the whole S-matrix, so it is done on the analyzer, not here.</p>
 <div class="work-fields">
   <label for="z1"><span id="text-z1">Input reference Z<sub>d1</sub>, differential (Ω)</span><input id="z1" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Input differential reference impedance in ohms"></label>
   <label for="z2"><span id="text-z2">Output reference Z<sub>d2</sub>, differential (Ω)</span><input id="z2" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Output differential reference impedance in ohms"></label>
@@ -101,6 +101,6 @@
 <p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
 <p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/theme.js?v=20260913-17"></script><script src="js/bench.js?v=20260913-17"></script><script src="js/diagram.js?v=20260913-17"></script><script src="js/rf.js?v=20260913-17"></script><script src="js/dut.js?v=20260913-17"></script><script src="js/snapshot.js?v=20260913-17"></script><script src="js/gain.js?v=20260913-17"></script>
+<script src="js/theme.js?v=20260914-1"></script><script src="js/bench.js?v=20260914-1"></script><script src="js/diagram.js?v=20260914-1"></script><script src="js/rf.js?v=20260914-1"></script><script src="js/dut.js?v=20260914-1"></script><script src="js/snapshot.js?v=20260914-1"></script><script src="js/gain.js?v=20260914-1"></script>
 </body>
 </html>
