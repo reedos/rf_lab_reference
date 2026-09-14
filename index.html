@@ -9,8 +9,8 @@
   <title>VOPP · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-16">
-  <link rel="stylesheet" href="css/app.css?v=20260913-16"><link rel="stylesheet" href="css/workbench.css?v=20260913-16">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-17">
+  <link rel="stylesheet" href="css/app.css?v=20260913-17"><link rel="stylesheet" href="css/workbench.css?v=20260913-17">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -72,126 +72,7 @@
         </div>
       </div>
 
-      <div class="schematic-stage">
-        <figure class="schematic" id="schematic-se" aria-label="Single-ended drive block diagram">
-          <figcaption class="schematic-cap" id="se-cap">VNA drives DUT</figcaption>
-          <div class="blk blk-se">
-            <div class="blk-shell src" aria-hidden="true"></div>
-            <div class="blk-shell dut" aria-hidden="true"></div>
-
-            <div class="blk-head src-head">
-              <span class="node-kicker" id="se-src-kicker">Source</span>
-              <strong class="node-title" id="se-src-title">VNA</strong>
-              <span class="node-sub" id="se-src-sub">stimulus</span>
-              <span class="node-z" id="se-src-z">Z<sub>VNA</sub> 50 Ω</span>
-            </div>
-            <div class="blk-head dut-head">
-              <span class="node-kicker" id="se-load-kicker">Load</span>
-              <strong class="node-title" id="se-load-title">DUT</strong>
-              <span class="node-sub" id="se-load-sub">SE input</span>
-              <span class="node-z" id="se-load-z">Z<sub>DUT</sub> 50 Ω</span>
-            </div>
-
-            <div class="blk-port src-port">
-              <span id="se-src-port">Port 1</span>
-              <i class="nub" aria-hidden="true"></i>
-            </div>
-            <div class="blk-bus">
-              <span class="bus-tag top" id="se-line-dbm">0.00 dBm</span>
-              <div class="bus-track">
-                <span class="wire"></span>
-                <span class="arrow"></span>
-              </div>
-              <span class="bus-tag" id="se-line-z">Z₀ 50 Ω · matched</span>
-            </div>
-            <div class="blk-port dut-port">
-              <i class="nub" aria-hidden="true"></i>
-              <span id="se-load-port">RF in</span>
-            </div>
-
-            <div class="blk-foot src-foot">
-              <div class="node-readout">
-                <span id="se-power-kicker">Available</span>
-                <strong id="se-node-power">1 mW</strong>
-              </div>
-            </div>
-            <div class="blk-foot dut-foot">
-              <div class="node-readout">
-                <span>VOPP</span>
-                <strong id="se-node-vopp">0.632 V</strong>
-              </div>
-              <svg class="gnd" viewBox="0 0 24 12" aria-hidden="true">
-                <path d="M4 2 H20 M7 6 H17 M10 10 H14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
-              </svg>
-            </div>
-          </div>
-        </figure>
-
-        <figure class="schematic is-off" id="schematic-diff" hidden aria-label="Differential drive block diagram">
-          <figcaption class="schematic-cap" id="diff-cap">VNA drives DUT · complementary 180°</figcaption>
-          <div class="blk blk-diff">
-            <div class="blk-shell src" aria-hidden="true"></div>
-            <div class="blk-shell dut" aria-hidden="true"></div>
-
-            <div class="blk-head src-head">
-              <span class="node-kicker" id="diff-src-kicker">Source</span>
-              <strong class="node-title" id="diff-src-title">VNA</strong>
-              <span class="node-sub" id="diff-src-sub">balanced stimulus</span>
-              <span class="node-z" id="diff-src-z">Z<sub>VNA</sub> 50 Ω</span>
-            </div>
-            <div class="blk-midcap">180°</div>
-            <div class="blk-head dut-head">
-              <span class="node-kicker" id="diff-load-kicker">Load</span>
-              <strong class="node-title" id="diff-load-title">DUT</strong>
-              <span class="node-sub" id="diff-load-sub">diff input</span>
-              <span class="node-z" id="diff-load-z">Z<sub>DUT</sub> 50 Ω</span>
-            </div>
-
-            <div class="blk-port src-port plus">
-              <span id="diff-src-p1">Port 1 <em>+</em></span>
-              <i class="nub" aria-hidden="true"></i>
-            </div>
-            <div class="blk-bus plus">
-              <span class="rail-tag" id="diff-p1-dbm">0.00 dBm</span>
-              <div class="bus-track">
-                <span class="wire"></span>
-                <span class="arrow"></span>
-              </div>
-              <span class="rail-sub" id="diff-p1-z">Z<sub>S</sub> 50 Ω → Z<sub>L</sub> 50 Ω</span>
-            </div>
-            <div class="blk-port dut-port plus">
-              <i class="nub" aria-hidden="true"></i>
-              <span id="diff-load-p1">RF+</span>
-            </div>
-
-            <div class="blk-port src-port minus">
-              <span id="diff-src-p2">Port 2 <em>−</em></span>
-              <i class="nub" aria-hidden="true"></i>
-            </div>
-            <div class="blk-bus minus">
-              <span class="rail-tag" id="diff-p2-dbm">0.00 dBm</span>
-              <div class="bus-track">
-                <span class="wire"></span>
-                <span class="arrow"></span>
-              </div>
-              <span class="rail-sub" id="diff-p2-z">Z<sub>S</sub> 50 Ω → Z<sub>L</sub> 50 Ω</span>
-            </div>
-            <div class="blk-port dut-port minus">
-              <i class="nub" aria-hidden="true"></i>
-              <span id="diff-load-p2">RF−</span>
-            </div>
-            <div class="vopp-brace" aria-hidden="true">
-              <span class="vopp-callout">
-                VOPP
-                <strong id="diff-node-vopp">1.265 V</strong>
-              </span>
-            </div>
-
-            <div class="blk-foot src-foot"></div>
-            <div class="blk-foot dut-foot" id="diff-node-z">Z<sub>diff</sub> 100 Ω</div>
-          </div>
-        </figure>
-      </div>
+      <div class="schematic-stage" id="schematic"></div>
 
       <p class="hint colour-key" id="colour-key"></p>
 
@@ -279,7 +160,7 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/theme.js?v=20260913-16"></script><script src="js/bench.js?v=20260913-16"></script><script src="js/rf.js?v=20260913-16"></script><script src="js/dut.js?v=20260913-16"></script><script src="js/snapshot.js?v=20260913-16"></script>
-  <script src="js/app.js?v=20260913-16"></script>
+  <script src="js/theme.js?v=20260913-17"></script><script src="js/bench.js?v=20260913-17"></script><script src="js/diagram.js?v=20260913-17"></script><script src="js/rf.js?v=20260913-17"></script><script src="js/dut.js?v=20260913-17"></script><script src="js/snapshot.js?v=20260913-17"></script>
+  <script src="js/app.js?v=20260913-17"></script>
 </body>
 </html>

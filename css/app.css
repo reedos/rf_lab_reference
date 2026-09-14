@@ -446,20 +446,36 @@ h1 {
   margin: 0 0 14px;
 }
 
+/* ----- Block diagrams. js/diagram.js draws every page's diagram as HTML: blocks joined by
+   buses, each bus carrying one or two rails. Placement is inline from the builder; the widths
+   here reflow for a phone. Wires, arrows and boxes are structure; colour belongs to quantities,
+   so a rail is neutral unless it carries a polarity or the page's drive colour. */
 .blk {
+  --block-w: 176px;
+  --mid-w: 150px;
+  --bus-min: 180px;
   display: grid;
   column-gap: 0;
   position: relative;
 }
 
-.blk-se {
-  grid-template-columns: 168px minmax(180px, 1fr) 176px;
+.blk[data-rails="1"] {
   grid-template-rows: auto 88px auto;
 }
 
-.blk-diff {
-  grid-template-columns: 176px minmax(200px, 1fr) 210px;
+.blk[data-rails="2"] {
   grid-template-rows: auto 78px 78px auto;
+}
+
+/* Three blocks share the width, so their minimums are tighter; the buses still stretch. */
+.blk[data-blocks="3"] {
+  --block-w: 136px;
+  --mid-w: 130px;
+  --bus-min: 90px;
+}
+
+.blk[data-mid="wide"] {
+  --mid-w: 190px;
 }
 
 .blk-shell {
@@ -470,41 +486,27 @@ h1 {
   pointer-events: none;
 }
 
-.blk-shell.src {
-  grid-column: 1;
-  grid-row: 1 / -1;
-  box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--edge), 0 10px 24px -14px rgba(0, 0, 0, 0.6);
+.blk-shell.edge-in {
+  box-shadow: inset 3px 0 0 var(--port-in), inset 0 1px 0 var(--edge), 0 10px 24px -14px rgba(0, 0, 0, 0.6);
 }
 
-.blk-shell.dut {
-  grid-column: 3;
-  grid-row: 1 / -1;
-  box-shadow: inset -3px 0 0 var(--accent), inset 0 1px 0 var(--edge), 0 10px 24px -14px rgba(0, 0, 0, 0.6);
+.blk-shell.edge-out {
+  box-shadow: inset -3px 0 0 var(--port-out), inset 0 1px 0 var(--edge), 0 10px 24px -14px rgba(0, 0, 0, 0.6);
 }
 
 .blk-head,
 .blk-port,
 .blk-foot,
 .blk-bus,
-.blk-midcap {
+.blk-midcap,
+.bus-brace {
   position: relative;
   z-index: 1;
 }
 
 .blk-head {
   padding: 14px 14px 4px;
-}
-
-.src-head,
-.src-port,
-.src-foot {
-  grid-column: 1;
-}
-
-.dut-head,
-.dut-port,
-.dut-foot {
-  grid-column: 3;
+  min-width: 0;
 }
 
 .node-kicker {
@@ -539,14 +541,17 @@ h1 {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   color: var(--muted);
+  min-width: 0;
 }
 
 .src-port {
   justify-content: flex-end;
+  justify-self: end;
 }
 
 .dut-port {
   justify-content: flex-start;
+  justify-self: start;
 }
 
 .blk-port em {
@@ -590,6 +595,10 @@ h1 {
   border-color: var(--minus);
 }
 
+.neutral .nub {
+  border-color: var(--line-strong);
+}
+
 .blk-bus {
   display: grid;
   /* minmax(0, 1fr) keeps the outer rows equal so the wire stays on the nub centre line. */
@@ -599,99 +608,42 @@ h1 {
   min-width: 0;
   /* 8px is the nub radius plus its ring, so the wire meets each nub exactly. */
   padding: 0 8px;
-  grid-column: 2;
 }
 
-.blk-bus .bus-tag.top,
-.blk-bus .rail-tag {
-  align-self: end;
-  padding-bottom: 6px;
-}
-
-.blk-bus .bus-tag:last-child,
-.blk-bus .rail-sub {
-  align-self: start;
-  padding-top: 6px;
-}
-
-.blk-se .src-head,
-.blk-se .dut-head {
-  grid-row: 1;
-}
-
-.blk-se .blk-bus {
-  grid-row: 2;
-}
-
-.blk-se .src-port,
-.blk-se .dut-port {
-  grid-row: 2;
-}
-
-.blk-se .src-foot,
-.blk-se .dut-foot {
-  grid-row: 3;
-}
-
-.blk-diff .src-head,
-.blk-diff .dut-head {
-  grid-row: 1;
-}
-
-.blk-diff .src-port.plus,
-.blk-diff .blk-bus.plus,
-.blk-diff .dut-port.plus {
-  grid-row: 2;
-}
-
-.blk-diff .src-port.minus,
-.blk-diff .blk-bus.minus,
-.blk-diff .dut-port.minus {
-  grid-row: 3;
-}
-
-.blk-diff .src-foot,
-.blk-diff .dut-foot {
-  grid-row: 4;
-}
-
-.blk-midcap {
-  grid-column: 1;
-  grid-row: 2 / 4;
-  align-self: center;
-  justify-self: start;
-  margin-left: 12px;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  color: var(--dim);
-  background: var(--bg-well);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 3px 8px;
-  z-index: 2;
-}
-
-.bus-tag,
 .rail-tag,
 .rail-sub {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--muted);
   text-align: center;
+  min-width: 0;
 }
 
-.bus-tag.top,
 .rail-tag {
+  align-self: end;
+  padding-bottom: 6px;
   color: var(--accent);
 }
 
-.blk-bus.plus .rail-tag {
+.rail-sub {
+  align-self: start;
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.plus .rail-tag {
   color: var(--plus);
 }
 
-.blk-bus.minus .rail-tag {
+.minus .rail-tag {
   color: var(--minus);
+}
+
+.neutral .rail-tag {
+  color: var(--muted);
 }
 
 .bus-track {
@@ -716,32 +668,81 @@ h1 {
   border-left: 8px solid var(--accent);
 }
 
-.blk-bus.plus .wire {
+.plus .wire {
   background: var(--plus);
   box-shadow: 0 0 10px color-mix(in srgb, var(--plus) 40%, transparent);
 }
 
-.blk-bus.plus .arrow {
+.plus .arrow {
   border-left-color: var(--plus);
 }
 
-.blk-bus.minus .wire {
+.minus .wire {
   background: var(--minus);
   box-shadow: 0 0 10px color-mix(in srgb, var(--minus) 40%, transparent);
 }
 
-.blk-bus.minus .arrow {
+.minus .arrow {
   border-left-color: var(--minus);
+}
+
+.neutral .wire {
+  background: var(--line-strong);
+  box-shadow: none;
+}
+
+.neutral .arrow {
+  border-left-color: var(--line-strong);
+}
+
+/* A single-ended rail can show its reference: a tap down to ground, labelled with the voltage. */
+.rail-tap,
+.rail-ground {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--dim);
+}
+
+.rail-tap::before,
+.rail-ground::before {
+  content: '';
+  width: 1.5px;
+  height: 12px;
+  background: currentColor;
+}
+
+.rail-tap.side-in {
+  color: var(--port-in);
+}
+
+.rail-tap.side-out {
+  color: var(--port-out);
+}
+
+.rail-tap .gnd,
+.rail-ground .gnd {
+  color: var(--dim);
+}
+
+.gnd {
+  width: 24px;
+  height: 12px;
+  color: var(--dim);
+  display: block;
 }
 
 .blk-foot {
   padding: 8px 14px 14px;
-}
-
-.dut-foot {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   color: var(--muted);
+  min-width: 0;
+}
+
+.blk-foot .gnd {
+  margin-top: 8px;
 }
 
 .node-readout {
@@ -761,53 +762,88 @@ h1 {
   font-family: var(--font-mono);
   font-size: 1.05rem;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--accent);
 }
 
-.gnd {
-  width: 24px;
-  height: 12px;
+.blk-midcap {
+  align-self: center;
+  justify-self: start;
+  margin-left: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
   color: var(--dim);
-  margin-top: 8px;
+  background: var(--bg-well);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  z-index: 2;
 }
 
-.vopp-brace {
-  position: relative;
-  grid-column: 3;
-  grid-row: 2 / 4;
+/* A brace across a pair of rails, at the end of the bus, with its quantity beside it. */
+.bus-brace {
   justify-self: end;
   align-self: stretch;
   width: 12px;
-  margin: 12px 10px 12px 0;
-  border: 1px solid var(--accent);
+  margin: 12px 14px 12px 0;
+  border: 1px solid var(--port-out);
   border-left: 0;
-  z-index: 2;
   pointer-events: none;
+  z-index: 2;
 }
 
-.vopp-callout {
+.bus-brace.side-in {
+  border-color: var(--port-in);
+}
+
+.bus-callout {
   position: absolute;
   top: 50%;
   right: calc(100% + 8px);
   transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--dim);
+  display: block;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--port-out);
   line-height: 1.15;
   white-space: nowrap;
 }
 
-.vopp-callout strong {
+.side-in .bus-callout {
+  color: var(--port-in);
+}
+
+.bus-callout .callout-kicker,
+.bus-callout strong {
+  display: block;
+}
+
+.bus-callout sub,
+.bus-callout sup,
+.rail-tap sub,
+.rail-tap sup,
+.blk-port sub,
+.blk-port sup,
+.node-sub sub {
+  font-size: 0.72em;
+  line-height: 0;
+}
+
+.bus-callout .callout-kicker {
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.bus-callout strong {
   font-family: var(--font-mono);
   font-size: 0.92rem;
   font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .fields {
@@ -1279,14 +1315,36 @@ select:focus-visible {
     padding: 12px 10px 14px;
   }
 
-  .blk-se {
-    grid-template-columns: 88px minmax(0, 1fr) 92px;
+  .blk {
+    --block-w: 88px;
+    --mid-w: 84px;
+    --bus-min: 0px;
+  }
+
+  .blk[data-blocks="3"] {
+    --block-w: 78px;
+    --mid-w: 74px;
+    --bus-min: 0px;
+  }
+
+  .blk[data-mid="wide"] {
+    --mid-w: 92px;
+  }
+
+  .blk[data-rails="1"] {
     grid-template-rows: auto 92px auto;
   }
 
-  .blk-diff {
-    grid-template-columns: 88px minmax(0, 1fr) 96px;
+  .blk[data-rails="2"] {
     grid-template-rows: auto 70px 70px auto;
+  }
+
+  .blk-head {
+    padding: 10px 8px 4px;
+  }
+
+  .blk-foot {
+    padding: 6px 8px 10px;
   }
 
   .blk-port {
@@ -1303,7 +1361,6 @@ select:focus-visible {
     margin-left: -11px;
   }
 
-  .bus-tag,
   .rail-tag,
   .rail-sub {
     font-size: 0.6rem;
@@ -1339,12 +1396,16 @@ select:focus-visible {
     letter-spacing: 0.08em;
   }
 
-  .vopp-brace {
+  .bus-brace {
     margin-right: 4px;
   }
 
-  .vopp-callout {
+  .bus-callout {
     font-size: 0.6rem;
+  }
+
+  .bus-callout strong {
+    font-size: 0.72rem;
   }
 }
 

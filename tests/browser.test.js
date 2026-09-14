@@ -575,8 +575,8 @@ let checks=0;
           await expect(page.locator('#metrics')).toContainText('0.7071');
           await expect(page.locator('#metrics')).toContainText('−3.01 dB');
           await expect(page.locator('#metrics')).toContainText('unchanged by the impedances');
-          assert.equal(await page.locator('#diagram-sd').isVisible(),true);
-          assert.equal(await page.locator('#diagram-dd').isVisible(),false);
+          await expect(page.locator('#gain-diagram')).toContainText('Ssd21');
+          await expect(page.locator('#gain-diagram .schematic-cap')).toHaveText('Differential in, single-ended out');
           // Single-ended in, differential out gains it back.
           await page.locator('[data-topology="ds"]').click();
           await expect(page.locator('#z1')).toHaveValue('50');
@@ -869,7 +869,7 @@ let checks=0;
         await check('Diagrams fit the screen instead of scrolling sideways',async()=>{
           for (const width of [320,390,430,768]) {
             await page.setViewportSize({width,height:900});
-            for (const [file,sel] of [['index.html','#schematic-se'],['index.html?m=diff','#schematic-diff'],['gain.html','#diagram-dd']]) {
+            for (const [file,sel] of [['index.html?m=se','#schematic-se'],['index.html?m=diff','#schematic-diff'],['gain.html','#gain-diagram'],['mixed.html','#mixed-diagram']]) {
               await go(file);
               const over=await page.evaluate(s=>{
                 const stage=document.querySelector(s).closest('.schematic-stage') || document.querySelector(s).parentElement;
@@ -904,18 +904,18 @@ let checks=0;
           await go('gain.html?t=sd&d1=100&s2=200');
           await expect(page.locator('#gain-equation .katex').first()).toBeVisible();
           assert.equal(await page.locator('.equation-error').count(),0);
-          const token=async sel=>(await page.evaluate(s=>getComputedStyle(document.querySelector(s)).fill||getComputedStyle(document.querySelector(s)).color,sel));
+          const token=async sel=>(await page.evaluate(s=>getComputedStyle(document.querySelector(s)).color,sel));
           const root=await page.evaluate(()=>{const s=getComputedStyle(document.documentElement);
             const hex=v=>{const d=document.createElement('span');d.style.color=v;document.body.append(d);const c=getComputedStyle(d).color;d.remove();return c;};
             return {in:hex(s.getPropertyValue('--port-in').trim()),out:hex(s.getPropertyValue('--port-out').trim())};});
           // The input reference wears the same colour in the diagram and inside the equation.
-          assert.equal(await token('#zin-sd'),root.in,'diagram input value');
-          assert.equal(await token('#zout-sd'),root.out,'diagram output value');
+          assert.equal(await token('#zin'),root.in,'diagram input value');
+          assert.equal(await token('#zout'),root.out,'diagram output value');
           const eqColours=await page.evaluate(()=>Array.from(document.querySelectorAll('#gain-equation .katex-html [style*="color"]')).map(n=>getComputedStyle(n).color));
           assert.ok(eqColours.includes(root.in),'equation carries the input colour');
           assert.ok(eqColours.includes(root.out),'equation carries the output colour');
           // Structure stays neutral so the quantities read.
-          assert.notEqual(await page.evaluate(()=>getComputedStyle(document.querySelector('#diagram-sd .wire')).stroke),root.in);
+          assert.notEqual(await page.evaluate(()=>getComputedStyle(document.querySelector('#gain-diagram .wire')).backgroundColor),root.in);
           // One answer per calculator, and it leads the list.
           await expect(page.locator('.metric.primary')).toHaveCount(1);
           await expect(page.locator('#metrics .metric').first()).toHaveClass(/primary/);
@@ -992,12 +992,12 @@ let checks=0;
           assert.equal(await page.locator('#diff-p1-z').textContent(),await page.locator('#diff-p2-z').textContent());
           // The gain diagram shows the entered impedances, and its caption follows them.
           await go('gain.html?t=sd&d1=100&s2=200');
-          assert.equal(await svgText('#zin-sd'),'Zd1 100 Ω');
-          assert.equal(await svgText('#zout-sd'),'Zs2 200 Ω');
+          assert.equal(await svgText('#zin'),'Zd1 100 Ω');
+          assert.equal(await svgText('#zout'),'Zs2 200 Ω');
           await expect(page.locator('#diagram-caption')).toContainText('Zs2 / Zd1 = 2');
           await expect(page.locator('#diagram-caption')).toContainText('3.01 dB above');
           await fill('z2',50);
-          await expect.poll(()=>svgText('#zout-sd')).toBe('Zs2 50 Ω');
+          await expect.poll(()=>svgText('#zout')).toBe('Zs2 50 Ω');
           await expect(page.locator('#diagram-caption')).toContainText('3.01 dB below');
           // The spectrum is drawn from the entered frequencies and the measured IM3.
           await go('large-signal.html?imd-im3=-25');
@@ -1022,7 +1022,7 @@ let checks=0;
           const RING=3, edges=async s=>{const b=await page.locator(s).boundingBox(); return {y:b.y+b.height/2,x1:b.x,x2:b.x+b.width};};
           for (const width of [390,768,1440]) {
             await page.setViewportSize({width,height:900});
-            for (const [url,block,rails] of [['index.html?m=se','.blk-se',['']],['index.html?m=se&dir=rx','.blk-se',['']],['index.html?m=diff','.blk-diff',['.plus','.minus']]]) {
+            for (const [url,block,rails] of [['index.html?m=se','.blk',['']],['index.html?m=se&dir=rx','.blk',['']],['index.html?m=diff','.blk',['.plus','.minus']]]) {
               await go(url);
               for (const rail of rails) {
                 const where=`${url}${rail} at ${width}px`;

@@ -9,8 +9,8 @@
   <title>Voltage &amp; power gain &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-16">
-  <link rel="stylesheet" href="css/app.css?v=20260913-16"><link rel="stylesheet" href="css/workbench.css?v=20260913-16">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260913-17">
+  <link rel="stylesheet" href="css/app.css?v=20260913-17"><link rel="stylesheet" href="css/workbench.css?v=20260913-17">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -40,77 +40,7 @@
   <button type="button" class="seg-btn" id="btn-ss" data-topology="ss" aria-pressed="false">SE → SE</button>
 </div>
 
-<svg class="gain-svg" id="diagram-dd" viewBox="0 0 680 200" role="img" aria-label="Differential source into a differential DUT input, differential DUT output into a differential load">
-  <rect class="box" x="16" y="52" width="104" height="116" rx="10"/>
-  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
-  <rect class="box" x="560" y="52" width="104" height="116" rx="10"/>
-  <text class="strong" x="36" y="100">Source</text><text class="in" id="zin-dd" x="36" y="122">Zd1</text>
-  <text class="strong" x="312" y="104">DUT</text><text x="300" y="126">Sdd21</text>
-  <text class="strong" x="580" y="100">Load</text><text class="out" id="zout-dd" x="580" y="122">Zd2</text>
-  <path class="wire" d="M120 78 H256"/><path class="wire" d="M120 142 H256"/>
-  <path class="head" d="M256 72 L268 78 L256 84 Z"/><path class="head" d="M256 136 L268 142 L256 148 Z"/>
-  <path class="wire" d="M412 78 H548"/><path class="wire" d="M412 142 H548"/>
-  <path class="head" d="M548 72 L560 78 L548 84 Z"/><path class="head" d="M548 136 L560 142 L548 148 Z"/>
-  <text x="126" y="70">+</text><text x="126" y="162">−</text>
-  <text x="418" y="70">+</text><text x="418" y="162">−</text>
-  <path class="brace brace-in" d="M196 78 V142 M190 78 H202 M190 142 H202"/>
-  <text class="in" x="206" y="114">Vd1⁺</text>
-  <path class="brace brace-out" d="M470 78 V142 M464 78 H476 M464 142 H476"/>
-  <text class="out" x="480" y="114">Vd2</text>
-</svg>
-
-<svg class="gain-svg" id="diagram-sd" viewBox="0 0 680 200" role="img" aria-label="Differential source into a differential DUT input, single-ended DUT output into a single-ended load" hidden>
-  <rect class="box" x="16" y="52" width="104" height="116" rx="10"/>
-  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
-  <rect class="box" x="560" y="78" width="104" height="64" rx="10"/>
-  <text class="strong" x="36" y="100">Source</text><text class="in" id="zin-sd" x="36" y="122">Zd1</text>
-  <text class="strong" x="312" y="104">DUT</text><text x="300" y="126">Ssd21</text>
-  <text class="strong" x="580" y="106">Load</text><text class="out" id="zout-sd" x="580" y="128">Zs2</text>
-  <path class="wire" d="M120 78 H256"/><path class="wire" d="M120 142 H256"/>
-  <path class="head" d="M256 72 L268 78 L256 84 Z"/><path class="head" d="M256 136 L268 142 L256 148 Z"/>
-  <path class="wire" d="M412 110 H548"/><path class="head" d="M548 104 L560 110 L548 116 Z"/>
-  <text x="126" y="70">+</text><text x="126" y="162">−</text>
-  <path class="brace brace-in" d="M196 78 V142 M190 78 H202 M190 142 H202"/>
-  <text class="in" x="206" y="114">Vd1⁺</text>
-  <path class="brace brace-out" d="M470 110 V162 M464 110 H476"/>
-  <text class="out" x="480" y="140">Vs2</text>
-  <path class="wire" d="M452 170 H488 M460 178 H480 M466 186 H474"/>
-</svg>
-
-<svg class="gain-svg" id="diagram-ds" viewBox="0 0 680 200" role="img" aria-label="Single-ended source into a single-ended DUT input, differential DUT output into a differential load" hidden>
-  <rect class="box" x="16" y="78" width="104" height="64" rx="10"/>
-  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
-  <rect class="box" x="560" y="52" width="104" height="116" rx="10"/>
-  <text class="strong" x="36" y="106">Source</text><text class="in" id="zin-ds" x="36" y="128">Zs1</text>
-  <text class="strong" x="312" y="104">DUT</text><text x="300" y="126">Sds21</text>
-  <text class="strong" x="580" y="100">Load</text><text class="out" id="zout-ds" x="580" y="122">Zd2</text>
-  <path class="wire" d="M120 110 H256"/><path class="head" d="M256 104 L268 110 L256 116 Z"/>
-  <path class="wire" d="M412 78 H548"/><path class="wire" d="M412 142 H548"/>
-  <path class="head" d="M548 72 L560 78 L548 84 Z"/><path class="head" d="M548 136 L560 142 L548 148 Z"/>
-  <text x="418" y="70">+</text><text x="418" y="162">−</text>
-  <path class="brace brace-in" d="M196 110 V162 M190 110 H202"/>
-  <text class="in" x="206" y="140">Vs1⁺</text>
-  <path class="wire" d="M178 170 H214 M186 178 H206 M192 186 H200"/>
-  <path class="brace brace-out" d="M470 78 V142 M464 78 H476 M464 142 H476"/>
-  <text class="out" x="480" y="114">Vd2</text>
-</svg>
-
-<svg class="gain-svg" id="diagram-ss" viewBox="0 0 680 200" role="img" aria-label="Single-ended source into a single-ended DUT input, single-ended DUT output into a single-ended load" hidden>
-  <rect class="box" x="16" y="78" width="104" height="64" rx="10"/>
-  <rect class="box" x="268" y="40" width="144" height="140" rx="10"/>
-  <rect class="box" x="560" y="78" width="104" height="64" rx="10"/>
-  <text class="strong" x="36" y="106">Source</text><text class="in" id="zin-ss" x="36" y="128">Zs1</text>
-  <text class="strong" x="312" y="104">DUT</text><text x="300" y="126">S21</text>
-  <text class="strong" x="580" y="106">Load</text><text class="out" id="zout-ss" x="580" y="128">Zs2</text>
-  <path class="wire" d="M120 110 H256"/><path class="head" d="M256 104 L268 110 L256 116 Z"/>
-  <path class="wire" d="M412 110 H548"/><path class="head" d="M548 104 L560 110 L548 116 Z"/>
-  <path class="brace brace-in" d="M196 110 V162 M190 110 H202"/>
-  <text class="in" x="206" y="140">Vs1⁺</text>
-  <path class="wire" d="M178 170 H214 M186 178 H206 M192 186 H200"/>
-  <path class="brace brace-out" d="M470 110 V162 M464 110 H476"/>
-  <text class="out" x="480" y="140">Vs2</text>
-  <path class="wire" d="M452 170 H488 M460 178 H480 M466 186 H474"/>
-</svg>
+<div class="schematic-stage" id="gain-diagram"></div>
 
 <p class="hint colour-key" id="diagram-key"></p>
 <p class="hint" id="diagram-caption">Differential in, differential out</p>
@@ -171,6 +101,6 @@
 <p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
 <p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/theme.js?v=20260913-16"></script><script src="js/bench.js?v=20260913-16"></script><script src="js/rf.js?v=20260913-16"></script><script src="js/dut.js?v=20260913-16"></script><script src="js/snapshot.js?v=20260913-16"></script><script src="js/gain.js?v=20260913-16"></script>
+<script src="js/theme.js?v=20260913-17"></script><script src="js/bench.js?v=20260913-17"></script><script src="js/diagram.js?v=20260913-17"></script><script src="js/rf.js?v=20260913-17"></script><script src="js/dut.js?v=20260913-17"></script><script src="js/snapshot.js?v=20260913-17"></script><script src="js/gain.js?v=20260913-17"></script>
 </body>
 </html>

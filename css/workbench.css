@@ -33,21 +33,6 @@ summary { cursor: pointer; font-weight: 500; }
 .segment.is-off .segment-index { color: var(--muted); text-decoration: line-through; }
 .segment button { min-height: 42px; }
 .sweep-hint { margin: 6px 0 0; }
-.gain-svg { width: 100%; height: auto; display: block; margin: 4px 0 18px; }
-.gain-svg[hidden] { display: none; }
-/* Boxes match the VOPP schematic's block shells: elevated fill, hairline, same corner. */
-.gain-svg .box { fill: var(--bg-elev); stroke: var(--line-strong); stroke-width: 1; }
-/* Wires, arrows and grounds are structure, so they stay neutral and let the quantities read. */
-.gain-svg .wire { stroke: var(--line-strong); stroke-width: 2; fill: none; }
-.gain-svg .brace { stroke-width: 1.5; fill: none; }
-.gain-svg .brace-in { stroke: var(--port-in); }
-.gain-svg .brace-out { stroke: var(--port-out); }
-.gain-svg text { fill: var(--muted); font: 11px var(--font-mono); }
-.gain-svg text.strong { fill: var(--text); font-size: 13px; }
-.gain-svg text.in { fill: var(--port-in); }
-.gain-svg text.out { fill: var(--port-out); }
-.gain-svg text.caption { fill: var(--muted); font-size: 12px; }
-.gain-svg .head { fill: var(--line-strong); stroke: none; }
 /* Mixed-mode page: the single-ended entry grid and the mixed-mode result table. */
 .chain-results .s-grid { width: auto; font-size: 12px; }
 .chain-results .s-grid th, .chain-results .s-grid td { text-align: center; padding: 6px 8px; white-space: nowrap; }
@@ -175,10 +160,6 @@ button:disabled { opacity: .45; cursor: default; }
   .chain-results table:not(.matrix) td[colspan]::before { display: none; }
 }
 @media (max-width: 700px) {
-  /* The diagrams scale with the page, so their labels grow to stay legible on a phone. */
-  .gain-svg text { font-size: 14px; }
-  .gain-svg text.strong { font-size: 16px; }
-  .gain-svg text.port-label { font-size: 15px; }
   .segment { grid-template-columns: auto minmax(0, 1fr); }
   .segment-index { grid-row: 1 / span 4; align-self: center; padding-bottom: 0; }
   .segment > .quantity-field, .segment button { grid-column: 2; }

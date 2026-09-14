@@ -61,17 +61,29 @@
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', String(active));
     });
-    // SVG elements do not implement the hidden property, so toggle the attribute itself.
-    for (const key of Object.keys(PORTS)) {
-      const svg = $('diagram-' + key);
-      if (key === topology) svg.removeAttribute('hidden'); else svg.setAttribute('hidden', '');
-    }
     $('text-z1').innerHTML = LABELS[ports.in];
     $('text-z2').innerHTML = LABELS[ports.out];
     $('z1').setAttribute('aria-label', ARIA[ports.in]);
     $('z2').setAttribute('aria-label', ARIA[ports.out]);
     $('z1').value = String(store[ports.in]);
     $('z2').value = String(store[ports.out]);
+  }
+  // Source, DUT and load, with a brace across a differential pair or a tap to ground for a
+  // single-ended port, labelled with the voltage the conversion refers to.
+  function renderDiagram(z1, z2) {
+    const ports = PORTS[topology], spec = RF.GAIN_TOPOLOGIES[topology];
+    const mark = Bench.mark;
+    const pair = dutSide => [{ tone: 'neutral', [dutSide]: { label: '+' } }, { tone: 'neutral', [dutSide]: { label: '−' } }];
+    const single = (side, label) => [{ tone: 'neutral', tap: { side, label } }];
+    const subs = { d1: 'V<sub>d1</sub><sup>+</sup>', s1: 'V<sub>s1</sub><sup>+</sup>', d2: 'V<sub>d2</sub>', s2: 'V<sub>s2</sub>' };
+    Bench.diagram($('gain-diagram'), { id: 'gain-figure', caption: spec.label, ariaLabel: `${spec.label}: source into DUT input, DUT output into load`,
+      blocks: [
+        { kicker: 'Input', title: 'Source', z: `<span class="tint-in" id="zin">${PLAIN[ports.in]} ${fmt(z1)} Ω</span>`, accent: 'in' },
+        { kicker: 'Two-port', title: 'DUT', sub: spec.plain.replace(/^S(.+)$/, 'S<sub>$1</sub>') },
+        { kicker: 'Output', title: 'Load', z: `<span class="tint-out" id="zout">${PLAIN[ports.out]} ${fmt(z2)} Ω</span>`, accent: 'out' } ],
+      buses: [
+        { rails: spec.input === 'diff' ? pair('right') : single('in', subs[ports.in]), brace: spec.input === 'diff' ? { side: 'in', label: subs[ports.in] } : null },
+        { rails: spec.output === 'diff' ? pair('left') : single('out', subs[ports.out]), brace: spec.output === 'diff' ? { side: 'out', label: subs[ports.out] } : null } ] });
   }
   function readTerminal() {
     const dbText = $('s11-db').value.trim(), degText = $('s11-deg').value.trim();
@@ -95,6 +107,7 @@
       $('gain-status').className = 'status-error';
       $('metrics').replaceChildren(); $('gain-equation').replaceChildren(); $('gain-note').textContent = '';
       $('diagram-key').replaceChildren();
+      renderDiagram(store[ports.in], store[ports.out]);
       Bench.update({ valid: false, lines: ['Correct the reference impedances before calculating or saving.'] });
       return;
     }
@@ -103,8 +116,7 @@
     const inSym = tint('in', SYMBOLS[ports.in]), outSym = tint('out', SYMBOLS[ports.out]);
     const inVal = tint('in', tex(result.z1, 'Ω')), outVal = tint('out', tex(result.z2, 'Ω'));
     // The diagram carries the entered values and a caption that cannot contradict them.
-    $('zin-' + topology).textContent = `${PLAIN[ports.in]} ${fmt(result.z1)} Ω`;
-    $('zout-' + topology).textContent = `${PLAIN[ports.out]} ${fmt(result.z2)} Ω`;
+    renderDiagram(result.z1, result.z2);
     $('diagram-key').innerHTML =
       `<span class="key key-in">${PLAIN[ports.in]} · ${VOLTS[ports.in]}</span> input reference and the incident wave` +
       `<span class="key key-out">${PLAIN[ports.out]} · ${VOLTS[ports.out]}</span> output reference and the voltage at the load` +
@@ -194,6 +206,6 @@
   document.addEventListener('theme-change', () => { renderDerivation(); compute(); });
   document.addEventListener('layout-change', () => { renderDerivation(); compute(); });
   Dut.describe('both sides: the topology picks the parameter, and each per-line impedance doubles for a differential reference');
-  Bench.exports({ figureTitle: 'Port topology', figure: () => [$('diagram-' + topology), $('diagram-key'), $('diagram-caption'), $('metrics')], equations: () => [$('gain-equation')] });
+  Bench.exports({ figureTitle: 'Port topology', figure: () => [$('gain-diagram'), $('diagram-key'), $('diagram-caption'), $('metrics')], equations: () => [$('gain-equation')] });
   readQuery(); applyTopology(); renderDerivation(); compute();
 })();

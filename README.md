@@ -24,7 +24,8 @@ Diagrams are drawn from the current inputs. The two-tone spectrum places its ton
 third-order products at the entered frequencies and level, with higher orders marked at their
 frequencies only; the chain path names each stage kind and the gain that produced the next
 level; the gain diagrams carry the entered reference impedances and a caption derived from
-them. Every calculator has **Show calculation**, with rendered LaTeX equations, substituted
+them. Every diagram is drawn by one builder as HTML blocks joined by buses, so VOPP, Gain and
+Mixed-mode share one style and all of them reflow on a phone. Every calculator has **Show calculation**, with rendered LaTeX equations, substituted
 numbers, units, and model assumptions. Equations update with the inputs; long equations
 scroll within their own panel on small screens. KaTeX loads the first time a calculation
 panel opens; it, its fonts, and the page fonts are bundled locally, with MathML included

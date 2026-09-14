@@ -26,46 +26,10 @@
     dbmInc: document.getElementById("dbm-inc"),
     btnSrc: document.getElementById("btn-src"),
     btnRx: document.getElementById("btn-rx"),
-    seCap: document.getElementById("se-cap"),
-    seSrcKicker: document.getElementById("se-src-kicker"),
-    seSrcTitle: document.getElementById("se-src-title"),
-    seSrcSub: document.getElementById("se-src-sub"),
-    seLoadKicker: document.getElementById("se-load-kicker"),
-    seLoadTitle: document.getElementById("se-load-title"),
-    seLoadSub: document.getElementById("se-load-sub"),
-    seSrcPort: document.getElementById("se-src-port"),
-    seLoadPort: document.getElementById("se-load-port"),
-    sePowerKicker: document.getElementById("se-power-kicker"),
-    diffCap: document.getElementById("diff-cap"),
-    diffSrcKicker: document.getElementById("diff-src-kicker"),
-    diffSrcTitle: document.getElementById("diff-src-title"),
-    diffSrcSub: document.getElementById("diff-src-sub"),
-    diffLoadKicker: document.getElementById("diff-load-kicker"),
-    diffLoadTitle: document.getElementById("diff-load-title"),
-    diffLoadSub: document.getElementById("diff-load-sub"),
-    diffSrcP1: document.getElementById("diff-src-p1"),
-    diffSrcP2: document.getElementById("diff-src-p2"),
-    diffLoadP1: document.getElementById("diff-load-p1"),
-    diffLoadP2: document.getElementById("diff-load-p2"),
     voppHint: document.getElementById("vopp-hint"),
-    seSrcZ: document.getElementById("se-src-z"),
-    seLoadZ: document.getElementById("se-load-z"),
-    diffSrcZ: document.getElementById("diff-src-z"),
-    diffLoadZ: document.getElementById("diff-load-z"),
     calc: document.getElementById("calc"),
     colourKey: document.getElementById("colour-key"),
-    schematicSe: document.getElementById("schematic-se"),
-    schematicDiff: document.getElementById("schematic-diff"),
-    seLineDbm: document.getElementById("se-line-dbm"),
-    seLineZ: document.getElementById("se-line-z"),
-    seNodeVopp: document.getElementById("se-node-vopp"),
-    seNodePower: document.getElementById("se-node-power"),
-    diffP1Dbm: document.getElementById("diff-p1-dbm"),
-    diffP2Dbm: document.getElementById("diff-p2-dbm"),
-    diffP1Z: document.getElementById("diff-p1-z"),
-    diffP2Z: document.getElementById("diff-p2-z"),
-    diffNodeVopp: document.getElementById("diff-node-vopp"),
-    diffNodeZ: document.getElementById("diff-node-z")
+    schematic: document.getElementById("schematic"),
   };
 
   const PATH_COPY = {
@@ -255,6 +219,35 @@
   const railLabel = r => mark('in', `Z<sub>S</sub> ${RF.formatNumber(r.zS)} Ω`) + ' → ' +
     mark('out', `Z<sub>L</sub> ${RF.formatNumber(r.zL)} Ω`);
 
+  // The block diagram, drawn from the state by the shared builder. Both rails of a differential
+  // pair run from the source impedance to the load impedance, so both carry the same label.
+  function diagramSpec(r, ok) {
+    const copy = PATH_COPY[state.path], dash = '—';
+    const zpTxt = zLabel("Z<sub>VNA</sub>", state.zvna), zdTxt = zLabel("Z<sub>DUT</sub>", state.zdut > 0 ? state.zdut : NaN);
+    const dbm = ok ? `${RF.formatDbm(r.dbm)} dBm` : dash, rail = ok ? railLabel(r) : '';
+    const readout = (kicker, id, cls, value) => `<div class="node-readout"><span>${kicker}</span><strong id="${id}" class="${cls}">${value}</strong></div>`;
+    if (state.drive !== "diff") {
+      return { id: 'schematic-se', caption: copy.seCap, ariaLabel: 'Single-ended drive block diagram',
+        blocks: [
+          { kicker: copy.seSrcKicker, title: copy.seSrcTitle, sub: copy.seSrcSub, z: mark('in', leftZ), accent: 'in',
+            foot: readout(copy.sePowerKicker, 'se-node-power', state.path === 'rx' ? 'tint-out' : 'tint-in', ok ? RF.formatPowerWatts(state.path === "rx" ? r.wattsDelivered : r.wattsAvailable) : dash) },
+          { kicker: copy.seLoadKicker, title: copy.seLoadTitle, sub: copy.seLoadSub, z: mark('out', rightZ), accent: 'out',
+            foot: readout('VOPP', 'se-node-vopp', 'tint-out', ok ? RF.formatVoltage(RF.voppOf(r)) : dash) + Bench.diagram.ground } ],
+        buses: [{ rails: [{ tone: 'accent', left: { label: copy.seSrcPort }, right: { label: copy.seLoadPort },
+          top: { html: dbm, id: 'se-line-dbm' }, bottom: { html: rail, id: 'se-line-z' } }] }] };
+    }
+    return { id: 'schematic-diff', caption: copy.diffCap, ariaLabel: 'Differential drive block diagram',
+      blocks: [
+        { kicker: copy.diffSrcKicker, title: copy.diffSrcTitle, sub: copy.diffSrcSub, z: mark('in', leftZ), accent: 'in', midcap: '180°' },
+        { kicker: copy.diffLoadKicker, title: copy.diffLoadTitle, sub: copy.diffLoadSub, z: mark('out', rightZ), accent: 'out',
+          foot: (Bench.narrow ? readout('VOPP', 'diff-node-vopp', 'tint-out', ok ? RF.formatVoltage(r.vppDiff) : dash) : '') +
+            `<span id="diff-node-z">Z<sub>diff</sub> DUT ${ok ? RF.formatNumber(r.zDiffDut) : dash} Ω</span>` } ],
+      buses: [{ rails: [
+          { tone: 'plus', left: { label: copy.diffSrcP1 }, right: { label: copy.diffLoadP1 }, top: { html: dbm, id: 'diff-p1-dbm' }, bottom: { html: rail, id: 'diff-p1-z' } },
+          { tone: 'minus', left: { label: copy.diffSrcP2 }, right: { label: copy.diffLoadP2 }, top: { html: dbm, id: 'diff-p2-dbm' }, bottom: { html: rail, id: 'diff-p2-z' } } ],
+        brace: Bench.narrow ? null : { side: 'out', label: `<span class="callout-kicker">VOPP</span><strong id="diff-node-vopp" class="tint-out">${ok ? RF.formatVoltage(r.vppDiff) : dash}</strong>` } }] };
+  }
+
   function render(ok) {
     els.body.setAttribute("data-drive", state.drive);
     els.body.setAttribute("data-path", state.path);
@@ -269,32 +262,7 @@
 
     const isDiff = state.drive === "diff";
     const copy = PATH_COPY[state.path];
-    els.schematicSe.hidden = isDiff;
-    els.schematicDiff.hidden = !isDiff;
-    els.schematicSe.classList.toggle("is-off", isDiff);
-    els.schematicDiff.classList.toggle("is-off", !isDiff);
-
-    els.seCap.textContent = copy.seCap;
-    els.seSrcKicker.textContent = copy.seSrcKicker;
-    els.seSrcTitle.textContent = copy.seSrcTitle;
-    els.seSrcSub.textContent = copy.seSrcSub;
-    els.seLoadKicker.textContent = copy.seLoadKicker;
-    els.seLoadTitle.textContent = copy.seLoadTitle;
-    els.seLoadSub.textContent = copy.seLoadSub;
-    els.seSrcPort.textContent = copy.seSrcPort;
-    els.seLoadPort.textContent = copy.seLoadPort;
-    els.sePowerKicker.textContent = copy.sePowerKicker;
-    els.diffCap.textContent = copy.diffCap;
-    els.diffSrcKicker.textContent = copy.diffSrcKicker;
-    els.diffSrcTitle.textContent = copy.diffSrcTitle;
-    els.diffSrcSub.textContent = copy.diffSrcSub;
-    els.diffLoadKicker.textContent = copy.diffLoadKicker;
-    els.diffLoadTitle.textContent = copy.diffLoadTitle;
-    els.diffLoadSub.textContent = copy.diffLoadSub;
-    els.diffSrcP1.innerHTML = copy.diffSrcP1;
-    els.diffSrcP2.innerHTML = copy.diffSrcP2;
-    els.diffLoadP1.innerHTML = copy.diffLoadP1;
-    els.diffLoadP2.innerHTML = copy.diffLoadP2;
+    Bench.diagram(els.schematic, diagramSpec(state.result, ok));
 
     els.dbmLabel.textContent = copy.dbmLabel;
     els.dbmScope.textContent = isDiff ? copy.dbmScopeDiff : copy.dbmScopeSe;
@@ -310,14 +278,6 @@
       chip.classList.toggle("is-active", Number(chip.getAttribute("data-z")) === state.zdut);
     });
 
-    const zpTxt = zLabel("Z<sub>VNA</sub>", state.zvna);
-    const zdTxt = zLabel("Z<sub>DUT</sub>", state.zdut);
-    const leftZ = state.path === "src" ? zpTxt : zdTxt;
-    const rightZ = state.path === "src" ? zdTxt : zpTxt;
-    if (els.seSrcZ) els.seSrcZ.innerHTML = mark('in', leftZ);
-    if (els.seLoadZ) els.seLoadZ.innerHTML = mark('out', rightZ);
-    if (els.diffSrcZ) els.diffSrcZ.innerHTML = mark('in', leftZ);
-    if (els.diffLoadZ) els.diffLoadZ.innerHTML = mark('out', rightZ);
     if (els.colourKey) {
       const srcName = state.path === 'src' ? 'the VNA' : 'the DUT';
       const loadName = state.path === 'src' ? 'the DUT' : 'the VNA';
@@ -343,7 +303,6 @@
       els.metrics.innerHTML = metric("Status", "Enter finite dBm or nonnegative VOPP, plus a positive DUT impedance.");
       els.refBody.replaceChildren();
       els.refCaption.textContent = 'Enter valid inputs to show the reference table.';
-      [els.seLineDbm, els.seNodeVopp, els.seNodePower, els.diffP1Dbm, els.diffP2Dbm, els.diffNodeVopp].forEach(el => el.textContent = '—');
       Bench.update({ valid: false, lines: ['Correct the power/voltage and impedance inputs before calculating or saving.'] });
       return;
     }
@@ -359,12 +318,6 @@
         metric("Γ", gammaTxt),
         metric("V<sub>oc</sub> pk-pk", RF.formatVoltage(r.vocVpp))
       ].join("");
-      els.seNodeVopp.className = 'tint-out';
-      els.seNodePower.className = state.path === 'rx' ? 'tint-out' : 'tint-in';
-      els.seLineDbm.textContent = `${RF.formatDbm(r.dbm)} dBm`;
-      els.seLineZ.innerHTML = railLabel(r);
-      els.seNodeVopp.textContent = RF.formatVoltage(voppShow);
-      els.seNodePower.textContent = RF.formatPowerWatts(state.path === "rx" ? r.wattsDelivered : r.wattsAvailable);
     } else {
       els.metrics.innerHTML = [
         metric("VOPP / line", RF.formatVoltage(r.vppSe)),
@@ -374,17 +327,6 @@
         metric("Γ (per side)", gammaTxt),
         metric("Z<sub>diff</sub> DUT", `${RF.formatNumber(r.zDiffDut)} Ω`)
       ].join("");
-      const port = `${RF.formatDbm(r.dbm)} dBm`;
-      els.diffP1Dbm.textContent = port;
-      els.diffP2Dbm.textContent = port;
-      // Both rails run from the source impedance to the load impedance. Splitting the two
-      // labels across the rails read as though each rail had a different impedance.
-      const railZ = railLabel(r);
-      els.diffP1Z.innerHTML = railZ;
-      els.diffP2Z.innerHTML = railZ;
-      els.diffNodeVopp.className = 'tint-out';
-      els.diffNodeVopp.textContent = RF.formatVoltage(r.vppDiff);
-      els.diffNodeZ.innerHTML = `Z<sub>diff</sub> DUT ${RF.formatNumber(r.zDiffDut)} Ω`;
     }
     // Every substituted value carries its unit, and the chain runs in the direction the page
     // actually solved: from power when dBm was typed, from voltage when VOPP was.
@@ -619,6 +561,7 @@
   });
 
   document.addEventListener('dut-change', function () { pullFromCard(); compute(); });
+  document.addEventListener('layout-change', compute);
   Dut.describe('the input side (topology and Z per line) when the VNA drives the DUT, and the output side when the DUT drives the VNA');
   Bench.exports({ figureTitle: 'Drive schematic', figure: () => [document.querySelector('.schematic-stage'), els.colourKey, els.metrics], caption: resultLine });
   readQuery();
