@@ -757,7 +757,7 @@ let checks=0;
           for (const file of ['gain.html?t=sd','gain.html?t=dd&s11-db=-10&s11-deg=180','mixed.html','mixed.html?din=diff&dout=se','large-signal.html','large-signal.html?tab=thd','sweep.html?ifbw=1','chain.html','index.html?m=diff','match.html?z=25&x=30','delay.html']) {
             await go(file); await page.locator('.calculation summary').click(); await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
             const over=await page.evaluate(()=>{const out=[];
-              document.querySelectorAll('.katex-display').forEach(el=>{const box=el.closest('.equation-math, .gain-result')||el.parentElement, html=el.querySelector('.katex-html'); if(html&&html.getBoundingClientRect().width-box.clientWidth>2) out.push('equation '+(el.textContent||'').slice(0,30));});
+              document.querySelectorAll('.katex-display').forEach(el=>{const box=el.closest('.equation-math, .gain-result')||el.parentElement, html=el.querySelector('.katex-html'), cs=getComputedStyle(box), inner=box.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight); if(html&&html.getBoundingClientRect().width-inner>2) out.push('equation '+(el.textContent||'').slice(0,30));});
               document.querySelectorAll('.ref, .table-scroll, .chain-results').forEach(el=>{if(!el.querySelector('.matrix')&&el.scrollWidth-el.clientWidth>2) out.push('table '+el.className);});
               return out;});
             assert.deepEqual(over,[],file+' scrolls sideways');

@@ -131,7 +131,7 @@
     const step = Bench.narrow ? ' \\\\ &= ' : ' = ', plus = Bench.narrow ? ' \\\\ &\\quad + ' : ' + ';
     Bench.math($('gain-equation'), String.raw`\begin{aligned}
       A_{v} &= ${parameter}\sqrt{\frac{${outSym}}{${inSym}}}${step}${parameter}\sqrt{\frac{${outVal}}{${inVal}}}${step}${tex(result.factor)}\,${parameter} \\[4pt]
-      20\log_{10}|A_{v}| &= 20\log_{10}|${parameter}|${plus}10\log_{10}\frac{${outSym}}{${inSym}}${step}20\log_{10}|${parameter}| ${result.db < 0 ? '-' : '+'}\ ${tex(Math.abs(result.db), 'dB')}
+      20\log_{10}|A_{v}| &= 20\log_{10}|${parameter}|${plus}10\log_{10}\frac{${outSym}}{${inSym}}${step}20\log_{10}|${parameter}|${Bench.narrow ? plus.replace('+', '') : ' '}${result.db < 0 ? '-' : '+'}\ ${tex(Math.abs(result.db), 'dB')}
     \end{aligned}`, true);
     const sign = result.db > 0 ? '+' : result.db < 0 ? '−' : '';
     $('metrics').innerHTML = [
