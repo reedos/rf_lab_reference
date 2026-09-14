@@ -133,9 +133,11 @@
       A_{v} &= ${parameter}\sqrt{\frac{${outSym}}{${inSym}}}${step}${parameter}\sqrt{\frac{${outVal}}{${inVal}}}${step}${tex(result.factor)}\,${parameter} \\[4pt]
       20\log_{10}|A_{v}| &= 20\log_{10}|${parameter}|${plus}10\log_{10}\frac{${outSym}}{${inSym}}${step}20\log_{10}|${parameter}|${Bench.narrow ? plus.replace('+', '') : ' '}${result.db < 0 ? '-' : '+'}\ ${tex(Math.abs(result.db), 'dB')}
     \end{aligned}`, true);
-    const sign = result.db > 0 ? '+' : result.db < 0 ? '−' : '';
+    // The decibel figure is the same answer in the log domain, not a second factor, so it goes
+    // on its own line as an equation rather than beside the linear factor.
+    const dbLine = (symbol, db) => `<span class="metric-sub">20 log|${symbol}| = 20 log|${spec.plain}| ${db < 0 ? '−' : '+'} ${fmt(Math.abs(db), 'dB')} dB</span>`;
     $('metrics').innerHTML = [
-      metric('Voltage gain', `${spec.plain} × ${fmt(result.factor)}  ·  ${sign}${fmt(Math.abs(result.db), 'dB')} dB`, 'primary'),
+      metric('Voltage gain', `${spec.plain} × ${fmt(result.factor)}${dbLine('A<sub>v</sub>', result.db)}`, 'primary'),
       metric('Topology', spec.label),
       metric('Input reference', `${PLAIN[ports.in]} ${fmt(result.z1)} Ω`, 'port-in'),
       metric('Output reference', `${PLAIN[ports.out]} ${fmt(result.z2)} Ω`, 'port-out'),
@@ -143,7 +145,7 @@
       metric('Impedance ratio', `${fmt(result.ratio)} = ${fmt(result.z2)} Ω / ${fmt(result.z1)} Ω`),
       ...(terminal ? [metric('Referred to the input terminal',
         terminal.degenerate ? 'Unbounded: S11 = −1 leaves no terminal voltage'
-          : `${spec.plain} × ${fmt(result.factor / terminal.denominator)}  ·  ${result.db + terminal.db > 0 ? '+' : ''}${fmt(result.db + terminal.db, 'dB')} dB`)] : []),
+          : `${spec.plain} × ${fmt(result.factor / terminal.denominator)}${dbLine('V<sub>2</sub>/V<sub>1</sub>', result.db + terminal.db)}`)] : []),
       metric('Per line, if uncoupled', [
         result.perLine1 === null ? null : `in ${fmt(result.perLine1)} Ω`,
         result.perLine2 === null ? null : `out ${fmt(result.perLine2)} Ω`
@@ -201,7 +203,7 @@
     if (!result) return;
     const sign = result.db > 0 ? '+' : result.db < 0 ? '-' : '';
     Bench.copy(`${result.spec.label} | ${result.spec.plain} | Z1 ${fmt(result.z1)} Ω | Z2 ${fmt(result.z2)} Ω\n` +
-      `Voltage gain = ${result.spec.plain} × ${fmt(result.factor)} (${sign}${fmt(Math.abs(result.db), 'dB')} dB); power gain |${result.spec.plain}|² is unchanged`);
+      `Voltage gain = ${result.spec.plain} × ${fmt(result.factor)}; in decibels 20log|Av| = 20log|${result.spec.plain}| ${result.db < 0 ? '-' : '+'} ${fmt(Math.abs(result.db), 'dB')} dB; power gain |${result.spec.plain}|² is unchanged`);
   });
   document.addEventListener('dut-change', () => { pullFromCard(); applyTopology(); compute(); });
   document.addEventListener('theme-change', () => { renderDerivation(); compute(); });

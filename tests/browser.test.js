@@ -387,7 +387,7 @@ let checks=0;
           const terminal=async()=>{
             const text=await page.locator('#metrics').innerText();
             const at=text.indexOf('REFERRED TO THE INPUT TERMINAL');
-            return at < 0 ? '' : text.slice(at).split('\n')[1];
+            return at < 0 ? '' : text.slice(at).split('\n').slice(1,3).join(' ');
           };
           assert.equal(await terminal(),'');
           await fill('s11-db',-10);
@@ -395,14 +395,14 @@ let checks=0;
           await expect(page.locator('#gain-status')).toContainText(/both the magnitude and the phase/);
           await fill('s11-deg',0);
           await expect.poll(valid).toBe(true);
-          await expect.poll(terminal).toContain('+0.62 dB');
+          await expect.poll(terminal).toContain('+ 0.62 dB');
           await fill('s11-deg',180);
-          await expect.poll(terminal).toContain('+6.31 dB');
+          await expect.poll(terminal).toContain('+ 6.31 dB');
           await fill('s11-db',0);
           await expect.poll(terminal).toContain('Unbounded');
           await fill('s11-db',-10); await page.reload();
           await expect(page.locator('#s11-deg')).toHaveValue('180');
-          await expect.poll(terminal).toContain('+6.31 dB');
+          await expect.poll(terminal).toContain('+ 6.31 dB');
           // Red is kept for something being wrong, not for the correction merely having a value.
           await go('large-signal.html?tab=thd&thd-f0=1+GHz&thd-fc=100+GHz');
           assert.equal(await page.locator('#thd-status').getAttribute('class'),'');
@@ -573,22 +573,24 @@ let checks=0;
           await expect(page.locator('#z2')).toHaveValue('50');
           await expect(page.locator('#text-z2')).toContainText('single-ended');
           await expect(page.locator('#metrics')).toContainText('0.7071');
-          await expect(page.locator('#metrics')).toContainText('−3.01 dB');
+          // The decibel figure is an equation on its own line, never a second factor beside ×.
+          await expect(page.locator('.metric.primary')).toContainText('Ssd21 × 0.7071');
+          await expect(page.locator('.metric.primary .metric-sub')).toHaveText('20 log|Av| = 20 log|Ssd21| − 3.01 dB');
           await expect(page.locator('#metrics')).toContainText('unchanged by the impedances');
           await expect(page.locator('#gain-diagram')).toContainText('Ssd21');
           await expect(page.locator('#gain-diagram .schematic-cap')).toHaveText('Differential in, single-ended out');
           // Single-ended in, differential out gains it back.
           await page.locator('[data-topology="ds"]').click();
           await expect(page.locator('#z1')).toHaveValue('50');
-          await expect(page.locator('#metrics')).toContainText('+3.01 dB');
+          await expect(page.locator('#metrics')).toContainText('+ 3.01 dB');
           await shown();
           // Each side remembers its own differential and single-ended value.
-          await fill('z2',200); await expect(page.locator('#metrics')).toContainText('+6.02 dB');
+          await fill('z2',200); await expect(page.locator('#metrics')).toContainText('+ 6.02 dB');
           await page.locator('[data-topology="dd"]').click();
           await expect(page.locator('#z1')).toHaveValue('100'); await expect(page.locator('#z2')).toHaveValue('200');
-          await expect(page.locator('#metrics')).toContainText('+3.01 dB');
+          await expect(page.locator('#metrics')).toContainText('+ 3.01 dB');
           await page.reload(); await expect(page.locator('#z2')).toHaveValue('200');
-          await expect(page.locator('#metrics')).toContainText('+3.01 dB');
+          await expect(page.locator('#metrics')).toContainText('+ 3.01 dB');
           // Input still recomputes after the labels were swapped.
           await fill('z2',100); await expect(page.locator('#metrics')).toContainText('0 dB');
           await fill('z1',0); await expect.poll(valid).toBe(false);

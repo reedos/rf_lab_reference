@@ -989,6 +989,22 @@ select:focus-visible {
   color: var(--text);
 }
 
+/* A tile's second line restates the answer in the decibel domain. It is the same result, not
+   another factor, so it is written as an equation on a line of its own. */
+.metric-sub {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.metric.primary .metric-sub {
+  font-size: 0.88rem;
+}
+
 /* One answer per calculator, so the eye lands on it before the supporting numbers. */
 .metric.primary {
   grid-column: 1 / -1;
