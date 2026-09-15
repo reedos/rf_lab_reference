@@ -265,7 +265,7 @@ let checks=0;
           await page.locator('.stage').last().locator('[data-action="remove"]').click(); assert.equal(await page.locator('.stage').count(),3);
         });
         await check('Copied links and results reflect current inputs; clipboard failures are reported',async()=>{
-          for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','touchstone.html','delay.html','sweep.html','chain.html']) {
+          for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
             await go(file); await page.locator('#copy-link').click();
             assert.equal(await page.evaluate(()=>window.copiedText),page.url());
             await page.locator('#copy-result').click();
@@ -818,7 +818,7 @@ let checks=0;
           await expect.poll(theme).toBe('light'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),null);
           // Every page lays out and renders its equations in the light theme on a phone.
           await page.setViewportSize({width:390,height:900});
-          for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','touchstone.html','delay.html','sweep.html','chain.html']) {
+          for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
             await go(file); assert.equal(await theme(),'light',file);
             assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${file} overflows in light`);
             await page.locator('.calculation summary').click();
@@ -827,42 +827,6 @@ let checks=0;
           }
           await page.setViewportSize({width:1280,height:900});
           await page.emulateMedia({colorScheme:'dark'});
-        });
-        await check('Touchstone files are read at a point, converted to mixed-mode and plotted',async()=>{
-          await go('touchstone.html');
-          // The built-in example is a four-port differential pair, so the through path is Sdd21.
-          await expect(page.locator('.metric.primary')).toContainText('Sdd21');
-          await expect(page.locator('#file-metrics')).toContainText('4');
-          assert.equal(await page.locator('#se-rows tr').count(),4);
-          assert.equal(await page.locator('#mm-rows tr').count(),4);
-          assert.ok((await page.locator('#plot path.trace').getAttribute('d')).length>200,'the plot has a trace');
-          // A typed frequency reads the nearest point and travels in the link.
-          // 20 GHz is not a point in the file; the nearest one is read and the link carries it.
-          await fill('freq',20); await expect(page.locator('#freq-note')).toContainText(/Nearest point: 19\.75\d* GHz, point 40 of 100/);
-          await expect(page).toHaveURL(/f=19757/);
-          await page.locator('#plot-of').selectOption('S11');
-          await expect(page.locator('#plot')).toContainText('|S11| dB');
-          // Mapping changes change the conversion; a duplicate port is refused.
-          const before=await page.locator('.metric.primary').innerText();
-          await page.locator('select[data-side="in"][data-index="1"]').selectOption('2');
-          await page.locator('select[data-side="out"][data-index="0"]').selectOption('3');
-          assert.notEqual(await page.locator('.metric.primary').innerText(),before);
-          await page.locator('select[data-side="out"][data-index="1"]').selectOption('3');
-          await expect(page.locator('#mapping-status')).toContainText(/once/);
-          // A dropped two-port file in MA form replaces the example, with the two-port order respected.
-          const s2p=['# MHz S MA R 50','100 0.1 45 0.9 -30 0.01 10 0.2 -60','200 0.1 90 0.8 -60 0.02 20 0.2 -120','300 0.1 135 0.7 -90 0.03 30 0.2 -180'].join('\n');
-          await page.locator('#file').setInputFiles({name:'dut.s2p',mimeType:'text/plain',buffer:Buffer.from(s2p)});
-          await expect(page.locator('#file-metrics')).toContainText('dut.s2p');
-          await expect(page.locator('.metric.primary')).toContainText('S21');
-          await expect(page.locator('.metric.primary')).toContainText('-1.94 dB ∠ -60°');
-          assert.equal(await page.locator('#mixed-block').isVisible(),false);
-          await expect(page.locator('#metrics')).toContainText('S11 · input return');
-          await page.locator('#copy-result').click();
-          assert.match(await page.evaluate(()=>window.copiedText),/S21 -1.94 dB/);
-          // A file that cannot be read says why and leaves the last reading in place.
-          await page.locator('#file').setInputFiles({name:'bad.s2p',mimeType:'text/plain',buffer:Buffer.from('# GHz S MA R 50\n1 0.5 abc')});
-          await expect(page.locator('#file-status')).toContainText(/abc/);
-          await expect(page.locator('.metric.primary')).toContainText('S21');
         });
         await check('The DUT card travels between pages in the link and binds each page to its side',async()=>{
           const summary=()=>page.locator('#dut-summary').innerText();
@@ -989,7 +953,7 @@ let checks=0;
         await check('No heading sits flush against the content above it',async()=>{
           for (const width of [390,1280]) {
             await page.setViewportSize({width,height:900});
-            for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','touchstone.html','delay.html','sweep.html','chain.html']) {
+            for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
               await go(file);
               const tight=await page.evaluate(()=>Array.from(document.querySelectorAll('h2, h3, h4')).map(h=>{
                 const prev=h.previousElementSibling;
@@ -1086,7 +1050,7 @@ let checks=0;
           await page.setViewportSize({width:1280,height:900});
         });
         await check('Every page has working navigation, calculation detail, and responsive layout',async()=>{
-          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','touchstone.html','delay.html','sweep.html','chain.html']) {
+          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
             await page.setViewportSize({width,height:900}); await go(file);
             assert.equal(await valid(),true,`${file} default invalid`);
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);

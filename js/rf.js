@@ -646,71 +646,6 @@
     return { rl1, rl2, gamma1, gamma2, product, up, down, peakToPeak: up - down };
   }
 
-  // ----- Touchstone 1 -----
-  // S-parameters in MA, DB or RI form with one reference for every port. The option line sets
-  // the unit and form; the port count comes from the file name or, failing that, from the
-  // number of values per frequency. A two-port file lists S11 S21 S12 S22, the one case where
-  // the order is column-major. Noise parameters after a two-port block are ignored.
-  const TOUCHSTONE_UNIT = { hz: 1, khz: 1e3, mhz: 1e6, ghz: 1e9 };
-  function parseTouchstone(text, ports) {
-    if (typeof text !== 'string') return { error: 'No text to read.' };
-    if (/\[\s*version\s*\]/i.test(text)) return { error: 'Touchstone 2 files are not supported; export the file as Touchstone 1.' };
-    let unit = 'ghz', format = 'ma', reference = 50, sawOption = false;
-    const numbers = [];
-    for (const raw of text.split(/\r?\n/)) {
-      const line = raw.replace(/!.*$/, '').trim();
-      if (!line) continue;
-      if (line.startsWith('#')) {
-        if (sawOption) continue;
-        sawOption = true;
-        const parts = line.slice(1).trim().split(/\s+/).map(p => p.toLowerCase());
-        for (let i = 0; i < parts.length; i++) {
-          const p = parts[i];
-          if (Object.hasOwn(TOUCHSTONE_UNIT, p)) unit = p;
-          else if (['ma', 'db', 'ri'].includes(p)) format = p;
-          else if (['y', 'z', 'g', 'h'].includes(p)) return { error: p.toUpperCase() + '-parameters are not supported; export S-parameters.' };
-          else if (p === 'r') { const r = Number(parts[i + 1]); if (Number.isFinite(r) && r > 0) reference = r; i++; }
-        }
-        continue;
-      }
-      for (const token of line.split(/\s+/)) {
-        const v = Number(token);
-        if (!Number.isFinite(v)) return { error: 'Could not read "' + token + '" as a number.' };
-        numbers.push(v);
-      }
-    }
-    if (!numbers.length) return { error: 'The file has no data lines.' };
-    const candidates = Number.isInteger(ports) && ports >= 1 && ports <= 4 ? [ports] : [1, 2, 3, 4];
-    let best = null;
-    for (const n of candidates) {
-      const width = 1 + 2 * n * n, points = [];
-      let rising = true;
-      for (let k = 0; k + width <= numbers.length; k += width) {
-        const f = numbers[k] * TOUCHSTONE_UNIT[unit];
-        if (points.length && f <= points[points.length - 1].f) { rising = n === 2; break; }
-        points.push({ f, values: numbers.slice(k + 1, k + width) });
-      }
-      if (!rising || !points.length) continue;
-      const rest = numbers.length - points.length * width;
-      if (rest !== 0 && !(n === 2 && rest % 5 === 0)) continue;
-      best = { n, points }; break;
-    }
-    if (!best) return { error: 'Could not work out the port count from the data. Name the file .s1p to .s4p.' };
-    const toComplex = (a, b) => format === 'ri' ? { re: a, im: b } : format === 'db' ? fromPolar(a, b)
-      : { re: a * Math.cos((b * Math.PI) / 180), im: a * Math.sin((b * Math.PI) / 180) };
-    const n = best.n;
-    const points = best.points.map(pt => {
-      const S = {};
-      for (let i = 1; i <= n; i++) S[i] = {};
-      for (let idx = 0; idx < n * n; idx++) {
-        const i = n === 2 ? [1, 2, 1, 2][idx] : Math.floor(idx / n) + 1, j = n === 2 ? [1, 1, 2, 2][idx] : (idx % n) + 1;
-        S[i][j] = toComplex(pt.values[2 * idx], pt.values[2 * idx + 1]);
-      }
-      return { f: pt.f, S };
-    });
-    return { ports: n, reference, unit, format, points, first: points[0].f, last: points[points.length - 1].f };
-  }
-
   // ----- Single-ended to mixed-mode S-parameters -----
   // A logical port is one physical port (single-ended) or a pair. The differential and
   // common-mode waves of a pair are (a_p - a_q)/sqrt 2 and (a_p + a_q)/sqrt 2, so the whole
@@ -996,7 +931,7 @@
   }
 
   const RF = {
-    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, timeDomain, mismatchRipple, receiverBudget, PAD_VALUES, parseTouchstone, mixedModeRows, mixedMode, fromPolar, toPolar,
+    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, timeDomain, mismatchRipple, receiverBudget, PAD_VALUES, mixedModeRows, mixedMode, fromPolar, toPolar,
     tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
