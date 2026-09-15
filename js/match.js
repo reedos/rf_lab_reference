@@ -6,7 +6,7 @@
   const metric = (k, v, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${k}</dt><dd>${v}</dd></div>`;
   const tint = Bench.tint;
   const textNum = id => { const v = $(id).value.trim(); return ['∞', 'Infinity'].includes(v) ? Infinity : ['-∞','-Infinity'].includes(v) ? -Infinity : n(id); };
-  let source = 'z', chart = 'rl', result = null;
+  let source = 'z', chart = 'rl', result = null, ripple = null;
   let re = 0, im = 0;
   const svg = $('smith'), NS = 'http://www.w3.org/2000/svg';
   function pathOf(points) { return points.map((p, i) => `${i ? 'L' : 'M'}${(220 + p.re * 190).toFixed(3)},${(220 - p.im * 190).toFixed(3)}`).join(' '); }
@@ -85,7 +85,8 @@
       metric('Delivered fraction', `${fmt(m.delivered * 100)} %`) + metric('Γ real', fmt(re)) + metric('Γ imaginary', fmt(im));
     const q = new URLSearchParams({ z0: String(z0), from: source, re: String(re), im: String(im), chart,
       z: String(m.r), x: String(m.x), g: String(m.gamma), phase: String(m.phase),
-      rl: String(-m.rl), vswr: String(m.vswr), ml: String(m.mloss) });
+      rl: String(-m.rl), vswr: String(m.vswr), ml: String(m.mloss), r1: Bench.raw('ripple-rl1'), r2: Bench.raw('ripple-rl2') });
+    const rippleLines = computeRipple(m);
     history.replaceState(null, '', location.pathname + '?' + q);
     Bench.update({ valid: true, lines: ['Passive load, real positive reference impedance; matched source at the reference plane.',
       eq('Load and reference impedances', `${tint('out', 'Z')} &= R+jX \\\\ &= ${tint('out', tex(m.r))}+j(${tint('out', tex(m.x))})\\,\\Omega \\\\ ${tint('in', 'Z_0')} &= ${tint('in', tex(z0, 'Ω'))}`),
@@ -97,7 +98,26 @@
       eq('Voltage standing-wave ratio', String.raw`\mathrm{VSWR} &= \frac{1+|\Gamma|}{1-|\Gamma|}`, tex(m.vswr), String.raw`\frac{1+${tex(m.gamma)}}{1-${tex(m.gamma)}}`),
       eq('Delivered power fraction', String.raw`\frac{P_{\mathrm{del}}}{P_{\mathrm{avs}}} &= 1-|\Gamma|^2`, tex(m.delivered * 100, '%')),
       eq('Mismatch loss', String.raw`L_{\mathrm m} &= -10\log_{10}(1-|\Gamma|^2)`, tex(m.mloss, 'dB')),
+      ...rippleLines,
       'Magnitude edits retain the selected phase. The real-resistance reference curve uses zero reactance.'] });
+  }
+  // Two mismatches facing each other: the trace moves between 20 log10(1 ± |Γ1Γ2|).
+  function computeRipple(m) {
+    const blank = $('ripple-rl1').value.trim() === '';
+    const rl1 = blank ? m.rl : Bench.read('ripple-rl1'), rl2 = Bench.read('ripple-rl2');
+    ripple = RF.mismatchRipple(rl1, rl2);
+    if (!ripple) {
+      $('ripple-status').textContent = 'Enter return losses of 0 dB or more.'; $('ripple-status').className = 'status-error';
+      $('ripple-metrics').replaceChildren(); return [];
+    }
+    $('ripple-status').textContent = ''; $('ripple-status').className = '';
+    $('ripple-metrics').innerHTML = metric('Peak-to-peak ripple', `${fmt(ripple.peakToPeak, 'dB')} dB`, 'primary') +
+      metric('Interaction |Γ₁Γ₂|', fmt(ripple.product)) +
+      metric('Extremes', `+${fmt(ripple.up, 'dB')} / ${fmt(ripple.down, 'dB')} dB`) +
+      metric('Return losses', `${fmt(rl1, 'dB')} dB${blank ? ' (this load)' : ''} and ${fmt(rl2, 'dB')} dB`);
+    return [eq('Ripple between two mismatches', String.raw`|\Gamma_1\Gamma_2| &= 10^{-\mathrm{RL}_1/20}\,10^{-\mathrm{RL}_2/20} \\ \text{ripple} &= 20\log_{10}(1\pm|\Gamma_1\Gamma_2|)`,
+      String.raw`+${tex(ripple.up, 'dB')}\ /\ ${tex(ripple.down, 'dB')},\ ${tex(ripple.peakToPeak, 'dB')}\ \text{peak to peak}`,
+      String.raw`20\log_{10}(1\pm${tex(ripple.product)})`)];
   }
   function readQuery() {
     const q = new URLSearchParams(location.search);
@@ -106,12 +126,15 @@
     if (q.get('from') === 'point') { source = 'point'; re = RF.parseNumber(q.get('re')); im = RF.parseNumber(q.get('im')); return; }
     for (const [key,id] of Object.entries({z:'z',x:'x',g:'gamma',phase:'phase',rl:'rl',vswr:'vswr',ml:'mloss'})) if (q.has(key)) $(id).value = q.get(key);
     if (['z','rl','vswr','gamma','mloss'].includes(q.get('from'))) source = q.get('from');
+    if (q.has('r1')) $('ripple-rl1').value = q.get('r1');
+    if (q.has('r2')) $('ripple-rl2').value = q.get('r2');
     // Legacy scalar links had no reflection phase and selected a real solution.
     if (!q.has('phase')) $('phase').value = '0';
   }
   ['z', 'x'].forEach(id => $(id).addEventListener('input', () => { source = 'z'; compute(); }));
   ['gamma','phase','rl','vswr','mloss'].forEach(id => $(id).addEventListener('input', () => { source = id === 'phase' ? 'gamma' : id; compute(); }));
   $('z0').addEventListener('input', compute);
+  ['ripple-rl1', 'ripple-rl2'].forEach(id => $(id).addEventListener('input', compute));
   document.querySelectorAll('[data-reference]').forEach(b => b.addEventListener('click', () => { Bench.setNumber('z0', Number(b.dataset.reference)); compute(); }));
   document.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => { source = 'z'; Bench.setNumber('z', Number(b.dataset.load)); Bench.setNumber('x', 0); compute(); }));
   document.querySelectorAll('[data-special]').forEach(b => b.addEventListener('click', () => { source = 'point'; re = b.dataset.special === 'open' ? 1 : b.dataset.special === 'short' ? -1 : 0; im = 0; compute(); }));

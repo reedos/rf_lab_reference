@@ -47,6 +47,7 @@ let checks=0;
           }
         };
         const valid=()=>page.evaluate(()=>window.Bench.valid);
+        const menu=async id=>{ await page.locator('#export-menu > summary').click(); await page.locator('#'+id).click(); };
         await check('VOPP drive, units, zero voltage, invalid impedance, and driver restoration',async()=>{
           // The DUT card defaults to a differential device, so the page opens differential.
           await go(''); await numeric('vopp',1.265);
@@ -195,6 +196,15 @@ let checks=0;
           await page.locator('[data-panel="thd"]').click(); await fill('thd-h4','bad'); await expect.poll(valid).toBe(false);
         });
         await check('Match complex impedance, scalar edits, invalid data and canonical links',async()=>{
+          await go('match.html?rl=-20&from=rl');
+          await page.locator('.reference-details').nth(1).locator('summary').click();
+          await expect(page.locator('#ripple-metrics')).toContainText('0.17 dB');
+          await expect(page.locator('#ripple-metrics')).toContainText('20 dB (this load) and 20 dB');
+          await fill('ripple-rl1',10); await fill('ripple-rl2',10);
+          await expect(page.locator('#ripple-metrics')).toContainText('1.74 dB');
+          await page.reload(); await expect(page.locator('#ripple-rl2')).toHaveValue('10');
+          await page.locator('.reference-details').nth(1).locator('summary').click();
+          await fill('ripple-rl2',-3); await expect(page.locator('#ripple-status')).toContainText(/0 dB or more/);
           await go('match.html'); await fill('x',50); await numeric('gamma',.4472);
           const phase=await num('phase'); await fill('rl',-20); await numeric('gamma',.1); await numeric('phase',phase);
           await page.reload(); await numeric('phase',phase); await numeric('gamma',.1);
@@ -238,19 +248,6 @@ let checks=0;
           await page.locator('#add-passive').click(); assert.equal(await page.locator('.stage').count(),4);
           await page.locator('.stage').last().locator('[data-action="remove"]').click(); assert.equal(await page.locator('.stage').count(),3);
         });
-        await check('Named setups save, load, update, delete, and keep names as plain text',async()=>{
-          await go('delay.html'); await fill('length',250);
-          await page.locator('.saved-setups summary').click();
-          await fill('setup-name','Bench <receiver>'); await page.locator('#setup-save').click();
-          await fill('length',100); await page.locator('#setup-list').selectOption('0');
-          await page.locator('#setup-load').click(); await page.waitForURL(/L=250/); await numeric('length',250);
-          await page.locator('.saved-setups summary').click(); await fill('setup-name','Bench <receiver>');
-          await fill('length',125); await page.locator('#setup-save').click();
-          assert.equal(await page.locator('#setup-list option').count(),2);
-          assert.equal(await page.locator('#setup-list option').nth(1).textContent(),'Bench <receiver>');
-          await page.locator('#setup-list').selectOption('0'); await page.locator('#setup-delete').click();
-          assert.equal(await page.locator('#setup-list option').count(),1);
-        });
         await check('Copied links and results reflect current inputs; clipboard failures are reported',async()=>{
           for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
             await go(file); await page.locator('#copy-link').click();
@@ -293,7 +290,7 @@ let checks=0;
           await page.reload(); await numeric('vopp',.123456789012,1e-12);
           near(Number(new URL(page.url()).searchParams.get('v')),.123456789012,1e-14);
           await go('match.html'); await fill('x',50); await numeric('gamma',.4472);
-          await page.locator('.reference-details summary').click();
+          await page.locator('.reference-details').first().locator('summary').click();
           await page.locator('[data-chart="vswr"]').click(); await fill('rl',-20);
           await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('phase'))).toBeCloseTo(63.434948822922,9);
         });
@@ -367,6 +364,8 @@ let checks=0;
           await fill('segment-overhead',5);
           await expect.poll(timeTile).toContain('12.75 s');
           // The same IF bandwidth places the noise floor, and averaging moves it.
+          await expect(page.locator('#sweep-metrics')).toContainText('100 ns round trip · 50 ns one way');
+          await expect(page.locator('#sweep-metrics')).toContainText(/Time-domain resolution/);
           await expect(page.locator('#noise-metrics')).toContainText('-100 dBm');
           await expect(page.locator('#noise-metrics')).toContainText('40 dB at -60 dBm');
           await expect(page.locator('#noise-metrics')).toContainText('0.06 dB rms');
@@ -444,6 +443,7 @@ let checks=0;
           await expect(page.locator('#sweep-metrics')).toContainText('991');
           await page.locator('[data-preset="decades"]').click(); assert.equal(await page.locator('.segment').count(),5);
           await expect(page.locator('#sweep-metrics')).toContainText('136');
+          await expect(page.locator('#sweep-metrics')).toContainText(/Not available for a segmented table/);
           await expect(page.locator('#boundary-rows tr.over-limit')).toHaveCount(0);
           await expect(page.locator('#sweep-status')).toContainText(/repeat their relative spacing/);
           await expect(page.locator('#sweep-metrics')).toContainText(/9 to 403\.6 by segment/);
@@ -507,9 +507,7 @@ let checks=0;
           await blocked.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new Error('storage denied');}}));
           await blocked.goto(base+'delay.html');
           assert.equal(await blocked.evaluate(()=>Bench.valid),true);
-          assert.match(await blocked.locator('#bench-status').innerText(),/unavailable/);
-          await blocked.locator('.saved-setups summary').click(); await blocked.locator('#setup-name').fill('Test'); await blocked.locator('#setup-save').click();
-          assert.match(await blocked.locator('#bench-status').innerText(),/Could not save/);
+          assert.equal(await blocked.locator('.saved-setups').count(),0);
           await blocked.locator('#copy-link').click(); assert.equal(await blocked.evaluate(()=>window.copiedText),blocked.url());
           await blocked.close();
         });
@@ -688,7 +686,7 @@ let checks=0;
             return {w:canvas.width,h:canvas.height,light,dark,total:d.length/4};
           },[sel,theme]);
           await go('gain.html?t=sd&d1=100&s2=50');
-          await page.locator('#export-figure').click();
+          await menu('export-figure');
           await expect(status).toContainText(/Image copied \(light/);
           const item=await page.evaluate(()=>window.copiedImage);
           assert.equal(item.type,'image/png'); assert.ok(item.size>5000,'png has content');
@@ -699,6 +697,7 @@ let checks=0;
           p=await probe('#diagram-sd','dark');
           assert.ok(p.dark>p.total*.5,'dark background'); assert.ok(p.light>50,'light text is drawn');
           // The equations come from a fresh render, so the panel can stay closed.
+          await page.locator('#export-menu > summary').click();
           await page.locator('#export-theme').selectOption('dark');
           await page.locator('#export-equations').click();
           await expect(status).toContainText(/Image copied \(dark/);
@@ -708,15 +707,17 @@ let checks=0;
           await page.locator('#export-table').click();
           const tsv=await page.evaluate(()=>window.copiedText);
           assert.match(tsv,/^#\tStart\tStop\tStep\tPoints/); assert.match(tsv,/\t991\t/); assert.match(tsv,/At\tTransition/);
-          await page.locator('#export-table-image').click();
+          await menu('export-table-image');
           await expect(status).toContainText(/Image copied/);
           // An invalid page refuses rather than drawing a half result.
           await go('index.html'); await fill('zdut',0);
           await expect(page.locator('#export-figure')).toBeDisabled();
           await fill('zdut',50); await expect(page.locator('#export-figure')).toBeEnabled();
-          await page.locator('#export-figure').click(); await expect(status).toContainText(/Image copied/);
+          await menu('export-figure'); await expect(status).toContainText(/Image copied/);
+          // The menu closes after a choice, and opens beneath its button.
+          assert.equal(await page.evaluate(()=>document.getElementById('export-menu').open),false);
           for (const file of ['match.html','chain.html','delay.html','large-signal.html','mixed.html']) {
-            await go(file); await page.locator('#export-figure').click(); await expect(status).toContainText(/Image copied/,{timeout:15000});
+            await go(file); await menu('export-figure'); await expect(status).toContainText(/Image copied/,{timeout:15000});
           }
         });
         await check('Numbers keep their units on one line on a phone, and rules of thumb stack',async()=>{

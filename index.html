@@ -9,8 +9,8 @@
   <title>VOPP · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-5">
-  <link rel="stylesheet" href="css/app.css?v=20260914-5"><link rel="stylesheet" href="css/workbench.css?v=20260914-5">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-6">
+  <link rel="stylesheet" href="css/app.css?v=20260914-6"><link rel="stylesheet" href="css/workbench.css?v=20260914-6">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -84,7 +84,7 @@
           </div>
           <div class="field-row">
             <button type="button" class="step" id="dbm-dec" aria-label="Decrease 1 dB">−</button>
-            <input data-signed id="dbm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Source power in dBm" value="0">
+            <input data-signed id="dbm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Source power in dBm" title="Arrow up or down steps 1 dB; hold Shift for 0.1 dB" value="0">
             <span class="unit">dBm</span>
             <button type="button" class="step" id="dbm-inc" aria-label="Increase 1 dB">+</button>
           </div>
@@ -113,31 +113,6 @@
       </div>
     </section>
 
-    <div class="layout">
-      <section class="panel">
-        <h2>Assumptions</h2>
-        <ul>
-          <li><strong>Z<sub>VNA</sub></strong> is fixed at 50 Ω (analyzer port). <strong>Z<sub>DUT</sub></strong> is the DUT impedance at that plane (per side if differential).</li>
-          <li><strong>VNA → DUT:</strong> dBm is <em>available</em> source power. VOPP is the loaded voltage at the DUT. Type VOPP to get the VNA source setting.</li>
-          <li><strong>DUT → VNA:</strong> dBm is <em>delivered</em> receiver power. VOPP is the voltage at the VNA port (same node as the DUT output if connected directly). Type VOPP to get the receiver reading.</li>
-          <li>Real impedances. V<sub>load</sub> = 2√(P<sub>avs</sub> Z<sub>S</sub>) · Z<sub>L</sub> / (Z<sub>S</sub> + Z<sub>L</sub>).</li>
-          <li>Differential: complementary 180°. VOPP is V<sub>+</sub> − V<sub>−</sub>. Z<sub>diff</sub> = 2 · Z (per side).</li>
-        </ul>
-      </section>
-      <section class="panel">
-        <h2>Formulas</h2>
-        <div class="formula">
-          Γ = (Z<sub>L</sub> − Z<sub>S</sub>) / (Z<sub>L</sub> + Z<sub>S</sub>)<br>
-          V<sub>oc</sub> = 2 √(P<sub>avs</sub> · Z<sub>S</sub>)<br>
-          V<sub>rms</sub> = V<sub>oc</sub> · Z<sub>L</sub> / (Z<sub>S</sub> + Z<sub>L</sub>)<br>
-          VOPP = <span class="sym">2√2</span> · V<sub>rms</sub> &nbsp;(sine)<br>
-          VNA→DUT: Z<sub>S</sub>=Z<sub>VNA</sub>, Z<sub>L</sub>=Z<sub>DUT</sub>, dBm = P<sub>avs</sub><br>
-          DUT→VNA: Z<sub>S</sub>=Z<sub>DUT</sub>, Z<sub>L</sub>=Z<sub>VNA</sub>, dBm = P<sub>del</sub>
-        </div>
-        <p>Arrow up/down on dBm steps 1 dB. Hold Shift for 0.1 dB.</p>
-      </section>
-    </div>
-
     <section class="ref">
       <div class="ref-head">
         <h2>Quick reference</h2>
@@ -160,7 +135,7 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/theme.js?v=20260914-5"></script><script src="js/bench.js?v=20260914-5"></script><script src="js/diagram.js?v=20260914-5"></script><script src="js/rf.js?v=20260914-5"></script><script src="js/dut.js?v=20260914-5"></script><script src="js/snapshot.js?v=20260914-5"></script>
-  <script src="js/app.js?v=20260914-5"></script>
+  <script src="js/theme.js?v=20260914-6"></script><script src="js/bench.js?v=20260914-6"></script><script src="js/diagram.js?v=20260914-6"></script><script src="js/rf.js?v=20260914-6"></script><script src="js/dut.js?v=20260914-6"></script><script src="js/snapshot.js?v=20260914-6"></script>
+  <script src="js/app.js?v=20260914-6"></script>
 </body>
 </html>

@@ -637,6 +637,15 @@
       log: { fine, coarse, finePoints: logPoints(fine), coarsePoints: logPoints(coarse) } };
   }
 
+  // Ripple between two mismatches facing each other, from their return losses in dB. The
+  // reflections interact through their product, and the trace moves between 20 log10(1 ± |Γ1Γ2|).
+  function mismatchRipple(rl1, rl2) {
+    if (![rl1, rl2].every(v => Number.isFinite(v) && v >= 0)) return null;
+    const gamma1 = Math.pow(10, -rl1 / 20), gamma2 = Math.pow(10, -rl2 / 20), product = gamma1 * gamma2;
+    const up = 20 * Math.log10(1 + product), down = product < 1 ? 20 * Math.log10(1 - product) : -Infinity;
+    return { rl1, rl2, gamma1, gamma2, product, up, down, peakToPeak: up - down };
+  }
+
   // ----- Single-ended to mixed-mode S-parameters -----
   // A logical port is one physical port (single-ended) or a pair. The differential and
   // common-mode waves of a pair are (a_p - a_q)/sqrt 2 and (a_p + a_q)/sqrt 2, so the whole
@@ -689,6 +698,14 @@
     const byName = {};
     entries.forEach(entry => { byName[entry.name] = entry; });
     return { rows, entries, byName, ports };
+  }
+
+  // Time-domain transform limits of a linear sweep. The alias-free range is 1/Δf in round-trip
+  // time, half that one way, and the response resolution is about 1/span. A segmented table has
+  // no single Δf, and analyzers do not transform it.
+  function timeDomain(step, span) {
+    if (!(step > 0) || !(span > 0) || ![step, span].every(Number.isFinite)) return null;
+    return { range: 1 / step, rangeOneWay: 0.5 / step, resolution: 1 / span };
   }
 
   // Receiver noise floor against IF bandwidth and averaging. The datasheet quotes a floor at
@@ -899,7 +916,7 @@
   }
 
   const RF = {
-    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, mixedModeRows, mixedMode, fromPolar, toPolar,
+    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, timeDomain, mismatchRipple, mixedModeRows, mixedMode, fromPolar, toPolar,
     tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,

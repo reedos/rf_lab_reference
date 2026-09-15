@@ -31,12 +31,11 @@ numbers, units, and model assumptions. Equations update with the inputs; long eq
 scroll within their own panel on small screens. KaTeX loads the first time a calculation
 panel opens; it, its fonts, and the page fonts are bundled locally, with MathML included
 for assistive technology. **Copy link** preserves the setup,
-including the input used to solve the other fields. **Named setups** stores up to 50 setups per calculator in this browser;
-saving an existing name updates it. Use a copied link to move a setup to another device.
-Storage and clipboard failures are reported without preventing calculation.
+including the input used to solve the other fields, and is the way to keep or share one.
+Nothing is stored on the device except the theme choice. Clipboard failures are reported
+without preventing calculation.
 
-Setups stay on the device. There is no account, backend, or measurement upload, and the
-pages make no external requests.
+There is no account, backend, or measurement upload, and the pages make no external requests.
 
 ## The look
 
@@ -103,7 +102,7 @@ over the default card.
 ## Reading the pages
 
 Each calculator has **one answer**. It leads its list of tiles, spans the row, and is the only
-one styled that way; everything after it is supporting detail.
+one styled that way. Everything after it is supporting detail.
 
 **Colour carries quantity identity, not decoration.** One side of a pair takes one colour, the
 other side takes the other, and those same two colours appear in the diagram, inside the
@@ -122,7 +121,7 @@ A readout takes the colour of the side it belongs to, not the block it sits on. 
 load-side quantity, and its colour says so.
 
 The scheme is applied only where a page genuinely pairs two quantities. The sweep, delay and
-power-chain pages have no such pair, so forcing it there would dilute what the colours mean.
+power-chain pages have no such pair, so the scheme is not used there.
 The differential rails keep their own amber and blue for plus and minus, which is a separate
 axis, and every key that appears beside them says so.
 

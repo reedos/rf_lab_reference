@@ -196,11 +196,18 @@
     const tools = document.createElement('span');
     tools.className = 'export-tools'; tools.id = 'export-tools';
     const button = (id, label) => `<button type="button" class="ghost" id="${id}">${label}</button>`;
-    tools.innerHTML = (list(config.figure).length ? button('export-figure', config.figureLabel || 'Copy figure') : '') +
-      (list(config.tables).length ? button('export-table', 'Copy table') + button('export-table-image', 'Table image') : '') +
-      button('export-equations', 'Copy equations') +
-      `<label class="export-theme">Image <select id="export-theme" class="unit-select" aria-label="Image theme"><option value="light">light</option><option value="dark">dark</option></select></label>`;
+    const item = (id, label) => `<button type="button" id="${id}">${label}</button>`;
+    // One control for every image: the choices open beneath it and the theme sits with them.
+    tools.innerHTML = (list(config.tables).length ? button('export-table', 'Copy table') : '') +
+      `<details class="export-menu" id="export-menu"><summary class="ghost" data-icon="image" aria-label="Copy an image">Copy image</summary><div class="menu-list">` +
+      (list(config.figure).length ? item('export-figure', config.figureLabel || 'Figure') : '') +
+      (list(config.tables).length ? item('export-table-image', 'Table') : '') +
+      item('export-equations', 'Equations') +
+      `<label class="export-theme">Theme <select id="export-theme" class="unit-select" aria-label="Image theme"><option value="light">light</option><option value="dark">dark</option></select></label></div></details>`;
     toolbar.append(tools);
+    const menu = $('export-menu');
+    tools.querySelectorAll('.menu-list button').forEach(b => b.addEventListener('click', () => { menu.open = false; }));
+    document.addEventListener('click', event => { if (menu.open && !menu.contains(event.target)) menu.open = false; });
     const theme = () => $('export-theme').value;
     const slug = document.title.split('·')[0].trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'rf-lab';
     const caption = () => { try { return resolve(config.caption) || ''; } catch (_) { return ''; } };

@@ -72,7 +72,6 @@
   // single-ended port, labelled with the voltage the conversion refers to.
   function renderDiagram(z1, z2) {
     const ports = PORTS[topology], spec = RF.GAIN_TOPOLOGIES[topology];
-    const mark = Bench.mark;
     const pair = dutSide => [{ tone: 'neutral', [dutSide]: { label: '+' } }, { tone: 'neutral', [dutSide]: { label: '−' } }];
     const single = (side, label) => [{ tone: 'neutral', tap: { side, label } }];
     const subs = { d1: 'V<sub>d1</sub><sup>+</sup>', s1: 'V<sub>s1</sub><sup>+</sup>', d2: 'V<sub>d2</sub>', s2: 'V<sub>s2</sub>' };

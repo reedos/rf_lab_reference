@@ -386,7 +386,7 @@
            tex(r.wattsDelivered, 'W'), `\\frac{(${volts(r.vrmsSe)})^{2}}{${zLv}}`),
          dbmFromWatts];
     Bench.update({ valid: true, lines: [
-      'CW sinusoid into real positive impedances. Differential drive is two equal signals 180° apart, so the differential voltage is twice the per-line voltage.',
+      'CW sinusoid into real positive impedances. Z_VNA is the analyzer port at 50 Ω; Z_DUT is the DUT impedance at that plane, per side if differential. Differential drive is two equal signals 180° apart, so the differential voltage is twice the per-line voltage.',
       `Direction: ${state.path === 'src' ? 'VNA → DUT, so the level is available source power' : 'DUT → VNA, so the level is delivered receiver power'}. ${fromVoltage ? 'VOPP was typed, so the chain below runs from voltage to power.' : 'The level was typed, so the chain below runs from power to voltage.'}`,
       eq('Reference impedances',
         `${zS} &= ${zSv} \\\\ ${zL} &= ${zLv}` + (diff ? ` \\\\ Z_{\\mathrm{diff}} &= 2\\,${zL} = ${tint('out', tex(r.zDiffDut, 'Ω'))}` : '')),

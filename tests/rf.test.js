@@ -40,6 +40,20 @@ test('mixed-mode conversion follows the pairing and conserves power between mode
   assert.equal(RF.mixedMode(S, [{ ports: [1, 3] }, { ports: [2, 5] }]), null);
 });
 
+test('time-domain limits follow the step and the span', () => {
+  const td = RF.timeDomain(10e6, 10e9 - 100e6);
+  near(td.range, 100e-9, 1e-18); near(td.rangeOneWay, 50e-9, 1e-18); near(td.resolution, 1 / 9.9e9, 1e-24);
+  assert.equal(RF.timeDomain(0, 1e9), null); assert.equal(RF.timeDomain(1e6, 0), null);
+});
+
+test('two mismatches ripple through the product of their reflections', () => {
+  const r = RF.mismatchRipple(20, 20);
+  near(r.product, 0.01); near(r.up, 20 * Math.log10(1.01)); near(r.down, 20 * Math.log10(0.99)); near(r.peakToPeak, r.up - r.down);
+  near(RF.mismatchRipple(10, 10).peakToPeak, 20 * Math.log10(1.1 / 0.9));
+  assert.equal(RF.mismatchRipple(0, 0).down, -Infinity);
+  assert.equal(RF.mismatchRipple(-1, 20), null);
+});
+
 test('the noise floor follows IF bandwidth and averaging and sets the trace noise', () => {
   const n = RF.noiseFloor({ floorRef: -120, ifbwRef: 10, ifbw: 1000, signal: -40 });
   near(n.floor, -100);

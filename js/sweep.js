@@ -105,7 +105,14 @@
   }
   function seconds(t) {
     if (!Number.isFinite(t)) return '—';
-    return t >= 1 ? `${fmt(t)} s` : t >= 1e-3 ? `${fmt(t * 1e3)} ms` : `${fmt(t * 1e6)} µs`;
+    return t >= 1 ? `${fmt(t)} s` : t >= 1e-3 ? `${fmt(t * 1e3)} ms` : t >= 1e-6 ? `${fmt(t * 1e6)} µs` : t >= 1e-9 ? `${fmt(t * 1e9)} ns` : `${fmt(t * 1e12)} ps`;
+  }
+  // The transform needs one linear segment; a table has no single step to set the range.
+  function timeDomainTile() {
+    if (result.rows.length !== 1) return metric('Time domain', '<span class="over-limit">Not available for a segmented table; use one linear segment for gating or TDR</span>');
+    const td = RF.timeDomain(result.rows[0].step, result.last - result.first);
+    return metric('Time-domain range', `${seconds(td.range)} round trip · ${seconds(td.rangeOneWay)} one way`) +
+      metric('Time-domain resolution', `≈ ${seconds(td.resolution)}`);
   }
   function boundaryText(b) {
     if (b.kind === 'overlap') return `Overlap of ${freq(-b.gap)}`;
@@ -161,7 +168,7 @@
           ? `≈ ${seconds(result.sweepTimeTotal)}` + (result.overheadTime > 0 && Number.isFinite(result.sweepTime) ? ` · ${seconds(result.sweepTime)} dwell + ${seconds(result.overheadTime)} overhead` : '')
           : 'Enter IF bandwidth') +
       metric('Log sweep, same coverage', `${result.log.finePoints} points at the finest Δf/f (${fmt(result.log.fine * 100)} %)`) +
-      metric('Log sweep, coarsest', `${result.log.coarsePoints} points at ${fmt(result.log.coarse * 100)} %`);
+      metric('Log sweep, coarsest', `${result.log.coarsePoints} points at ${fmt(result.log.coarse * 100)} %`) + timeDomainTile();
   }
   // The floor follows the sweep's IF bandwidth; without one there is nothing to place it at.
   function computeNoise() {
@@ -219,6 +226,11 @@
         b.sharp ? `${mode === 'relative' ? 'Relative spacing pattern' : 'Step size'} changes by more than ${fmt(result.jumpLimit)}× at ${freq(b.frequency)}.` : '']),
       eq('Total points', String.raw`N &= \sum_i N_i`, tex(result.points), result.rows.map(r => tex(r.points)).join('+')),
       result.ifbw === null ? 'Enter an IF bandwidth to estimate the sweep time.' : eq('Sweep time', String.raw`t &\approx \frac{N}{\mathrm{IFBW}} + N t_{\mathrm{point}} + S t_{\mathrm{seg}}`, tex(result.sweepTimeTotal, 's'), String.raw`\frac{${tex(result.points)}}{${tex(result.ifbw, 'Hz', false)}}+${tex(result.points)}(${tex(result.pointOverhead, 's', false)})+${tex(result.rows.length)}(${tex(result.segmentOverhead, 's', false)})\,\mathrm s`),
+      ...(result.rows.length === 1 ? [
+        eq('Alias-free range of the time-domain transform', String.raw`t_{\max} &= \frac{1}{\Delta f}`, tex(RF.timeDomain(result.rows[0].step, result.last - result.first).range, 's'), String.raw`\frac{1}{${tex(result.rows[0].step, 'Hz', false)}}\,\mathrm s`),
+        eq('Response resolution', String.raw`\Delta t &\approx \frac{1}{f_{\mathrm{stop}}-f_{\mathrm{start}}}`, tex(RF.timeDomain(result.rows[0].step, result.last - result.first).resolution, 's')),
+        'The range is round-trip time for reflection; one way is half of it. A segmented table has no single step, so analyzers do not transform it.'
+      ] : ['A segmented table cannot be transformed to the time domain: there is no single step to set the alias-free range. Use one linear segment for gating or TDR.']),
       eq('Log sweep with the same relative spacing', String.raw`N_{\log} &= \left\lceil\frac{\ln(f_{\mathrm{last}}/f_{\mathrm{first}})}{\ln(1+r)}\right\rceil+1`, String.raw`${tex(result.log.finePoints)}\text{ for } r=${tex(result.log.fine)},\ ${tex(result.log.coarsePoints)}\text{ for } r=${tex(result.log.coarse)}`),
       `Boundaries are compared by ${mode === 'relative' ? 'relative step at each segment start, which is smooth for a repeating decade pattern' : 'absolute step size'}.`,
       'Sweep time excludes band crossings, source settling, and dwell. Instrument segment limits, point limits, and IF bandwidth per segment are set on the analyzer.',
