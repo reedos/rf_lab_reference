@@ -750,7 +750,7 @@ let checks=0;
           await go('gain.html');
           assert.equal(await page.locator('.ref').first().getAttribute('data-scroll'),null);
           assert.equal(await page.evaluate(()=>document.querySelector('.ref').scrollWidth-document.querySelector('.ref').clientWidth),0);
-          // Nothing needs a sideways scroll at phone width except a matrix, and no equation does.
+          // Nothing needs a sideways scroll at phone width: no table and no equation.
           for (const file of ['gain.html?t=sd','gain.html?t=dd&s11-db=-10&s11-deg=180','mixed.html','mixed.html?din=diff&dout=se','large-signal.html','large-signal.html?tab=thd','sweep.html?ifbw=1','chain.html','index.html?m=diff','match.html?z=25&x=30','delay.html']) {
             // Every table fits a phone now; only equations are measured below.
             await go(file); await page.locator('.calculation summary').click(); await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
@@ -760,7 +760,7 @@ let checks=0;
               return out;});
             assert.deepEqual(over,[],file+' scrolls sideways');
           }
-          // List tables stack into cards with their headings; the mixed-mode matrix keeps its grid.
+          // Results tables stack into cards, each value under its own heading.
           await go('sweep.html');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#sweep-rows tr')).display),'grid');
           assert.equal(await page.evaluate(()=>document.querySelector('#sweep-rows td:nth-child(2)').getAttribute('data-label')),'Start');

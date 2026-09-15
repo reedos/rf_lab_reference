@@ -1,6 +1,6 @@
 // Colour theme: one button at the top right cycles Auto, Light and Dark. Auto follows the
-// operating system, the way an instrument's screen follows its print mode. A pinned choice is
-// one word in this browser's storage and nothing else is written. The head of each page
+// operating system. A pinned choice is one word in this browser's storage, and nothing else
+// is written. The head of each page
 // applies the same rule before the stylesheet paints, so a light-mode visitor never sees a
 // dark flash. The icon shows the choice in force.
 (function () {

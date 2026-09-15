@@ -9,8 +9,8 @@
   <title>Mixed-mode S-parameters &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-4">
-  <link rel="stylesheet" href="css/app.css?v=20260914-4"><link rel="stylesheet" href="css/workbench.css?v=20260914-4">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-5">
+  <link rel="stylesheet" href="css/app.css?v=20260914-5"><link rel="stylesheet" href="css/workbench.css?v=20260914-5">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -54,7 +54,7 @@
 <div class="gain-result" id="mixed-transform" tabindex="0" role="region" aria-label="Mixed-mode transform"></div>
 
 <h2>Equations for this mapping</h2>
-<p class="hint">Written out with your port numbers, so they can be read straight off an analyzer's single-ended trace set. Enter the measured values on the analyzer; this page gives the algebra, not the arithmetic.</p>
+<p class="hint">Written out with your port numbers, so they can be read straight off an analyzer's single-ended trace set. Enter the measured values on the analyzer, which does the conversion itself.</p>
 <div id="mixed-equations"></div>
 
 <h2>Reference impedances</h2>
@@ -67,7 +67,7 @@
 <section class="ref">
   <div class="ref-head"><h2>Rules of thumb</h2><p>Order-of-magnitude only</p></div>
   <table class="thumbs">
-    <thead><tr><th>Item</th><th>Thumb</th><th>Why it bites you</th></tr></thead>
+    <thead><tr><th>Item</th><th>Thumb</th><th>Why it matters</th></tr></thead>
     <tbody>
       <tr><td>Balanced through path</td><td class="num">S<sub>dd21</sub> ≈ S<sub>21</sub> when the pair is symmetric</td><td>The differential gain is the single-ended gain, not 6 dB more; the extra 3 dB per side is in the reference impedance</td></tr>
       <tr><td>Single-ended out of a pair</td><td class="num">S<sub>sd21</sub> = (S<sub>21</sub> − S<sub>23</sub>)/√2</td><td>An ideal balun-free split reads −3.01 dB; that is the definition, not loss</td></tr>
@@ -82,6 +82,6 @@
 <p>Bockelman and Eisenstadt, "Combined differential and common-mode scattering parameters: theory and simulation", IEEE Trans. MTT 43(7), 1995.</p></section>
 <p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/theme.js?v=20260914-4"></script><script src="js/bench.js?v=20260914-4"></script><script src="js/diagram.js?v=20260914-4"></script><script src="js/rf.js?v=20260914-4"></script><script src="js/dut.js?v=20260914-4"></script><script src="js/snapshot.js?v=20260914-4"></script><script src="js/mixed.js?v=20260914-4"></script>
+<script src="js/theme.js?v=20260914-5"></script><script src="js/bench.js?v=20260914-5"></script><script src="js/diagram.js?v=20260914-5"></script><script src="js/rf.js?v=20260914-5"></script><script src="js/dut.js?v=20260914-5"></script><script src="js/snapshot.js?v=20260914-5"></script><script src="js/mixed.js?v=20260914-5"></script>
 </body>
 </html>

@@ -9,8 +9,8 @@
   <title>Large-signal · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-4">
-  <link rel="stylesheet" href="css/app.css?v=20260914-4"><link rel="stylesheet" href="css/workbench.css?v=20260914-4">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-5">
+  <link rel="stylesheet" href="css/app.css?v=20260914-5"><link rel="stylesheet" href="css/workbench.css?v=20260914-5">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -221,7 +221,7 @@
           <div class="quantity-field"><label for="thd-band-high">DUT passband high (optional)</label><div class="unit-pair"><input id="thd-band-high" value="" placeholder="1.1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband high"><select id="thd-band-high-unit" aria-label="DUT passband high unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
         </div>
         <h4>How the device rolls off</h4>
-        <p class="hint">The corner and pole count are a model of the response shape, and they convert a measured harmonic into an estimated intrinsic one. They cannot replace the passband: relative attenuation saturates at 20p·log₁₀(n), so one pole can never account for more than 6 dB on H2 however far above the corner you drive.</p>
+        <p class="hint">The corner and pole count are a model of the response shape, and they convert a measured harmonic into an estimated intrinsic one. They do not substitute for measuring in-band: relative attenuation saturates at 20p·log₁₀(n), so one pole can never account for more than 6 dB on H2 however far above the corner you drive.</p>
         <div class="work-fields">
           <div class="quantity-field"><label for="thd-fc">Device corner f<sub>c</sub> (optional)</label><div class="unit-pair"><input id="thd-fc" value="" placeholder="2" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Device corner frequency"><select id="thd-fc-unit" aria-label="Device corner frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
           <label>Poles<input id="thd-poles" value="1" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Number of poles"></label>
@@ -246,7 +246,7 @@
       </div>
       <table class="thumbs">
         <thead>
-          <tr><th>Item</th><th>Thumb</th><th>Why it bites you</th></tr>
+          <tr><th>Item</th><th>Thumb</th><th>Why it matters</th></tr>
         </thead>
         <tbody>
           <tr>
@@ -280,7 +280,7 @@
     <p class="foot">Static page. Calculations stay in your browser.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/theme.js?v=20260914-4"></script><script src="js/bench.js?v=20260914-4"></script><script src="js/diagram.js?v=20260914-4"></script><script src="js/rf.js?v=20260914-4"></script><script src="js/dut.js?v=20260914-4"></script><script src="js/snapshot.js?v=20260914-4"></script>
-  <script src="js/large-signal.js?v=20260914-4"></script>
+  <script src="js/theme.js?v=20260914-5"></script><script src="js/bench.js?v=20260914-5"></script><script src="js/diagram.js?v=20260914-5"></script><script src="js/rf.js?v=20260914-5"></script><script src="js/dut.js?v=20260914-5"></script><script src="js/snapshot.js?v=20260914-5"></script>
+  <script src="js/large-signal.js?v=20260914-5"></script>
 </body>
 </html>

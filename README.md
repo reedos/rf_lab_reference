@@ -49,9 +49,8 @@ with a small icon each, and the block diagrams share the schematic's box treatme
 
 ## Light and dark
 
-The pages follow the operating system's colour preference by default, the way an instrument's
-screen and its print mode are two views of the same trace set, and the button at the top
-right cycles **Auto**, **Light** and **Dark**; its icon shows the choice in force. A pinned choice is the one word this site
+The pages follow the operating system's colour preference by default, and the button at the
+top right cycles **Auto**, **Light** and **Dark**. Its icon shows the choice in force. A pinned choice is the one word this site
 keeps in the browser besides named setups. The two palettes share their roles: amber for the
 first quantity and teal for the second, which is the channel-one-yellow, channel-two-cyan
 order of most bench instruments, with every meaning-carrying colour clearing WCAG AA on its
@@ -95,8 +94,8 @@ drives the DUT and at the output side when the DUT drives the VNA, so switching 
 switches the impedance and drive mode as well; editing Z<sub>DUT</sub> or the drive on the
 page writes that side back to the card. Gain takes both sides: the topology picks the
 parameter, and each per-line impedance doubles for a differential reference. Sweep takes the
-range: the generated table's linear tail starts where the DUT lives and stops at the top of its
-range, the wide preset spans it, and a coverage tile reports whether the segment table reaches
+range: the generated table's linear tail starts at the bottom of the DUT's range and stops at
+its top, the wide preset spans it, and a coverage tile reports whether the segment table reaches
 both ends. Each card states what the current page takes from it. Links from before the card
 existed keep their own values, because a link that names the page's drive or impedance wins
 over the default card.
@@ -119,8 +118,7 @@ key in one line.
 | Large-signal | IIP3, input-referred tone | OIP3, IM3, OP1dB, output-referred |
 | Gain | input reference and incident wave | output reference and the voltage at the load |
 
-A readout takes the colour of the side it belongs to rather than the block it happens to sit
-on. In the receive direction the power drawn on the source block is delivered power, a
+A readout takes the colour of the side it belongs to, not the block it sits on. In the receive direction the power drawn on the source block is delivered power, a
 load-side quantity, and its colour says so.
 
 The scheme is applied only where a page genuinely pairs two quantities. The sweep, delay and
@@ -299,8 +297,7 @@ Mode reference impedances follow the card: 2 Z₀ for a differential mode and Z�
 common mode, per side. The transform assumes both lines of a pair share their per-line
 reference; renormalising to something else needs the whole single-ended matrix first.
 
-The page gives the algebra, not the arithmetic: enter the measured values on the analyzer,
-which does the conversion itself. Copy result gives every parameter as a line of plain text.
+Enter the measured values on the analyzer, which does the conversion itself. Copy result gives every parameter as a line of plain text.
 The link at the bottom carries the DUT card to the Gain page to turn the parameter into a
 voltage gain.
 
@@ -340,7 +337,7 @@ does not divide the span is flagged with the step that would land on the stop fr
 
 **Log-style tables** put points at 1, 1+k, 1+2k … times each decade as one linear segment
 per decade, so every frequency is a round number; the generator builds that table from start,
-stop, and k, with an optional linear tail where the DUT lives (for example decades from 10 kHz,
+stop, and k, with an optional linear tail across the DUT's range (for example decades from 10 kHz,
 then 100 MHz to 10 GHz in 100 MHz steps).
 
 Each segment has a checkbox beside its number. Clearing it **parks** the segment: the values
