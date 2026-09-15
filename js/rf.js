@@ -700,6 +700,21 @@
     return { rows, entries, byName, ports };
   }
 
+  // What arrives at the receiver against its 0.1 dB compression and damage levels, and the
+  // attenuator that would bring it under the compression point with the margin asked for,
+  // rounded up to a stock value.
+  const PAD_VALUES = [1, 2, 3, 6, 10, 20, 30, 40];
+  function receiverBudget(levelDbm, opts) {
+    const o = opts || {};
+    if (![levelDbm, o.compression, o.damage].every(Number.isFinite) || !(o.margin >= 0) || !Number.isFinite(o.margin)) return null;
+    const headroom = o.compression - levelDbm, damageHeadroom = o.damage - levelDbm;
+    const excess = Math.max(0, levelDbm - (o.compression - o.margin));
+    const stock = PAD_VALUES.find(v => v >= excess);
+    const pad = excess === 0 ? 0 : stock === undefined ? Math.ceil(excess) : stock;
+    return { level: levelDbm, compression: o.compression, damage: o.damage, margin: o.margin, headroom, damageHeadroom, excess, pad, afterPad: levelDbm - pad,
+      state: damageHeadroom < 0 ? 'damage' : headroom < o.margin ? 'compress' : 'ok' };
+  }
+
   // Time-domain transform limits of a linear sweep. The alias-free range is 1/Δf in round-trip
   // time, half that one way, and the response resolution is about 1/span. A segmented table has
   // no single Δf, and analyzers do not transform it.
@@ -916,7 +931,7 @@
   }
 
   const RF = {
-    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, timeDomain, mismatchRipple, mixedModeRows, mixedMode, fromPolar, toPolar,
+    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, timeDomain, mismatchRipple, receiverBudget, PAD_VALUES, mixedModeRows, mixedMode, fromPolar, toPolar,
     tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,

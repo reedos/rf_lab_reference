@@ -228,6 +228,22 @@ let checks=0;
           await page.mouse.move(box.x+box.width*.65,box.y+box.height*.35,{steps:6}); await page.mouse.up();
           assert.ok(await num('x')>0); assert.ok(await num('gamma')>.1);
         });
+        await check('The receiver budget reads the last connection and recommends a stock pad',async()=>{
+          await go('chain.html');
+          await expect(page.locator('#budget-metrics')).toContainText('19 dB');
+          await expect(page.locator('#budget-metrics')).toContainText('-9.00 dBm at the receiver');
+          await expect(page.locator('#budget-metrics')).toContainText('None needed');
+          await fill('source-power',20);
+          await expect(page.locator('#budget-status')).toContainText(/above its damage level/);
+          await expect(page.locator('#budget-metrics')).toContainText('30 dB at the last connection → 1.00 dBm');
+          await fill('source-power',-2);
+          await expect(page.locator('#budget-status')).toContainText(/within 3 dB of its compression point/);
+          await expect(page.locator('#budget-metrics')).toContainText('2 dB at the last connection');
+          await fill('rx-margin',-1); await expect(page.locator('#budget-status')).toContainText(/0 dB or more/);
+          await fill('rx-margin',3); await fill('rx-comp',12); await page.reload();
+          await expect(page.locator('#rx-comp')).toHaveValue('12');
+          await expect(page.locator('#budget-status')).toHaveText('');
+        });
         await check('Power and noise chain output levels, limits, reorder and physical bandwidth units',async()=>{
           await go('chain.html'); assert.equal(await page.locator('.stage').count(),3);
           await expect(page.locator('#power-rows')).toContainText(/-23\.00 dBm/);

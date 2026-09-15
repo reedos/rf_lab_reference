@@ -371,6 +371,14 @@ widest IF bandwidth that still leaves a 20 dB margin. A margin under 20 dB is fl
 model treats the floor as white noise in the IF filter and averaging as coherent; real
 receivers add a fixed residual at the narrowest bandwidths.
 
+## Receiver budget
+
+The Power & noise page treats the last connection as the receiver port. Enter the analyzer's
+0.1 dB compression level and its damage level from the datasheet, and the margin you want
+under compression. The page reports the headroom to each, flags a level within the margin
+or above the damage level, and gives the stock attenuator (1, 2, 3, 6, 10, 20, 30 or 40 dB,
+rounded up) that would restore the margin at the last connection, with the level it leaves.
+
 ## Intra-pair skew
 
 A length mismatch between the P and N halves of a pair delays one of them. For an otherwise

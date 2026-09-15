@@ -40,6 +40,17 @@ test('mixed-mode conversion follows the pairing and conserves power between mode
   assert.equal(RF.mixedMode(S, [{ ports: [1, 3] }, { ports: [2, 5] }]), null);
 });
 
+test('the receiver budget reports headroom and rounds the pad up to a stock value', () => {
+  let b = RF.receiverBudget(-9, { compression: 10, damage: 30, margin: 3 });
+  near(b.headroom, 19); near(b.damageHeadroom, 39); assert.equal(b.pad, 0); assert.equal(b.state, 'ok');
+  b = RF.receiverBudget(31, { compression: 10, damage: 30, margin: 3 });
+  assert.equal(b.state, 'damage'); near(b.excess, 24); assert.equal(b.pad, 30); near(b.afterPad, 1);
+  b = RF.receiverBudget(8.5, { compression: 10, damage: 30, margin: 3 });
+  assert.equal(b.state, 'compress'); near(b.excess, 1.5); assert.equal(b.pad, 2);
+  assert.equal(RF.receiverBudget(60, { compression: 10, damage: 30, margin: 3 }).pad, 53);
+  assert.equal(RF.receiverBudget(0, { compression: 10, damage: 30, margin: -1 }), null);
+});
+
 test('time-domain limits follow the step and the span', () => {
   const td = RF.timeDomain(10e6, 10e9 - 100e6);
   near(td.range, 100e-9, 1e-18); near(td.rangeOneWay, 50e-9, 1e-18); near(td.resolution, 1 / 9.9e9, 1e-24);

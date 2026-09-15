@@ -14,7 +14,7 @@
   ];
   function readQuery() {
     const q = new URLSearchParams(location.search);
-    for (const id of ['source-power','bandwidth','source-temp']) if (q.has(id)) $(id).value = q.get(id);
+    for (const id of ['source-power','bandwidth','source-temp','rx-comp','rx-damage','rx-margin']) if (q.has(id)) $(id).value = q.get(id);
     if (Object.hasOwn(scales, q.get('bandwidth-unit'))) $('bandwidth-unit').value = q.get('bandwidth-unit');
     bandwidthUnit = $('bandwidth-unit').value;
     if (q.has('stages')) {
@@ -28,7 +28,7 @@
   }
   function writeQuery() {
     const q = new URLSearchParams();
-    ['source-power','bandwidth','bandwidth-unit','source-temp'].forEach(id => q.set(id, Bench.raw(id)));
+    ['source-power','bandwidth','bandwidth-unit','source-temp','rx-comp','rx-damage','rx-margin'].forEach(id => q.set(id, Bench.raw(id)));
     q.set('stages', JSON.stringify(stages));
     history.replaceState(null, '', location.pathname + '?' + q);
   }
@@ -49,7 +49,8 @@
   function invalid(message) {
     result = null;
     $('chain-status').textContent = message; $('chain-status').className = 'status-error';
-    ['power-path','power-rows','noise-rows','noise-bars','noise-metrics'].forEach(id => $(id).replaceChildren());
+    ['power-path','power-rows','noise-rows','noise-bars','noise-metrics','budget-metrics'].forEach(id => $(id).replaceChildren());
+    $('budget-status').textContent = '';
     Bench.update({ valid: false, lines: [message] });
   }
   function compute() {
@@ -76,6 +77,7 @@
       metric('Equivalent input noise temp.', fmt(result.equivalentTemperature) + ' K') + metric('Input source noise', dbm(result.inputNoiseDbm)) +
       metric('Output noise', dbm(result.noiseDbm)) + metric('Output SNR', fmt(result.snr, 'dB') + ' dB');
     $('noise-rows').innerHTML = result.rows.map((r, i) => `<tr><td>${escape(stages[i].name || `Stage ${i + 1}`)}</td><td>${fmt(r.stageNf, 'dB')} dB</td><td>${fmt(r.nf, 'dB')} dB</td><td>${dbm(r.noiseDbm)}</td></tr>`).join('');
+    const budget = renderBudget(result.outputDbm);
     const totalAdded = result.factor - 1;
     $('noise-bars').innerHTML = result.rows.map((r,i) => {
       const share = totalAdded > 0 ? r.contribution / totalAdded * 100 : 0;
@@ -94,6 +96,11 @@
       if (r.headroom !== null) lines.push(eq('Output headroom', String.raw`H_i &= P_{\mathrm{limit},i}-P_{\mathrm{out},i}`, tex(r.headroom,'dB'), String.raw`${tex(s.limit,'dBm',false)}-(${tex(r.outputDbm,'dBm',false)})\,\mathrm{dB}`));
       previousGain *= g;
     });
+    if (budget) lines.push('Receiver budget. The last connection is the receiver port.',
+      eq('Headroom to 0.1 dB compression', String.raw`H_{\mathrm{rx}} &= P_{0.1\,\mathrm{dB}}-P_{\mathrm{rx}}`, tex(budget.headroom,'dB'), String.raw`${tex(budget.compression,'dBm',false)}-(${tex(budget.level,'dBm',false)})\,\mathrm{dB}`),
+      eq('Headroom to damage', String.raw`H_{\mathrm{dmg}} &= P_{\mathrm{damage}}-P_{\mathrm{rx}}`, tex(budget.damageHeadroom,'dB')),
+      eq('Attenuation needed for the margin', String.raw`A &= \max\bigl(0,\ P_{\mathrm{rx}}-(P_{0.1\,\mathrm{dB}}-M)\bigr)`, tex(budget.excess,'dB'), String.raw`\max\bigl(0,\ ${tex(budget.level,'dBm',false)}-(${tex(budget.compression,'dBm',false)}-${tex(budget.margin,'dB',false)})\bigr)\,\mathrm{dB}`),
+      budget.pad ? `Rounded up to a stock attenuator: ${fmt(budget.pad, 'dB')} dB, leaving ${dbm(budget.afterPad)} at the receiver.` : 'No attenuator is needed for that margin.');
     lines.push('Cascade totals. Noise figure is referenced to 290 K; equivalent noise temperature is referred to the chain input.',
       eq('Friis noise factor', String.raw`F_{\mathrm{total}} &= 1+\sum_i\frac{F_i-1}{\prod_{k<i}G_k}`, tex(result.factor)),
       eq('Cascaded noise figure', String.raw`\mathrm{NF} &= 10\log_{10}F_{\mathrm{total}}`, tex(result.nf,'dB')),
@@ -102,6 +109,25 @@
       eq('Output signal-to-noise ratio', String.raw`\mathrm{SNR}_{\mathrm{out}} &= P_{\mathrm{out,dBm}}-P_{\mathrm{n,out,dBm}}`, tex(result.snr,'dB'), String.raw`${tex(result.outputDbm,'dBm',false)}-(${tex(result.noiseDbm,'dBm',false)})\,\mathrm{dB}`),
       'Boltzmann constant k = 1.380649 × 10⁻²³ J/K. Linear gains and noise factors are power ratios.');
     Bench.update({ valid: true, lines }); writeQuery();
+  }
+  // The receiver budget reads the level leaving the last stage. Invalid limits are reported
+  // without failing the chain itself, since the chain does not depend on them.
+  function renderBudget(level) {
+    const values = { compression: n('rx-comp'), damage: n('rx-damage'), margin: $('rx-margin').value.trim() === '' ? 0 : n('rx-margin') };
+    const budget = RF.receiverBudget(level, values);
+    if (!budget) {
+      $('budget-status').textContent = 'Enter finite compression and damage levels in dBm and a margin of 0 dB or more.'; $('budget-status').className = 'status-error';
+      $('budget-metrics').replaceChildren(); return null;
+    }
+    const bad = budget.state !== 'ok';
+    $('budget-status').className = bad ? 'over-limit' : '';
+    $('budget-status').textContent = budget.state === 'damage' ? `${dbm(level)} at the receiver is above its damage level. Do not connect; add at least ${fmt(budget.pad, 'dB')} dB.`
+      : budget.state === 'compress' ? `${dbm(level)} at the receiver is within ${fmt(budget.margin, 'dB')} dB of its compression point.` : '';
+    $('budget-metrics').innerHTML = metric('Headroom to 0.1 dB compression', `<span class="${bad ? 'over-limit' : ''}">${fmt(budget.headroom, 'dB')} dB</span> · ${dbm(level)} at the receiver`, 'primary') +
+      metric('Headroom to damage', `<span class="${budget.damageHeadroom < 0 ? 'over-limit' : ''}">${fmt(budget.damageHeadroom, 'dB')} dB</span>`) +
+      metric('Attenuator for the margin', budget.pad ? `${fmt(budget.pad, 'dB')} dB at the last connection → ${dbm(budget.afterPad)}` : 'None needed') +
+      metric('Limits', `0.1 dB at ${dbm(budget.compression)} · damage ${dbm(budget.damage)} · margin ${fmt(budget.margin, 'dB')} dB`);
+    return budget;
   }
   $('stages').addEventListener('input', event => {
     const key = event.target.dataset.key, el = event.target.closest('[data-index]');
@@ -121,13 +147,13 @@
     stages.push({name:kind === 'passive' ? 'Passive output' : 'Amplifier output',kind,db:kind === 'passive' ? '3' : '10',nf:'2',temperature:'290',limit:''});
     loadError = ''; renderStages(); compute();
   }));
-  ['source-power','bandwidth','source-temp'].forEach(id => $(id).addEventListener('input', () => { loadError = ''; compute(); }));
+  ['source-power','bandwidth','source-temp','rx-comp','rx-damage','rx-margin'].forEach(id => $(id).addEventListener('input', () => { loadError = ''; compute(); }));
   $('bandwidth-unit').addEventListener('change', () => {
     // Bandwidth is an entry, so the digits stay and the unit decides what they mean.
     bandwidthUnit = $('bandwidth-unit').value; loadError = ''; compute();
   });
   $('copy-link').addEventListener('click', () => { if (result) Bench.copy(location.href); });
   $('copy-result').addEventListener('click', () => { if (result) Bench.copy(`CW power chain | Source ${dbm(n('source-power'))}\n` + result.rows.map((r,i) => `${stages[i].name}: ${dbm(r.outputDbm)}; limit ${stages[i].limit.trim() === '' ? 'unspecified' : dbm(RF.parseNumber(stages[i].limit))}; headroom ${r.headroom === null ? 'unspecified' : fmt(r.headroom, 'dB') + ' dB'}`).join('\n') + `\nGain ${fmt(result.gainDb, 'dB')} dB | NF ${fmt(result.nf, 'dB')} dB | B ${fmt(n('bandwidth'))} ${$('bandwidth-unit').value} | Tsource ${fmt(n('source-temp'))} K | Output noise ${dbm(result.noiseDbm)} | SNR ${fmt(result.snr, 'dB')} dB`); });
-  Bench.exports({ figureTitle: 'Power path', figure: () => [$('power-path'), $('noise-metrics')], tableTitle: 'Chain tables', tables: () => Array.from(document.querySelectorAll('#calc .chain-results')) });
+  Bench.exports({ figureTitle: 'Power path', figure: () => [$('power-path'), $('budget-metrics'), $('noise-metrics')], tableTitle: 'Chain tables', tables: () => Array.from(document.querySelectorAll('#calc .chain-results')) });
   readQuery(); renderStages(); compute();
 })();

@@ -9,8 +9,8 @@
   <title>Power &amp; noise · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-6">
-  <link rel="stylesheet" href="css/app.css?v=20260914-6"><link rel="stylesheet" href="css/workbench.css?v=20260914-6">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-7">
+  <link rel="stylesheet" href="css/app.css?v=20260914-7"><link rel="stylesheet" href="css/workbench.css?v=20260914-7">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -35,6 +35,11 @@
 <div id="stages"></div><div class="toolbar"><button id="add-passive" class="ghost" type="button">+ Cable / pad / coupler</button><button id="add-active" class="ghost" type="button">+ Amplifier</button></div>
 <p id="chain-status" role="status"></p><h2>Power at each connection</h2><div id="power-path" class="power-path" aria-live="polite"></div>
 <div class="chain-results"><table><thead><tr><th>Connection</th><th>Gain / loss</th><th>Signal</th><th>Output limit</th><th>Headroom</th></tr></thead><tbody id="power-rows"></tbody></table></div>
+<h2>Receiver budget</h2>
+<p class="hint">The last connection is the receiver port. Enter the analyzer's 0.1 dB compression level and its damage level, both from the datasheet, and the margin you want under compression. The page reports the headroom and the stock attenuator that would restore it.</p>
+<div class="work-fields"><label>0.1 dB compression (dBm)<input data-signed id="rx-comp" value="10" inputmode="decimal" autocomplete="off" aria-label="Receiver 0.1 dB compression level in dBm"></label><label>Damage level (dBm)<input data-signed id="rx-damage" value="30" inputmode="decimal" autocomplete="off" aria-label="Receiver damage level in dBm"></label><label>Margin under compression (dB)<input id="rx-margin" value="3" inputmode="decimal" autocomplete="off" aria-label="Margin under compression in dB"></label></div>
+<p id="budget-status" role="status"></p>
+<dl id="budget-metrics" class="metrics" aria-live="polite"></dl>
 <h2>Noise through the same chain</h2><dl id="noise-metrics" class="metrics" aria-live="polite"></dl>
 <p class="hint">Noise figure is referenced to 290 K. Passive-stage noise uses its physical temperature; amplifier noise figure is an input specification. Output noise uses the source temperature and equivalent noise bandwidth entered above.</p>
 <div class="chain-results"><table><thead><tr><th>Stage output</th><th>Stage NF</th><th>Cumulative NF</th><th>Output noise</th></tr></thead><tbody id="noise-rows"></tbody></table></div>
@@ -49,9 +54,11 @@
       <tr><td>Passive loss at ambient</td><td class="num">noise figure equals the loss</td><td>A 3 dB pad is a 3 dB noise figure, exactly</td></tr>
       <tr><td>A pad before an amplifier</td><td class="num">adds its loss straight to the chain</td><td>Attenuate after the first gain stage, never before it</td></tr>
       <tr><td>First stage</td><td class="num">dominates once its gain passes ~10 dB</td><td>Later stages are divided by all the gain ahead of them</td></tr>
+      <tr><td>Receiver compression</td><td class="num">stay 3 dB under the 0.1 dB point</td><td>Compression flattens the trace before it shows in the level; a pad at the last connection is the fix</td></tr>
+      <tr><td>Receiver damage</td><td class="num">absolute, no margin applies</td><td>The datasheet figure is the level that breaks the receiver, not a place to operate near</td></tr>
       <tr><td>Noise figure 3 dB</td><td class="num">noise factor 2</td><td>Below 3 dB the linear and decibel views diverge quickly</td></tr>
     </tbody>
   </table>
 </section>
 <section class="panel"><h2>Model and reference</h2><p>Friis cascade: F = 1 + Σ (Fᵢ − 1)/Gbeforeᵢ, using linear power gain and noise factor. A passive loss L at temperature T has F = 1 + (L − 1)T/290 K. Noise output = kB[Tsource + 290 K(F − 1)]Gtotal.</p><p>Assumes matched stages, independent noise, and gain/noise figure constant over the chosen bandwidth. Coupler loss refers to the selected branch with other ports terminated. A filter's nominal bandwidth may differ from its equivalent noise bandwidth.</p><p><a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Noise_Figure.htm">Keysight: noise figure measurements</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/theme.js?v=20260914-6"></script><script src="js/bench.js?v=20260914-6"></script><script src="js/diagram.js?v=20260914-6"></script><script src="js/rf.js?v=20260914-6"></script><script src="js/dut.js?v=20260914-6"></script><script src="js/snapshot.js?v=20260914-6"></script><script src="js/chain.js?v=20260914-6"></script></body></html>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/theme.js?v=20260914-7"></script><script src="js/bench.js?v=20260914-7"></script><script src="js/diagram.js?v=20260914-7"></script><script src="js/rf.js?v=20260914-7"></script><script src="js/dut.js?v=20260914-7"></script><script src="js/snapshot.js?v=20260914-7"></script><script src="js/chain.js?v=20260914-7"></script></body></html>
