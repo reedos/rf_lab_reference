@@ -641,9 +641,8 @@ let checks=0;
           assert.ok(h.includes('Delivered receiver power'),JSON.stringify(h));
           assert.ok(!h.includes('Delivered power'),JSON.stringify(h));
         });
-        await check('Mixed-mode equations follow the port mapping and evaluate a point',async()=>{
+        await check('Mixed-mode equations follow the port mapping',async()=>{
           await go('mixed.html');
-          await expect(page.locator('.metric.primary')).toContainText('Sdd21');
           await expect(page.locator('#mixed-equations .katex').first()).toBeVisible();
           await expect(page.locator('#mixed-transform .katex').first()).toBeVisible();
           assert.equal(await page.locator('.equation-error').count(),0);
@@ -661,30 +660,23 @@ let checks=0;
           await expect(page.locator('#mapping-status')).toContainText(/only once/);
           await page.locator('select[data-side="out"][data-index="1"]').selectOption('4');
           await expect.poll(valid).toBe(true);
-          // An ideal balanced through path: 0 dB differential, exact cancellation of conversion.
-          const s=[];
-          for (const i of [1,2,3,4]) for (const j of [1,2,3,4]) s.push(`${i},${j},${(i===2&&j===1)||(i===4&&j===3)?'0':'-300'},0`);
-          await go('mixed.html?p1=1,3&p2=2,4&s='+encodeURIComponent(s.join(';')));
-          await expect(page.locator('.metric.primary')).toContainText('0 dB ∠ 0°');
-          await expect(page.locator('#metrics')).toContainText('−∞ dB');
-          await expect(page.locator('#mm-rows td.is-primary')).toHaveCount(1);
-          // Three ports: the single-ended output reads the differential input through 1/√2.
+          // Three ports: a single-ended side carries a 1/√2 instead of a half.
+          await go('mixed.html');
           await page.locator('[data-topology="sd"]').click();
-          await expect(page.locator('.metric.primary')).toContainText('Ssd21');
-          await expect(page.locator('.metric.primary')).toContainText('-3.01 dB');
-          await expect.poll(()=>page.locator('#dut-summary').innerText()).toContain('SE out');
-          assert.equal(await page.locator('#s-grid tbody tr').count(),3);
           await expect.poll(all).toMatch(/S_\{\\mathrm\{sd\}21\} &= \\tfrac\{1\}\{\\sqrt 2\}\\left\(S_\{21\} -S_\{23\}\\right\)/);
-          await page.locator('input[data-cell="2,1,db"]').fill('-6.02');
-          await expect(page.locator('.metric.primary')).toContainText('-9.03 dB');
-          await page.reload(); await expect(page.locator('.metric.primary')).toContainText('-9.03 dB');
-          await expect(page.locator('input[data-cell="2,1,db"]')).toHaveValue('-6.02');
-          await page.locator('input[data-cell="2,1,db"]').fill('x'); await expect.poll(valid).toBe(false);
-          await expect(page.locator('#mixed-status')).toContainText('S21');
+          await expect.poll(()=>page.locator('#dut-summary').innerText()).toContain('SE out');
+          // Copy result gives every parameter as plain text, and the mapping survives a reload.
+          await page.locator('#copy-result').click();
+          const copied=await page.evaluate(()=>window.copiedText);
+          assert.match(copied,/Ssd21 = 1\/√2 \(S21 -S23\)/);
+          assert.match(copied,/Scd11 =/);
+          await page.reload(); await expect(page.locator('#mixed-equations .katex').first()).toBeVisible();
+          await expect(page.locator('[data-topology="sd"]')).toHaveClass(/is-active/);
           // The card decides the topology on arrival, and the gain link carries the card.
           await go('mixed.html?din=se&dout=diff');
           await expect(page.locator('[data-topology="ds"]')).toHaveClass(/is-active/);
-          await expect(page.locator('.metric.primary')).toContainText('Sds21');
+          await expect(page.locator('#mixed-diagram')).toContainText('Logical 2');
+          await expect.poll(all).toMatch(/S_\{\\mathrm\{ds\}21\}/);
           assert.match(await page.locator('a[data-dut-link]').getAttribute('href'),/din=se/);
         });
         await check('Figures, tables and equations copy as images that stand on their own',async()=>{
@@ -745,10 +737,13 @@ let checks=0;
           }
           // A table that runs past the phone's edge says so; one that fits does not.
           await go('sweep.html');
-          await go('mixed.html');
-          await expect.poll(()=>page.locator('#mm-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('right');
-          await page.evaluate(()=>{const el=document.querySelector('#mm-rows').closest('.chain-results'); el.scrollLeft=el.scrollWidth;});
-          await expect.poll(()=>page.locator('#mm-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]').getAttribute('data-scroll')).toBe('left');
+          await page.setViewportSize({width:768,height:900});
+          await go('sweep.html');
+          const frame=()=>page.locator('#sweep-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]');
+          await expect.poll(()=>frame().getAttribute('data-scroll')).toBe('right');
+          await page.evaluate(()=>{const el=document.querySelector('#sweep-rows').closest('.chain-results'); el.scrollLeft=el.scrollWidth;});
+          await expect.poll(()=>frame().getAttribute('data-scroll')).toBe('left');
+          await page.setViewportSize({width:390,height:900});
           await go('index.html');
           assert.equal(await page.locator('#ref-body').locator('xpath=ancestor::section[contains(@class,"ref")]').getAttribute('data-scroll'),null);
           // The heading above a reference table stays put: the frame scrolls, not the card.
@@ -757,10 +752,11 @@ let checks=0;
           assert.equal(await page.evaluate(()=>document.querySelector('.ref').scrollWidth-document.querySelector('.ref').clientWidth),0);
           // Nothing needs a sideways scroll at phone width except a matrix, and no equation does.
           for (const file of ['gain.html?t=sd','gain.html?t=dd&s11-db=-10&s11-deg=180','mixed.html','mixed.html?din=diff&dout=se','large-signal.html','large-signal.html?tab=thd','sweep.html?ifbw=1','chain.html','index.html?m=diff','match.html?z=25&x=30','delay.html']) {
+            // Every table fits a phone now; only equations are measured below.
             await go(file); await page.locator('.calculation summary').click(); await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
             const over=await page.evaluate(()=>{const out=[];
               document.querySelectorAll('.katex-display').forEach(el=>{const box=el.closest('.equation-math, .gain-result')||el.parentElement, html=el.querySelector('.katex-html'), cs=getComputedStyle(box), inner=box.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight); if(html&&html.getBoundingClientRect().width-inner>2) out.push('equation '+(el.textContent||'').slice(0,30));});
-              document.querySelectorAll('.ref, .table-scroll, .chain-results').forEach(el=>{if(!el.querySelector('.matrix')&&el.scrollWidth-el.clientWidth>2) out.push('table '+el.className);});
+              document.querySelectorAll('.ref, .table-scroll, .chain-results').forEach(el=>{if(el.scrollWidth-el.clientWidth>2) out.push('table '+el.className);});
               return out;});
             assert.deepEqual(over,[],file+' scrolls sideways');
           }
@@ -768,9 +764,6 @@ let checks=0;
           await go('sweep.html');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#sweep-rows tr')).display),'grid');
           assert.equal(await page.evaluate(()=>document.querySelector('#sweep-rows td:nth-child(2)').getAttribute('data-label')),'Start');
-          await go('mixed.html');
-          assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#mm-rows tr')).display),'table-row');
-          await go('sweep.html');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs thead')).display),'none');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs tbody tr')).display),'block');
           await page.setViewportSize({width:1280,height:900});

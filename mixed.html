@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
   <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
-  <meta name="description" content="Mixed-mode S-parameters from single-ended measurements: the general equations for any port mapping, three- and four-port, and a numeric evaluation at one point.">
+  <meta name="description" content="Mixed-mode S-parameters from single-ended measurements: the general equations for any port mapping, three- and four-port.">
   <title>Mixed-mode S-parameters &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-3">
-  <link rel="stylesheet" href="css/app.css?v=20260914-3"><link rel="stylesheet" href="css/workbench.css?v=20260914-3">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-4">
+  <link rel="stylesheet" href="css/app.css?v=20260914-4"><link rel="stylesheet" href="css/workbench.css?v=20260914-4">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -29,7 +29,7 @@
     </header>
     <div id="dut-card"></div>
 
-<section class="lede"><p class="kicker">Small-signal</p><h1>Mixed-mode S-parameters</h1><p>A balanced measurement is a single-ended one seen through a change of basis. Pick which physical ports make each logical port and the page writes out every mixed-mode parameter in terms of the single-ended ones, then evaluates them at a point if you give it numbers.</p></section>
+<section class="lede"><p class="kicker">Small-signal</p><h1>Mixed-mode S-parameters</h1><p>A balanced measurement is a single-ended one seen through a change of basis. Pick which physical ports make each logical port and the page writes out every mixed-mode parameter in terms of the single-ended ones.</p></section>
 
 <section class="board work-board" id="calc">
 <h2>Port topology</h2>
@@ -54,19 +54,13 @@
 <div class="gain-result" id="mixed-transform" tabindex="0" role="region" aria-label="Mixed-mode transform"></div>
 
 <h2>Equations for this mapping</h2>
-<p class="hint">Written out from the transform above with your port numbers substituted, so they can be read straight off an analyzer's single-ended trace set.</p>
+<p class="hint">Written out with your port numbers, so they can be read straight off an analyzer's single-ended trace set. Enter the measured values on the analyzer; this page gives the algebra, not the arithmetic.</p>
 <div id="mixed-equations"></div>
 
 <h2>Reference impedances</h2>
 <div class="gain-result" id="mixed-impedances" tabindex="0" role="region" aria-label="Mode reference impedances"></div>
 <p class="hint">Both lines of a pair are assumed to share the per-line reference from the DUT card, which is what the analyzer's single-ended measurement uses. If the DUT is to be characterised at a different reference, renormalise the whole single-ended matrix first; the transform alone does not do that.</p>
 
-<h2>Evaluate at one point</h2>
-<p class="hint">Optional. Enter the single-ended parameters at one frequency as level and phase, row = to, column = from. The example is a slightly unbalanced differential through path; type a minus sign for negative levels.</p>
-<div class="chain-results"><table class="s-grid matrix" id="s-grid"></table></div>
-<p id="mixed-status" role="status"></p>
-<dl id="metrics" class="metrics" aria-live="polite"></dl>
-<div class="chain-results"><table class="mm-table matrix"><thead id="mm-head"></thead><tbody id="mm-rows"></tbody></table></div>
 <div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button><a class="ghost link-button" data-dut-link href="gain.html">Voltage gain from this parameter →</a></div>
 </section>
 
@@ -88,6 +82,6 @@
 <p>Bockelman and Eisenstadt, "Combined differential and common-mode scattering parameters: theory and simulation", IEEE Trans. MTT 43(7), 1995.</p></section>
 <p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/theme.js?v=20260914-3"></script><script src="js/bench.js?v=20260914-3"></script><script src="js/diagram.js?v=20260914-3"></script><script src="js/rf.js?v=20260914-3"></script><script src="js/dut.js?v=20260914-3"></script><script src="js/snapshot.js?v=20260914-3"></script><script src="js/mixed.js?v=20260914-3"></script>
+<script src="js/theme.js?v=20260914-4"></script><script src="js/bench.js?v=20260914-4"></script><script src="js/diagram.js?v=20260914-4"></script><script src="js/rf.js?v=20260914-4"></script><script src="js/dut.js?v=20260914-4"></script><script src="js/snapshot.js?v=20260914-4"></script><script src="js/mixed.js?v=20260914-4"></script>
 </body>
 </html>

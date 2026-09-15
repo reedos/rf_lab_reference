@@ -2,9 +2,6 @@
   'use strict';
   const eq = Bench.equation, tex = Bench.tex, tint = Bench.tint;
   const $ = id => document.getElementById(id);
-  const fmt = RF.formatNumber;
-  const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const metric = (label, value, cls) => `<div class="metric${cls ? ' ' + cls : ''}"><dt>${label}</dt><dd>${value}</dd></div>`;
   const KINDS = { dd: ['diff', 'diff'], sd: ['diff', 'se'], ds: ['se', 'diff'], ss: ['se', 'se'] };
   const TOPOLOGY_OF = { diff: { diff: 'dd', se: 'sd' }, se: { diff: 'ds', se: 'ss' } };
   const LABELS = { dd: 'Differential in, differential out', sd: 'Differential in, single-ended out', ds: 'Single-ended in, differential out', ss: 'Single-ended in, single-ended out' };
@@ -13,19 +10,6 @@
   let topology = 'dd', result = null, mapError = '';
   // Physical ports for each logical side; a single-ended side uses only the first.
   const mapping = { in: [1, 3], out: [2, 4] };
-  // Single-ended entries keyed by "to,from" physical ports, kept as typed text.
-  const cells = {};
-  // A slightly unbalanced differential through path, keyed by physical port so the example
-  // stays meaningful when the mapping changes.
-  function exampleCell(i, j) {
-    const inputSide = p => p === 1 || p === 3;
-    if (i === j) return inputSide(i) ? { db: '-20', deg: '45' } : { db: '-18', deg: '-30' };
-    if ((i === 2 && j === 1) || (i === 1 && j === 2)) return { db: '-1', deg: '-60' };
-    if ((i === 4 && j === 3) || (i === 3 && j === 4)) return { db: '-1.2', deg: '-62' };
-    if (inputSide(i) === inputSide(j)) return { db: '-40', deg: '0' };
-    return { db: '-30', deg: '120' };
-  }
-  for (let i = 1; i <= PORT_COUNT; i++) for (let j = 1; j <= PORT_COUNT; j++) cells[`${i},${j}`] = exampleCell(i, j);
   const kinds = () => KINDS[topology];
   const sides = () => {
     const [kin, kout] = kinds();
@@ -48,18 +32,10 @@
       const ports = q.get(key).split(',').map(Number);
       if (ports.length === 2 && ports.every(p => Number.isInteger(p) && p >= 1 && p <= PORT_COUNT)) mapping[side] = ports;
     }
-    if (q.has('s')) {
-      for (const tuple of q.get('s').split(';')) {
-        const [i, j, db, deg] = tuple.split(',');
-        const key = `${Number(i)},${Number(j)}`;
-        if (Object.hasOwn(cells, key) && typeof db === 'string' && typeof deg === 'string' && db.length <= 24 && deg.length <= 24) cells[key] = { db, deg };
-      }
-    }
     if (Object.hasOwn(KINDS, q.get('t'))) topology = q.get('t'); else pullFromCard();
   }
   function writeQuery() {
     const q = new URLSearchParams({ t: topology, p1: mapping.in.join(','), p2: mapping.out.join(',') });
-    q.set('s', usedPorts().flatMap(i => usedPorts().map(j => `${i},${j},${cells[`${i},${j}`].db},${cells[`${i},${j}`].deg}`)).join(';'));
     history.replaceState(null, '', location.pathname + '?' + q);
   }
 
@@ -80,16 +56,6 @@
       button.classList.toggle('is-active', active); button.setAttribute('aria-pressed', String(active));
     });
   }
-  function renderGrid() {
-    const ports = usedPorts();
-    const head = `<thead><tr><th>to ↓ · from →</th>${ports.map(j => `<th>Port ${j}</th>`).join('')}</tr></thead>`;
-    const body = ports.map(i => `<tr><th>Port ${i}</th>${ports.map(j => {
-      const cell = cells[`${i},${j}`];
-      return `<td><div class="s-cell"><input data-cell="${i},${j},db" value="${escape(cell.db)}" inputmode="text" autocomplete="off" spellcheck="false" aria-label="S${i}${j} level in dB"><span>dB</span><input data-cell="${i},${j},deg" value="${escape(cell.deg)}" inputmode="text" autocomplete="off" spellcheck="false" aria-label="S${i}${j} phase in degrees"><span>°</span></div></td>`;
-    }).join('')}</tr>`).join('');
-    $('s-grid').innerHTML = head + `<tbody>${body}</tbody>`;
-  }
-
   // ---------- Diagram: the DUT with its physical ports grouped into logical ports.
   function renderDiagram() {
     const [kin, kout] = kinds();
@@ -122,17 +88,6 @@
     const prefix = Math.abs(c - 0.5) < 1e-9 ? '\\tfrac12' : Math.abs(c - Math.SQRT1_2) < 1e-9 ? '\\tfrac{1}{\\sqrt 2}' : '';
     const body = entry.terms.map((t, k) => `${t.coefficient < 0 ? '-' : k ? '+' : ''}S_{${t.i}${t.j}}`).join(' ');
     return prefix ? `${prefix}\\left(${body}\\right)` : body;
-  }
-  const rect = z => `${tex(z.re)}${z.im < 0 ? '-' : '+'}j${tex(Math.abs(z.im))}`;
-  const polar = v => v.mag > 0 ? `${tex(v.db, 'dB')}\\ \\angle\\ ${tex(v.deg, 'deg')}` : `-\\infty\\,\\mathrm{dB}`;
-  function substitution(entry, S) {
-    const c = Math.abs(entry.terms[0].coefficient);
-    const prefix = Math.abs(c - 0.5) < 1e-9 ? '\\tfrac12' : Math.abs(c - Math.SQRT1_2) < 1e-9 ? '\\tfrac{1}{\\sqrt 2}' : '';
-    const parts = entry.terms.map((t, k) => `${t.coefficient < 0 ? '-' : k ? '+' : ''}(${rect(S[t.i][t.j])})`);
-    const per = Bench.narrow ? 1 : 2, groups = [];
-    for (let i = 0; i < parts.length; i += per) groups.push(parts.slice(i, i + per).join(' '));
-    const body = groups.join(' \\\\ &\\qquad ');
-    return prefix ? `${prefix}\\bigl[${body}\\bigr]` : body;
   }
   function renderTransform() {
     const rows = RF.mixedModeRows(sides());
@@ -182,81 +137,48 @@
     Bench.math($('mixed-impedances'), `\\begin{aligned} ${lines.join(' \\\\ ')} \\end{aligned}`, true);
   }
 
-  // ---------- Numbers
-  function readMatrix() {
-    const S = {}, bad = [];
-    for (const i of usedPorts()) {
-      S[i] = {};
-      for (const j of usedPorts()) {
-        const cell = cells[`${i},${j}`], db = RF.parseNumber(cell.db), deg = RF.parseZero(cell.deg);
-        if (!Number.isFinite(db) || !Number.isFinite(deg)) { bad.push(`S${i}${j}`); continue; }
-        S[i][j] = RF.fromPolar(db, deg);
-      }
-    }
-    return { S, bad };
-  }
-  const show = v => v.mag > 0 ? `${fmt(v.db, 'dB')} dB ∠ ${fmt(v.deg, 'deg')}°` : '−∞ dB';
-  function primaryName() {
+  // ---------- Output
+  const plainFormula = entry => {
+    const c = Math.abs(entry.terms[0].coefficient);
+    const prefix = Math.abs(c - 0.5) < 1e-9 ? '1/2 ' : Math.abs(c - Math.SQRT1_2) < 1e-9 ? '1/√2 ' : '';
+    const body = entry.terms.map((t, k) => `${t.coefficient < 0 ? '-' : k ? '+' : ''}S${t.i}${t.j}`).join(' ');
+    return prefix ? `${prefix}(${body})` : body;
+  };
+  function transmissionName() {
     const [kin, kout] = kinds();
     return `S${kout === 'diff' ? 'd' : 's'}${kin === 'diff' ? 'd' : 's'}21`;
   }
-  function invalid(message) {
-    result = null;
-    $('mixed-status').textContent = message; $('mixed-status').className = 'status-error';
-    ['metrics', 'mm-head', 'mm-rows'].forEach(id => $(id).replaceChildren());
-    Bench.update({ valid: false, lines: [message] });
-  }
   function compute() {
     renderTopology(); renderDiagram(); renderTransform(); renderImpedances();
-    if (mapError) { $('mapping-status').textContent = mapError; $('mapping-status').className = 'status-error'; $('mixed-equations').replaceChildren(); return invalid('Fix the port mapping first.'); }
-    $('mapping-status').textContent = ''; $('mapping-status').className = '';
-    const symbolic = RF.mixedMode(Object.fromEntries(usedPorts().map(i => [i, Object.fromEntries(usedPorts().map(j => [j, { re: 0, im: 0 }]))])), sides());
-    renderEquations(symbolic);
-    const { S, bad } = readMatrix();
-    if (bad.length) return invalid(`Enter a finite level and phase for ${bad.join(', ')}. Blank phase means zero.`);
-    result = RF.mixedMode(S, sides());
-    if (!result) return invalid('The port mapping is not valid.');
-    $('mixed-status').textContent = ''; $('mixed-status').className = '';
-    const rows = result.rows, [kin, kout] = kinds();
-    const modeLabel = r => `<span class="${r.side === 1 ? 'tint-in' : 'tint-out'}">${r.label}</span>`;
-    $('mm-head').innerHTML = `<tr><th>to ↓ · from →</th>${rows.map(r => `<th>${modeLabel(r)}</th>`).join('')}</tr>`;
-    const prime = primaryName();
-    $('mm-rows').innerHTML = rows.map((r, ri) => `<tr><th>${modeLabel(r)}</th>${rows.map((c, ci) => {
-      const entry = result.entries[ri * rows.length + ci];
-      return `<td class="num${entry.name === prime ? ' is-primary' : ''}" title="${entry.name}">${show(entry.value)}</td>`;
-    }).join('')}</tr>`).join('');
-    const by = result.byName, primary = by[prime];
-    const tiles = [metric(prime, show(primary.value), 'primary')];
-    const reverse = by[`S${prime[2]}${prime[1]}12`];
-    if (reverse) tiles.push(metric(reverse.name, show(reverse.value)));
-    const inRefl = by[kin === 'diff' ? 'Sdd11' : 'Sss11'], outRefl = by[kout === 'diff' ? 'Sdd22' : 'Sss22'];
-    tiles.push(metric(`${inRefl.name} · input return`, show(inRefl.value), 'port-in'), metric(`${outRefl.name} · output return`, show(outRefl.value), 'port-out'));
-    if (kin === 'diff' && kout === 'diff') {
-      tiles.push(metric('Scc21 · common-mode through', show(by.Scc21.value)),
-        metric('Sdc21 · common in → differential out', show(by.Sdc21.value)),
-        metric('Scd21 · differential in → common out', show(by.Scd21.value)),
-        metric('Scd21 relative to Sdd21', primary.value.mag > 0 && by.Scd21.value.mag > 0 ? `${fmt(by.Scd21.value.db - primary.value.db, 'dB')} dB` : primary.value.mag > 0 ? 'no conversion' : 'undefined'));
-    } else if (kin === 'diff') {
-      tiles.push(metric('Ssc21 · common in → single-ended out', show(by.Ssc21.value)), metric('Scc11 · common-mode input return', show(by.Scc11.value)));
-    } else if (kout === 'diff') {
-      tiles.push(metric('Scs21 · single-ended in → common out', show(by.Scs21.value)), metric('Scc22 · common-mode output return', show(by.Scc22.value)));
+    if (mapError) {
+      result = null;
+      $('mapping-status').textContent = mapError; $('mapping-status').className = 'status-error';
+      $('mixed-equations').replaceChildren();
+      Bench.update({ valid: false, lines: [mapError] });
+      return;
     }
-    $('metrics').innerHTML = tiles.join('');
-    const featured = [prime, kin === 'diff' && kout === 'diff' ? 'Sdc21' : null, kin === 'diff' && kout === 'diff' ? 'Scd21' : null, inRefl.name].filter(Boolean);
+    $('mapping-status').textContent = ''; $('mapping-status').className = '';
+    // The transform depends only on the port mapping, so a zero matrix carries the algebra.
+    const zeros = Object.fromEntries(usedPorts().map(i => [i, Object.fromEntries(usedPorts().map(j => [j, { re: 0, im: 0 }]))]));
+    result = RF.mixedMode(zeros, sides());
+    renderEquations(result);
+    const [kin, kout] = kinds();
+    const through = result.byName[transmissionName()];
     Bench.update({ valid: true, lines: [
       `${LABELS[topology]}. Logical port 1 is ${sides()[0].ports.map(p => 'port ' + p).join(' and ')}, logical port 2 is ${sides()[1].ports.map(p => 'port ' + p).join(' and ')}. The first port of a pair is its positive line.`,
       eq('Mode waves of a pair', `a_{\\mathrm d} &= \\frac{a_{+}-a_{-}}{\\sqrt 2} \\\\ a_{\\mathrm c} &= \\frac{a_{+}+a_{-}}{\\sqrt 2}`),
       eq('Transform', `S_{\\mathrm{mm}} &= T\\,S\\,T^{\\mathsf T}`),
-      ...featured.map(name => { const entry = by[name]; return eq(entry.name, `${sym(entry)} &= ${formula(entry)}`, polar(entry.value), `${substitution(entry, S)} \\\\ &= ${rect(entry.value)}`); }),
-      'Levels and phases were converted to rectangular form, combined with the coefficients above, and converted back. A result of −∞ dB means the combination cancelled exactly, which happens for an ideally balanced entry.',
-      kin === 'diff' || kout === 'diff' ? 'Reference impedances: a differential mode sees twice the per-line reference and a common mode half of it. Both lines of a pair are assumed to share their reference.' : 'Both logical ports are single-ended, so the transform is the identity and the mixed-mode set is the two-port set.'
+      eq(through.name, `${sym(through)} &= ${formula(through)}`),
+      kin === 'diff' || kout === 'diff'
+        ? 'A differential mode sees twice the per-line reference impedance and a common mode half of it. Both lines of a pair share their reference.'
+        : 'Both logical ports are single-ended, so the transform is the identity and the mixed-mode set is the two-port set.'
     ] });
     writeQuery();
   }
 
   // ---------- Events
   document.querySelectorAll('[data-topology]').forEach(button => button.addEventListener('click', () => {
-    topology = button.dataset.topology; pushToCard(); validateMapping(); renderMapping(); renderGrid(); compute();
+    topology = button.dataset.topology; pushToCard(); validateMapping(); renderMapping(); compute();
   }));
   function validateMapping() {
     mapError = RF.mixedModeRows(sides()) ? '' : 'Each analyzer port can appear only once across the logical ports.';
@@ -265,16 +187,9 @@
     const select = event.target.closest('select[data-side]');
     if (!select) return;
     mapping[select.dataset.side][Number(select.dataset.index)] = Number(select.value);
-    validateMapping(); renderGrid(); compute();
+    validateMapping(); compute();
   });
-  $('s-grid').addEventListener('input', event => {
-    const key = event.target.dataset.cell;
-    if (!key) return;
-    const [i, j, field] = key.split(',');
-    cells[`${i},${j}`][field] = event.target.value;
-    compute();
-  });
-  document.addEventListener('dut-change', () => { pullFromCard(); validateMapping(); renderMapping(); renderGrid(); compute(); });
+  document.addEventListener('dut-change', () => { pullFromCard(); validateMapping(); renderMapping(); compute(); });
   document.addEventListener('theme-change', compute);
   document.addEventListener('layout-change', compute);
   Dut.describe('the port topology on each side and the per-line references that set the mode impedances');
@@ -283,10 +198,9 @@
     if (!result) return;
     const s = sides();
     Bench.copy(`Mixed-mode | ${LABELS[topology]} | logical 1 = port ${s[0].ports.join(', ')} | logical 2 = port ${s[1].ports.join(', ')}\n` +
-      result.rows.map((r, ri) => result.rows.map((c, ci) => { const e = result.entries[ri * result.rows.length + ci]; return `${e.name} ${show(e.value)}`; }).join(' | ')).join('\n'));
+      result.entries.map(entry => `${entry.name} = ${plainFormula(entry)}`).join('\n'));
   });
-  Bench.exports({ figureTitle: 'Port mapping', figure: () => [$('mixed-diagram'), $('mixed-key'), $('mixed-caption'), $('metrics')],
-    tableTitle: 'Mixed-mode set', tables: () => [$('mm-rows').closest('.chain-results')],
+  Bench.exports({ figureTitle: 'Port mapping', figure: () => [$('mixed-diagram'), $('mixed-key'), $('mixed-caption')],
     equations: () => [$('mixed-transform'), $('mixed-equations'), $('mixed-impedances')] });
-  readQuery(); pushToCard(); validateMapping(); renderMapping(); renderGrid(); compute();
+  readQuery(); pushToCard(); validateMapping(); renderMapping(); compute();
 })();

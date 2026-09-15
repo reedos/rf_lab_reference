@@ -34,15 +34,6 @@ summary { cursor: pointer; font-weight: 500; }
 .segment button { min-height: 42px; }
 .sweep-hint { margin: 6px 0 0; }
 /* Mixed-mode page: the single-ended entry grid and the mixed-mode result table. */
-.chain-results .s-grid { width: auto; font-size: 12px; }
-.chain-results .s-grid th, .chain-results .s-grid td { text-align: center; padding: 6px 8px; white-space: nowrap; }
-.chain-results .s-grid th { font-family: var(--font-mono); }
-.s-cell { display: flex; align-items: center; gap: 4px; }
-.s-grid input { width: 5.4em; margin: 0; padding: 8px 8px; font-size: 13px; background: var(--bg-well); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; font-family: var(--font-mono); box-shadow: var(--shadow-inset); }
-.s-cell span { color: var(--dim); font-size: 11px; }
-.chain-results .mm-table th { text-align: center; font-family: var(--font-mono); }
-.chain-results .mm-table td { text-align: center; font-family: var(--font-mono); }
-.chain-results .mm-table td.is-primary { color: var(--accent); font-weight: 500; }
 .equation-group { margin: 0 0 8px; font: 500 12px var(--font-display); color: var(--muted); }
 #mixed-equations .gain-result { margin: 12px 0; }
 .link-button { display: inline-flex; align-items: center; text-decoration: none; }
@@ -147,17 +138,17 @@ button:disabled { opacity: .45; cursor: default; }
   nav a { padding: 8px; }
   .setup-controls button { min-height: 42px; }
 }
-/* On a phone a list table becomes cards: one per row, each value under its own heading, so
-   nothing scrolls sideways. Matrices keep their rows and columns. */
+/* On a phone a results table becomes cards: one per row, each value under its own heading,
+   so nothing scrolls sideways. */
 @media (max-width: 700px) {
-  .chain-results table:not(.matrix), .chain-results table:not(.matrix) tbody { display: block; width: 100%; }
-  .chain-results table:not(.matrix) thead { display: none; }
-  .chain-results table:not(.matrix) tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; padding: 10px 0 12px; border-bottom: 1px solid var(--line); }
-  .chain-results table:not(.matrix) td { display: block; padding: 0; border: 0; text-align: left; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
-  .chain-results table:not(.matrix) td:first-child { grid-column: 1 / -1; color: var(--text); font-weight: 500; }
-  .chain-results table:not(.matrix) td::before { content: attr(data-label); display: block; margin-bottom: 1px; font: 500 .58rem var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
-  .chain-results table:not(.matrix) td[colspan] { grid-column: 1 / -1; }
-  .chain-results table:not(.matrix) td[colspan]::before { display: none; }
+  .chain-results table, .chain-results tbody { display: block; width: 100%; }
+  .chain-results thead { display: none; }
+  .chain-results tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; padding: 10px 0 12px; border-bottom: 1px solid var(--line); }
+  .chain-results td { display: block; padding: 0; border: 0; text-align: left; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+  .chain-results td:first-child { grid-column: 1 / -1; color: var(--text); font-weight: 500; }
+  .chain-results td::before { content: attr(data-label); display: block; margin-bottom: 1px; font: 500 .58rem var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+  .chain-results td[colspan] { grid-column: 1 / -1; }
+  .chain-results td[colspan]::before { display: none; }
 }
 @media (max-width: 700px) {
   .segment { grid-template-columns: auto minmax(0, 1fr); }

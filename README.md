@@ -15,7 +15,7 @@ No build step. Classic scripts, no bundler.
 | [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
 | [Gain](https://reedos.github.io/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
-| [Mixed-mode](https://reedos.github.io/rf_lab_reference/mixed.html) | Mixed-mode S-parameters from single-ended ones for any port mapping, three- and four-port, with a numeric evaluation at one point |
+| [Mixed-mode](https://reedos.github.io/rf_lab_reference/mixed.html) | Mixed-mode S-parameters written out in terms of the single-ended ones for any port mapping, three- and four-port |
 | [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, phase-slope length estimates, intra-pair skew |
 | [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
@@ -62,10 +62,9 @@ the rendered algebra is recoloured to match.
 
 Columns are centred so a heading sits over its numbers, and a number never wraps away from its
 unit. Reference tables scroll inside their own frame when they must, so the heading above stays
-put, and a frame with more to the side shows a fade there. List tables (sweep segments and
+put, and a frame with more to the side shows a fade there. Results tables (sweep segments and
 boundaries, chain stages, tone and harmonic plans) stack into cards on a phone, each value
-under its own heading, so nothing scrolls sideways; matrices (the mixed-mode grids) keep their
-rows and columns and scroll. Equations that run wide on a phone are set on several lines there
+under its own heading, so nothing scrolls sideways. Equations that run wide on a phone are set on several lines there
 and on one line on a desktop, so no equation needs a sideways scroll at the default settings.
 
 ## Copying figures, tables and equations
@@ -300,13 +299,10 @@ Mode reference impedances follow the card: 2 Z₀ for a differential mode and Z�
 common mode, per side. The transform assumes both lines of a pair share their per-line
 reference; renormalising to something else needs the whole single-ended matrix first.
 
-An optional grid takes the single-ended set at one frequency as level and phase (row = to,
-column = from; the example is a slightly unbalanced through path). The mixed-mode table and
-tiles report the transmission term, both return terms, the common-mode through path and the
-mode conversions, with S_cd21 also given relative to S_dd21. An entry that cancels exactly,
-which an ideally balanced pair produces, is reported as −∞ dB rather than as a round-off
-residue. The link at the bottom carries the card to the Gain page to turn the parameter into
-a voltage gain.
+The page gives the algebra, not the arithmetic: enter the measured values on the analyzer,
+which does the conversion itself. Copy result gives every parameter as a line of plain text.
+The link at the bottom carries the DUT card to the Gain page to turn the parameter into a
+voltage gain.
 
 ## Match and Smith chart
 
