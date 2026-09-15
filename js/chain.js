@@ -123,7 +123,7 @@
     $('budget-status').className = bad ? 'over-limit' : '';
     $('budget-status').textContent = budget.state === 'damage' ? `${dbm(level)} at the receiver is above its damage level. Do not connect; add at least ${fmt(budget.pad, 'dB')} dB.`
       : budget.state === 'compress' ? `${dbm(level)} at the receiver is within ${fmt(budget.margin, 'dB')} dB of its compression point.` : '';
-    $('budget-metrics').innerHTML = metric('Headroom to 0.1 dB compression', `<span class="${bad ? 'over-limit' : ''}">${fmt(budget.headroom, 'dB')} dB</span> · ${dbm(level)} at the receiver`, 'primary') +
+    $('budget-metrics').innerHTML = metric('Headroom to 0.1 dB compression', `<span class="${bad ? 'over-limit' : ''}">${fmt(budget.headroom, 'dB')} dB</span> · ${dbm(level)} at the receiver`, bad ? '' : 'port-out') +
       metric('Headroom to damage', `<span class="${budget.damageHeadroom < 0 ? 'over-limit' : ''}">${fmt(budget.damageHeadroom, 'dB')} dB</span>`) +
       metric('Attenuator for the margin', budget.pad ? `${fmt(budget.pad, 'dB')} dB at the last connection → ${dbm(budget.afterPad)}` : 'None needed') +
       metric('Limits', `0.1 dB at ${dbm(budget.compression)} · damage ${dbm(budget.damage)} · margin ${fmt(budget.margin, 'dB')} dB`);
