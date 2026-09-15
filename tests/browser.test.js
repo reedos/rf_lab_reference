@@ -361,22 +361,79 @@ let checks=0;
           assert.equal(await gain.inputValue(),'-10');
           await expect.poll(valid).toBe(true);
         });
+        await check('Sweep timing covers multiport correction, independent averaging, custom sequences and shared links',async()=>{
+          const rows = [{start:'100', startUnit:'MHz', stop:'10', stopUnit:'GHz', step:'100', stepUnit:'MHz'}];
+          const query = new URLSearchParams({segments:JSON.stringify(rows), ifbw:'300', 'ifbw-unit':'Hz'});
+          await go('sweep.html?' + query);
+          const tile = label => page.locator('#sweep-metrics .metric').filter({has:page.locator('dt', {hasText:label})}).locator('dd');
+          await expect(page.locator('#timing-ports')).toHaveValue('4');
+          await expect(page.locator('#custom-passes-field')).toBeHidden();
+          await expect(tile('Total points')).toHaveText('1250');
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 50 s');
+          await expect(tile('Single-pass estimate')).toHaveText('≈ 4.167 s');
+          for (const [ports, time] of [['1','4.167'], ['2','8.333'], ['3','25'], ['4','50']]) {
+            await page.locator('#timing-ports').selectOption(ports);
+            await expect(tile('Complete measurement estimate')).toHaveText(`≈ ${time} s`);
+          }
+          await fill('nf-ref',''); await fill('nf-avg',16);
+          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 800 s · 16 complete measurements');
+          await expect.poll(valid).toBe(true);
+          await page.locator('#timing-setup').selectOption('vna');
+          await expect(page.locator('#timing-note')).toContainText('exceeds');
+          await page.locator('#timing-setup').selectOption('extender');
+          await expect(page.locator('#timing-note')).not.toContainText('exceeds');
+          await page.locator('#timing-sequence').selectOption('source');
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 16.67 s');
+          await page.locator('#timing-sequence').selectOption('custom');
+          await expect(page.locator('#custom-passes-field')).toBeVisible();
+          await fill('timing-passes',5); await fill('if-factor',1.2);
+          await fill('point-overhead',1000); await fill('segment-overhead',100);
+          await fill('cycle-overhead',500);
+          // Five passes of (5 s IF + 1.25 s point + .1 s segment), then .5 s once.
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 32.25 s');
+          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 516 s · 16 complete measurements');
+          await page.reload();
+          for (const [id,value] of [['timing-ports','4'],['timing-sequence','custom'],['timing-passes','5'],['if-factor','1.2'],['cycle-overhead','500'],['nf-avg','16'],['nf-ref','']]) {
+            await expect(page.locator('#'+id)).toHaveValue(value);
+          }
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 32.25 s');
+          await page.locator('#copy-result').click();
+          assert.match(await page.evaluate(()=>window.copiedText), /5 acquisition pass\(es\).*IF timing factor 1.2/);
+          assert.match(await page.evaluate(()=>window.copiedText), /Complete measurement 32.25 s.*516 s/);
+          await page.locator('.calculation summary').click();
+          await expect(page.locator('#calculation-text')).toContainText('Complete measurement estimate');
+          await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
+          await expect(page.locator('.katex-error')).toHaveCount(0);
+          for (const [id,bad] of [['timing-passes',''],['timing-passes','2.5'],['if-factor','0'],['cycle-overhead','-1'],['nf-avg','2.5']]) {
+            const previous = await page.locator('#'+id).inputValue();
+            await fill(id,bad); await expect.poll(valid).toBe(false);
+            await expect(page.locator('#sweep-metrics')).toBeEmpty();
+            await fill(id,previous); await expect.poll(valid).toBe(true);
+          }
+          await fill('point-overhead',''); await fill('segment-overhead',''); await fill('cycle-overhead','');
+          await fill('if-factor',''); await fill('nf-avg','');
+          await page.locator('#timing-sequence').selectOption('pairwise');
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 50 s');
+          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 50 s · 1 complete measurement');
+          await fill('ifbw',''); await fill('cycle-overhead',500);
+          await expect(tile('Complete measurement estimate')).toHaveText('Enter IF bandwidth');
+          await expect.poll(valid).toBe(true);
+        });
         await check('Sweep time takes overhead, and the gain page refers to the input terminal',async()=>{
           await go('sweep.html');
           await fill('ifbw',1);
           const timeTile=async()=>{
             for (const tile of await page.locator('#sweep-metrics .metric').all()) {
               const text=await tile.innerText();
-              if (/SWEEP TIME/i.test(text)) return text.replace(/\n/g,' ').toLowerCase();
+              if (/SINGLE-PASS ESTIMATE/i.test(text)) return text.replace(/\n/g,' ').toLowerCase();
             }
             return '';
           };
-          await expect.poll(timeTile).toContain('minimum sweep time');
+          await expect.poll(timeTile).toContain('single-pass estimate');
           await expect.poll(timeTile).toContain('991 ms');
           await fill('point-overhead',20);
-          await expect.poll(timeTile).toContain('estimated sweep time');
+          await expect.poll(timeTile).toContain('single-pass estimate');
           await expect.poll(timeTile).toContain('12.74 s');
-          await expect.poll(timeTile).toContain('dwell');
           await fill('segment-overhead',5);
           await expect.poll(timeTile).toContain('12.75 s');
           // The same IF bandwidth places the noise floor, and averaging moves it.
@@ -388,7 +445,7 @@ let checks=0;
           await expect(page.locator('#noise-metrics')).toContainText('up to 100 kHz');
           await fill('nf-avg',16);
           await expect(page.locator('#noise-metrics')).toContainText('-112.04 dBm');
-          await expect(page.locator('#noise-metrics')).toContainText(/Sweep time with averaging/);
+          await expect(page.locator('#sweep-metrics')).toContainText(/Sweep averaging completion estimate/);
           await fill('nf-signal',-95);
           await expect(page.locator('#noise-status')).toContainText(/Only 17.04 dB above the floor/);
           await fill('nf-avg','2.5'); await expect.poll(valid).toBe(false);
@@ -396,7 +453,7 @@ let checks=0;
           await page.reload(); await expect(page.locator('#nf-signal')).toHaveValue('-60');
           await fill('point-overhead','bad'); await expect.poll(valid).toBe(false);
           await fill('point-overhead',''); await fill('segment-overhead','');
-          await expect.poll(timeTile).toContain('minimum sweep time');
+          await expect.poll(timeTile).toContain('single-pass estimate');
           // The terminal-referred gain needs both parts of the reflection.
           await go('gain.html?t=ds&s1=50&d2=100');
           const terminal=async()=>{

@@ -264,6 +264,32 @@ test('sweep time adds instrument overhead to the dwell floor', () => {
   // Nonsense overhead counts as none rather than poisoning the total.
   assert.equal(RF.segmentedSweep(wide, { pointOverhead: -1, segmentOverhead: NaN }).overheadTime, 0);
 });
+test('complete measurement timing distinguishes correction passes from source ports', () => {
+  for (const [ports, passes, seconds] of [[1, 1, 1250/300], [2, 2, 25/3], [3, 6, 25], [4, 12, 50]]) {
+    const t = RF.sweepTiming(1250, 1, { ifbw: 300, ports });
+    assert.equal(t.passes, passes); near(t.passTime, 1250/300); near(t.measurementTime, seconds);
+    near(RF.sweepTiming(1250, 1, { ifbw: 300, ports, sequence: 'source' }).measurementTime, ports * 1250/300);
+  }
+  const custom = RF.sweepTiming(1250, 2, { ifbw: 300, sequence: 'custom', customPasses: 4,
+    ifFactor: 1.2, pointOverhead: .001, segmentOverhead: .1, cycleOverhead: .5, averages: 16 });
+  near(custom.acquisitionTime, 5); near(custom.passTime, 6.45);
+  near(custom.measurementTime, 26.3); near(custom.averagedTime, 420.8);
+  const unknown = RF.sweepTiming(1250, 1, { pointOverhead: .001 });
+  assert.ok(Number.isNaN(unknown.passTime)); assert.ok(Number.isNaN(unknown.measurementTime));
+  assert.ok(Number.isNaN(unknown.averagedTime));
+});
+
+test('timing rejects invalid counts, bandwidth, factors and overhead', () => {
+  for (const options of [{ports: 0}, {ports: 5}, {ports: 1.5}, {averages: 0}, {averages: 2.5},
+    {sequence: 'unknown'}, {sequence: 'custom', customPasses: 0}, {sequence: 'custom', customPasses: 1.5},
+    {ifbw: 0}, {ifbw: NaN}, {ifbw: Infinity}, {ifFactor: 0}, {ifFactor: Infinity},
+    {pointOverhead: -1}, {segmentOverhead: NaN}, {cycleOverhead: -1},
+    {ifbw: Number.MIN_VALUE}, {ifbw: 300, cycleOverhead: Number.MAX_VALUE, averages: 2}]) {
+    assert.equal(RF.sweepTiming(1250, 1, options), null, JSON.stringify(options));
+  }
+  assert.equal(RF.sweepTiming(0, 1), null); assert.equal(RF.sweepTiming(1250, 0), null);
+});
+
 test('blank-as-zero parser changes only empty input, not invalid input', () => {
   assert.equal(RF.parseZero(''),0); assert.equal(RF.parseZero('  '),0);
   assert.equal(RF.parseZero('0,25'),.25);

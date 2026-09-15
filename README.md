@@ -354,9 +354,37 @@ table that repeats its pattern is smooth even though its absolute step jumps 10�
 comparison uses step size for tables meant to be linear throughout. Per-segment Δf/f, average
 points per decade, and instantaneous points per decade show the relative resolution, and a
 log-sweep equivalent gives the point count that would match the finest or coarsest relative
-spacing over the whole span. Optional inputs report headroom
-against an instrument point limit and a minimum sweep time of about N/IFBW, which excludes
-band crossings, settling, and dwell.
+spacing over the whole span. An optional instrument point limit reports headroom.
+
+**Measurement timing** defaults to four active correction ports and the documented VNA
+pairwise full-correction estimate: M = max(1, P(P−1)), giving 1, 2, 6, or 12 acquisition
+passes for 1–4 ports. Alternative sequences use one pass per active source port or an
+explicit custom pass count. Count ports participating in acquisition or correction,
+not installed connectors or displayed traces. Verify the sequence on the analyzer.
+
+Single-pass time, complete measurement time, and sweep averaging completion are shown
+separately, even with the noise-floor inputs blank:
+
+- t_pass ≈ k N / IFBW + N t_point + S t_segment
+- t_measurement ≈ M t_pass + t_extra
+- t_average ≈ A t_measurement
+
+Blank overhead contributes zero; blank IF timing factor k and averaging factor A mean 1.
+A missing IF bandwidth leaves time unknown, even with overhead entered. Point and
+enabled-segment overhead repeats for each pass; extra measurement overhead is added once
+per complete measurement and repeated by sweep averaging. Avoid counting delays twice.
+Point averaging, automatic IF reduction, differing IF bandwidths per segment, and other
+active channels are not modeled automatically.
+
+VNA direct (6 GHz) and VNA + generic-analyzer (10 GHz) selections identify hardware and
+flag sweeps above the chosen upper range. They do not supply measured timing coefficients
+or invent an extender slowdown. Settings persist in shareable URLs; calculation details
+and copied results include the timing assumptions. Old links without timing settings
+use the new four-port defaults.
+
+References: [Keysight VNA sweep sequencing](https://www.keysight.com/),
+[generic-analyzer timing](https://www.keysight.com/),
+and [generic-analyzer broadband timing](https://www.keysight.com/).
 
 Power sweeps use the same count: −20 dBm to −4 dBm in 0.1 dB steps is 161 points. Enter the
 step or the number of points; the other updates.

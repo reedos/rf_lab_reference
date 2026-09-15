@@ -583,10 +583,36 @@
     return { start, stop, points, step: (stop - start) / (points - 1), span: stop - start, exact: true, lastPoint: stop };
   }
 
+  // Planning estimate, not an instrument timing specification. The pairwise model is
+  // the P(P-1) full-correction sequence documented in Keysight's VNA sweep guidance.
+  // Source and custom modes allow other acquisition sequences without assuming that
+  // the number of displayed S-parameters equals the number of passes.
+  function sweepTiming(points, segments, options = {}) {
+    const { ports = 4, sequence = 'pairwise', customPasses = 1, averages = 1,
+      ifbw = null, ifFactor = 1, pointOverhead = 0, segmentOverhead = 0,
+      cycleOverhead = 0 } = options;
+    if (!Number.isSafeInteger(points) || points < 1 || !Number.isSafeInteger(segments) || segments < 1 ||
+        !Number.isInteger(ports) || ports < 1 || ports > 4 ||
+        !['pairwise', 'source', 'custom'].includes(sequence) ||
+        !Number.isSafeInteger(averages) || averages < 1 ||
+        !Number.isFinite(ifFactor) || ifFactor <= 0 ||
+        (ifbw !== null && (!Number.isFinite(ifbw) || ifbw <= 0)) ||
+        ![pointOverhead, segmentOverhead, cycleOverhead].every(v => Number.isFinite(v) && v >= 0) ||
+        (sequence === 'custom' && (!Number.isSafeInteger(customPasses) || customPasses < 1))) return null;
+    const passes = sequence === 'custom' ? customPasses : sequence === 'source' ? ports : Math.max(1, ports * (ports - 1));
+    const acquisitionTime = ifbw === null ? NaN : points * ifFactor / ifbw;
+    const passOverhead = points * pointOverhead + segments * segmentOverhead;
+    const passTime = acquisitionTime + passOverhead;
+    const measurementTime = passes * passTime + cycleOverhead;
+    const averagedTime = averages * measurementTime;
+    if (ifbw !== null && ![acquisitionTime, passTime, measurementTime, averagedTime].every(Number.isFinite)) return null;
+    return { ports, sequence, passes, averages, ifFactor, acquisitionTime, passOverhead,
+      pointOverhead, segmentOverhead, cycleOverhead, passTime, measurementTime, averagedTime };
+  }
+
   // Segment table: per-segment point counts and relative spacing, boundary continuity, and jumps.
-  // mode 'relative' (log-style tables) compares Δf/f at adjacent segment starts, so a decade table
-  // that repeats its pattern is smooth; mode 'absolute' compares step sizes. A boundary is "sharp"
-  // when the chosen ratio is outside 1/jumpLimit .. jumpLimit (default 3x).
+  // mode 'relative' compares Δf/f at segment starts; mode 'absolute' compares step sizes.
+  // A boundary is "sharp" outside 1/jumpLimit .. jumpLimit (default 3x).
   function segmentedSweep(segments, options) {
     const opts = options || {};
     if (!Array.isArray(segments) || segments.length === 0 || segments.length > 100) return null;
@@ -622,7 +648,7 @@
     const logPoints = ratio => last > first ? Math.ceil(Math.log(last / first) / Math.log(1 + ratio)) + 1 : 1;
     const maxPoints = Number.isInteger(opts.maxPoints) && opts.maxPoints > 0 ? opts.maxPoints : null;
     const ifbw = opts.ifbw > 0 ? opts.ifbw : null;
-    // Dwell is the floor. Real instruments add a fixed cost per point and a retune per segment.
+    // Legacy single-pass approximation. Use sweepTiming for complete measurement estimates.
     const pointOverhead = opts.pointOverhead > 0 ? opts.pointOverhead : 0;
     const segmentOverhead = opts.segmentOverhead > 0 ? opts.segmentOverhead : 0;
     const overheadTime = points * pointOverhead + rows.length * segmentOverhead;
@@ -931,7 +957,7 @@
   }
 
   const RF = {
-    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, logTable, noiseFloor, timeDomain, mismatchRipple, receiverBudget, PAD_VALUES, mixedModeRows, mixedMode, fromPolar, toPolar,
+    formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, sweepTiming, logTable, noiseFloor, timeDomain, mismatchRipple, receiverBudget, PAD_VALUES, mixedModeRows, mixedMode, fromPolar, toPolar,
     tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
     complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,

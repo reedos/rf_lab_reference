@@ -48,10 +48,11 @@
       segment('100', 'MHz', '10', 'GHz', '100', 'MHz')]
   };
   const timeScales = { 'µs': 1e-6, ms: 1e-3, s: 1 };
-  const overheadIds = ['point-overhead', 'segment-overhead'];
+  const overheadIds = ['point-overhead', 'segment-overhead', 'cycle-overhead'];
+  const timingIds = ['timing-setup', 'timing-ports', 'timing-sequence', 'timing-passes', 'if-factor'];
   const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step', 'nf-ref-bw'];
   const optionIds = ['mode', 'limit', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points', 'nf-ref', 'nf-avg', 'nf-signal']
-    .concat(frequencyIds, frequencyIds.map(id => id + '-unit'), overheadIds, overheadIds.map(id => id + '-unit'));
+    .concat(timingIds, frequencyIds, frequencyIds.map(id => id + '-unit'), overheadIds, overheadIds.map(id => id + '-unit'));
   // Every frequency field carries its own unit; changing it keeps the physical value.
   const unitScale = el => scales[document.getElementById(el.id + '-unit').value];
   const readHz = el => RF.parseFrequency(el.value, unitScale(el));
@@ -63,7 +64,7 @@
     });
   }
   const segmentUnit = (s, key) => Object.hasOwn(scales, s[key]) ? s[key] : 'MHz';
-  let segments = PRESETS.wide, powerSource = 'step', result = null, power = null, noise = null, loadError = '', active = [];
+  let segments = PRESETS.wide, powerSource = 'step', result = null, power = null, noise = null, timing = null, loadError = '', active = [];
   function readQuery() {
     const q = new URLSearchParams(location.search);
     for (const id of optionIds) if (q.has(id)) {
@@ -105,7 +106,20 @@
   }
   function seconds(t) {
     if (!Number.isFinite(t)) return '—';
-    return t >= 1 ? `${fmt(t)} s` : t >= 1e-3 ? `${fmt(t * 1e3)} ms` : t >= 1e-6 ? `${fmt(t * 1e6)} µs` : t >= 1e-9 ? `${fmt(t * 1e9)} ns` : `${fmt(t * 1e12)} ps`;
+    const rounded = value => Number(value.toPrecision(4)).toString();
+    return t === 0 ? '0 s' : t >= 1 ? `${rounded(t)} s` : t >= 1e-3 ? `${rounded(t * 1e3)} ms` : t >= 1e-6 ? `${rounded(t * 1e6)} µs` : t >= 1e-9 ? `${rounded(t * 1e9)} ns` : `${rounded(t * 1e12)} ps`;
+  }
+  const setupName = () => $('timing-setup').value === 'vna' ? 'VNA direct · 6 GHz' : 'VNA + generic-analyzer · 10 GHz';
+  const sequenceName = () => $('timing-sequence').selectedOptions[0].textContent;
+  function timingSummary() {
+    return `${setupName()} | ${timing.ports} active port(s) | ${sequenceName()} | ${timing.passes} acquisition pass(es) per measurement | IF timing factor ${fmt(timing.ifFactor)} | IFBW ${result.ifbw === null ? 'unspecified' : freq(result.ifbw)}`;
+  }
+  function timingMetrics() {
+    const estimate = t => Number.isFinite(t) ? `≈ ${seconds(t)}` : 'Enter IF bandwidth';
+    return metric('Complete measurement estimate', estimate(timing.measurementTime), 'primary') +
+      metric('Acquisition passes per measurement', `${timing.passes} · ${timing.ports} active port${timing.ports === 1 ? '' : 's'}`) +
+      metric('Single-pass estimate', estimate(timing.passTime)) +
+      metric('Sweep averaging completion estimate', estimate(timing.averagedTime) + ` · ${timing.averages} complete measurement${timing.averages === 1 ? '' : 's'}`);
   }
   // The transform needs one linear segment; a table has no single step to set the range.
   function timeDomainTile() {
@@ -121,11 +135,15 @@
     return `Contiguous, ${freq(b.gap)} to next point`;
   }
   function invalidSweep(message) {
-    result = null;
+    result = null; timing = null;
+    $('timing-note').textContent = '';
     $('sweep-status').textContent = message; $('sweep-status').className = 'status-error';
     ['sweep-rows', 'boundary-rows', 'sweep-metrics'].forEach(id => $(id).replaceChildren());
   }
   function computeSweep() {
+    const custom = $('timing-sequence').value === 'custom';
+    $('custom-passes-field').hidden = !custom;
+    $('timing-passes').disabled = !custom;
     if (loadError) return invalidSweep(loadError);
     active = segments.map((s, i) => ({ s, i })).filter(({ s }) => isOn(s));
     if (!active.length) return invalidSweep('Every segment is switched off. Enable at least one to size the sweep.');
@@ -147,6 +165,19 @@
     result = RF.segmentedSweep(parsed, { maxPoints, ifbw, jumpLimit, mode,
       pointOverhead: overhead['point-overhead'], segmentOverhead: overhead['segment-overhead'] });
     if (!result) return invalidSweep('Each segment needs a positive start, a stop at or above it, and a positive step. Pick each unit beside its field.');
+    timing = RF.sweepTiming(result.points, result.rows.length, {
+      ports: Number($('timing-ports').value), sequence: $('timing-sequence').value,
+      customPasses: Bench.read('timing-passes'),
+      averages: $('nf-avg').value.trim() === '' ? 1 : Bench.read('nf-avg'),
+      ifFactor: $('if-factor').value.trim() === '' ? 1 : Bench.read('if-factor'), ifbw,
+      pointOverhead: overhead['point-overhead'], segmentOverhead: overhead['segment-overhead'],
+      cycleOverhead: overhead['cycle-overhead']
+    });
+    if (!timing) return invalidSweep('Timing needs 1–4 ports, positive whole-number pass and averaging counts, a positive IF timing factor, and finite nonnegative overheads.');
+    const maxFrequency = $('timing-setup').value === 'vna' ? 6e9 : 10e9;
+    $('timing-note').className = result.last > maxFrequency ? 'over-limit' : 'hint';
+    $('timing-note').textContent = timingSummary() + '. Planning estimate; verify acquisition sequencing and overhead on your analyzer.' +
+      (result.last > maxFrequency ? ` The active sweep exceeds this setup's ${freq(maxFrequency)} upper range.` : '');
     const sharp = result.boundaries.filter(b => b.sharp).length, broken = result.boundaries.filter(b => b.kind !== 'contiguous').length;
     const notes = [];
     if (result.inexact) notes.push(`${result.inexact} ${result.inexact === 1 ? 'segment does' : 'segments do'} not land on the stop frequency`);
@@ -163,10 +194,7 @@
     $('sweep-metrics').innerHTML = metric('Total points', String(result.points) + (parked ? ` · ${active.length} of ${segments.length} segments` : ''), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) + metric('DUT range', coverage()) +
       metric('Points per decade', result.decadePoints.min === result.decadePoints.max ? fmt(result.decadePoints.min) : `${fmt(result.decadePoints.min)} to ${fmt(result.decadePoints.max)} by segment`) +
       metric('Point limit', result.maxPoints === null ? 'None specified' : `${result.maxPoints} · ${result.headroom >= 0 ? `${result.headroom} spare` : `<span class="over-limit">${-result.headroom} over</span>`}`) +
-      metric(result.overheadTime > 0 ? 'Estimated sweep time' : 'Minimum sweep time',
-        Number.isFinite(result.sweepTimeTotal)
-          ? `≈ ${seconds(result.sweepTimeTotal)}` + (result.overheadTime > 0 && Number.isFinite(result.sweepTime) ? ` · ${seconds(result.sweepTime)} dwell + ${seconds(result.overheadTime)} overhead` : '')
-          : 'Enter IF bandwidth') +
+      timingMetrics() +
       metric('Log sweep, same coverage', `${result.log.finePoints} points at the finest Δf/f (${fmt(result.log.fine * 100)} %)`) +
       metric('Log sweep, coarsest', `${result.log.coarsePoints} points at ${fmt(result.log.coarse * 100)} %`) + timeDomainTile();
   }
@@ -177,6 +205,10 @@
     const ifbw = $('ifbw').value.trim() === '' ? null : readHz($('ifbw'));
     const blankRef = $('nf-ref').value.trim() === '', blankSignal = $('nf-signal').value.trim() === '';
     const averages = $('nf-avg').value.trim() === '' ? 1 : Bench.read('nf-avg');
+    if (!Number.isSafeInteger(averages) || averages < 1) {
+      status.textContent = 'Sweep averaging factor must be a positive whole number; blank means 1.';
+      status.className = 'status-error'; metrics.replaceChildren(); return false;
+    }
     if (blankRef) { status.textContent = 'Enter the datasheet floor to place the noise floor.'; status.className = ''; metrics.replaceChildren(); return true; }
     if (ifbw === null) { status.textContent = 'Enter an IF bandwidth above to place the noise floor.'; status.className = ''; metrics.replaceChildren(); return true; }
     noise = RF.noiseFloor({ floorRef: Bench.read('nf-ref'), ifbwRef: readHz($('nf-ref-bw')), ifbw, averages, signal: blankSignal ? NaN : Bench.read('nf-signal') });
@@ -193,7 +225,6 @@
       status.className = low ? 'over-limit' : '';
       status.textContent = low ? `Only ${fmt(noise.snr, 'dB')} dB above the floor: expect about ${fmt(noise.traceNoiseDb, 'dB')} dB of trace noise. Narrow the IF bandwidth or add averaging.` : '';
     } else { status.textContent = ''; status.className = ''; }
-    if (result && Number.isFinite(result.sweepTimeTotal) && noise.averages > 1) tiles.push(metric('Sweep time with averaging', `≈ ${seconds(result.sweepTimeTotal * noise.averages)} for ${noise.averages} sweeps`));
     metrics.innerHTML = tiles.join('');
     return true;
   }
@@ -213,6 +244,7 @@
   }
   function compute() {
     computeSweep(); computePower();
+    const mode = $('mode').value;
     const noiseOk = computeNoise();
     const valid = Boolean(result && power && noiseOk);
     const lines = valid ? [
@@ -225,7 +257,13 @@
       ...result.boundaries.flatMap(b => [eq(`Boundary at ${freq(b.frequency)}`, String.raw`\frac{\Delta f_{${b.index + 1}}}{\Delta f_{${b.index}}} &= ${tex(b.stepRatio)} \\ \frac{(\Delta f/f_{\mathrm{start}})_{${b.index + 1}}}{(\Delta f/f_{\mathrm{start}})_{${b.index}}} &= ${tex(b.patternRatio)} \\ f_{\mathrm{start},${b.index + 1}}-f_{\mathrm{last},${b.index}} &= ${tex(b.gap, 'Hz')}`),
         b.sharp ? `${mode === 'relative' ? 'Relative spacing pattern' : 'Step size'} changes by more than ${fmt(result.jumpLimit)}× at ${freq(b.frequency)}.` : '']),
       eq('Total points', String.raw`N &= \sum_i N_i`, tex(result.points), result.rows.map(r => tex(r.points)).join('+')),
-      result.ifbw === null ? 'Enter an IF bandwidth to estimate the sweep time.' : eq('Sweep time', String.raw`t &\approx \frac{N}{\mathrm{IFBW}} + N t_{\mathrm{point}} + S t_{\mathrm{seg}}`, tex(result.sweepTimeTotal, 's'), String.raw`\frac{${tex(result.points)}}{${tex(result.ifbw, 'Hz', false)}}+${tex(result.points)}(${tex(result.pointOverhead, 's', false)})+${tex(result.rows.length)}(${tex(result.segmentOverhead, 's', false)})\,\mathrm s`),
+      timingSummary(),
+      ...(result.ifbw === null ? ['Enter an IF bandwidth to estimate measurement time.'] : [
+        eq('Acquisition passes per measurement', timing.sequence === 'pairwise' ? String.raw`M &= \max(1,P(P-1))` : timing.sequence === 'source' ? String.raw`M &= P` : String.raw`M &= M_{\mathrm{custom}}`, tex(timing.passes)),
+        eq('Single-pass estimate', String.raw`t_{\mathrm{pass}} &\approx \frac{kN}{\mathrm{IFBW}} + N t_{\mathrm{point}} + S t_{\mathrm{seg}}`, tex(timing.passTime, 's'), String.raw`\frac{${tex(timing.ifFactor)}\cdot${tex(result.points)}}{${tex(result.ifbw, 'Hz', false)}}+${tex(result.points)}(${tex(timing.pointOverhead, 's', false)})+${tex(result.rows.length)}(${tex(timing.segmentOverhead, 's', false)})\,\mathrm s`),
+        eq('Complete measurement estimate', String.raw`t_{\mathrm{measurement}} &\approx M t_{\mathrm{pass}} + t_{\mathrm{extra}}`, tex(timing.measurementTime, 's'), String.raw`${tex(timing.passes)}(${tex(timing.passTime, 's', false)})+${tex(timing.cycleOverhead, 's', false)}\,\mathrm s`),
+        eq('Sweep averaging completion estimate', String.raw`t_{\mathrm{average}} &\approx A t_{\mathrm{measurement}}`, tex(timing.averagedTime, 's'), String.raw`${tex(timing.averages)}(${tex(timing.measurementTime, 's', false)})\,\mathrm s`)
+      ]),
       ...(result.rows.length === 1 ? [
         eq('Alias-free range of the time-domain transform', String.raw`t_{\max} &= \frac{1}{\Delta f}`, tex(RF.timeDomain(result.rows[0].step, result.last - result.first).range, 's'), String.raw`\frac{1}{${tex(result.rows[0].step, 'Hz', false)}}\,\mathrm s`),
         eq('Response resolution', String.raw`\Delta t &\approx \frac{1}{f_{\mathrm{stop}}-f_{\mathrm{start}}}`, tex(RF.timeDomain(result.rows[0].step, result.last - result.first).resolution, 's')),
@@ -233,7 +271,7 @@
       ] : ['A segmented table cannot be transformed to the time domain: there is no single step to set the alias-free range. Use one linear segment for gating or TDR.']),
       eq('Log sweep with the same relative spacing', String.raw`N_{\log} &= \left\lceil\frac{\ln(f_{\mathrm{last}}/f_{\mathrm{first}})}{\ln(1+r)}\right\rceil+1`, String.raw`${tex(result.log.finePoints)}\text{ for } r=${tex(result.log.fine)},\ ${tex(result.log.coarsePoints)}\text{ for } r=${tex(result.log.coarse)}`),
       `Boundaries are compared by ${mode === 'relative' ? 'relative step at each segment start, which is smooth for a repeating decade pattern' : 'absolute step size'}.`,
-      'Sweep time excludes band crossings, source settling, and dwell. Instrument segment limits, point limits, and IF bandwidth per segment are set on the analyzer.',
+      'Timing is a planning estimate for one channel and a common IF bandwidth. Unentered overhead, automatic IF reduction, and point averaging are not modeled. Full correction uses the documented VNA pairwise sequence; verify it on your analyzer. Hardware selection does not imply measured timing coefficients.',
       eq('Power sweep points', String.raw`N_{P} &= \frac{P_{\mathrm{stop}}-P_{\mathrm{start}}}{\Delta P}+1`, tex(power.points), String.raw`\frac{${tex(power.stop, 'dBm', false)}-(${tex(power.start, 'dBm', false)})}{${tex(power.step, 'dB', false)}}+1`),
       ...(noise ? [
         eq('Noise floor at the working IF bandwidth', String.raw`P_{\mathrm{floor}} &= P_{\mathrm{ref}} + 10\log_{10}\frac{\mathrm{IFBW}}{\mathrm{IFBW}_{\mathrm{ref}}} - 10\log_{10}N`, tex(noise.floor, 'dBm'),
@@ -282,7 +320,7 @@
   document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     segments = PRESETS[b.dataset.preset].map(s => ({ ...s })); loadError = ''; renderSegments(); compute();
   }));
-  ['mode', 'limit', 'ifbw', 'jump', 'nf-ref', 'nf-avg', 'nf-signal'].concat(overheadIds, overheadIds.map(id => id + '-unit'))
+  ['mode', 'limit', 'ifbw', 'jump', 'nf-ref', 'nf-avg', 'nf-signal'].concat(timingIds, overheadIds, overheadIds.map(id => id + '-unit'))
     .forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { loadError = ''; compute(); }));
   frequencyIds.forEach(bindUnit);
   ['g-start', 'g-stop', 'g-mult', 'g-tail', 'g-tail-step'].forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { $('generate-status').textContent = ''; if (Bench.valid) writeQuery(); }));
@@ -305,6 +343,11 @@
   $('copy-result').addEventListener('click', () => {
     if (!Bench.valid) return;
     Bench.copy(`Frequency sweep | ${result.points} points | ${freq(result.first)} → ${freq(result.last)}\n` +
+      `Timing assumption | ${timingSummary()}\n` +
+      (result.ifbw === null ? 'Timing estimate | Enter IF bandwidth\n' :
+        `Timing estimate | Single pass ${seconds(timing.passTime)} | Complete measurement ${seconds(timing.measurementTime)} | ${timing.averages} sweep averages ${seconds(timing.averagedTime)}\n` +
+        `Entered overhead | ${seconds(timing.pointOverhead)} per point | ${seconds(timing.segmentOverhead)} per segment per pass | ${seconds(timing.cycleOverhead)} extra per measurement\n`) +
+      'Planning estimate; verify acquisition sequencing and unentered overhead on the analyzer.\n' +
       result.rows.map((r, i) => `Segment ${active[i].i + 1}: ${freq(r.start)} → ${freq(r.stop)} step ${freq(r.step)} = ${r.points} points${r.exact ? '' : ' (ends at ' + freq(r.lastPoint) + ')'}`).join('\n') +
       (result.boundaries.length ? '\n' + result.boundaries.map(b => `Boundary ${freq(b.frequency)}: ${boundaryText(b)}, step ratio ${fmt(b.stepRatio)}×, Δf/f-at-start ratio ${fmt(b.patternRatio)}×${b.sharp ? ' (flagged)' : ''}`).join('\n') : '') +
       `\nPower sweep | ${fmt(power.start, 'dBm')} → ${fmt(power.stop, 'dBm')} dBm step ${fmt(power.step, 'dB')} dB = ${power.points} points` +
