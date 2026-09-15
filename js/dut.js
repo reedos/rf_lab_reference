@@ -1,6 +1,6 @@
 // The device under test, shared by every calculator. It lives in the page link only: no
 // storage on the device, so it follows you between pages and into a copied link and is
-// gone when the tab closes. Pages read it through Dut.get(), push their own edits back
+// retained wherever the link or browser history is saved. Pages read it through Dut.get(), push their own edits back
 // with Dut.set(), and hear card edits through the 'dut-change' event on document.
 (function () {
   'use strict';
@@ -21,7 +21,7 @@
     return Object.hasOwn(SCALES, unit) && hz(match[1], unit) > 0 ? { text: RF.frequencyDigits(match[1]), unit } : null;
   }
   function readUrl() {
-    const q = new URLSearchParams(location.search);
+    const q = LinkState.read();
     fromUrl = KEYS.some(key => q.has(key));
     if (topology(q.get('din'))) state.din = q.get('din');
     if (topology(q.get('dout'))) state.dout = q.get('dout');
@@ -51,12 +51,7 @@
     return q;
   }
   // Relative links stay relative, so a page on a subpath keeps working.
-  function stampUrl(url) {
-    const hashAt = url.indexOf('#'), hash = hashAt >= 0 ? url.slice(hashAt) : '', bare = hashAt >= 0 ? url.slice(0, hashAt) : url;
-    const queryAt = bare.indexOf('?'), base = queryAt >= 0 ? bare.slice(0, queryAt) : bare;
-    const search = stamp(new URLSearchParams(queryAt >= 0 ? bare.slice(queryAt + 1) : '')).toString();
-    return base + (search ? '?' + search : '') + hash;
-  }
+  function stampUrl(url) { return LinkState.writeUrl(url, stamp(LinkState.readUrl(url))); }
   // Every page rewrites its own query from scratch, so the card rides along here rather than
   // depending on each page remembering to include it.
   const replaceState = history.replaceState.bind(history);
@@ -155,14 +150,14 @@
     host.innerHTML = `<details class="dut-details"><summary><span class="dut-kicker">DUT</span><span class="dut-summary" id="dut-summary"></span><span class="dut-edit">Edit</span></summary>
       <div class="dut-body">
         <div class="dut-grid">
-          <label class="dut-name">Name (optional)<input id="dut-name" maxlength="40" placeholder="e.g. Driver rev B" autocomplete="off" aria-label="DUT name"></label>
+          <label class="dut-name">Name (optional)<input id="dut-name" maxlength="40" placeholder="e.g. Example device" autocomplete="off" aria-label="DUT name"></label>
           <div class="dut-side dut-side-in"><span class="dut-side-label tint-in">Input ports</span><div class="seg" role="group" aria-label="Input port topology">${seg('din')}</div><label>Z per line (Ω)<input id="dut-zin" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT input reference impedance per line in ohms"></label></div>
           <div class="dut-side dut-side-out"><span class="dut-side-label tint-out">Output ports</span><div class="seg" role="group" aria-label="Output port topology">${seg('dout')}</div><label>Z per line (Ω)<input id="dut-zout" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT output reference impedance per line in ohms"></label></div>
           <div class="dut-range">${unitPair('dut-fmin', 'Operating range from', state.fminText, state.fminUnit)}${unitPair('dut-fmax', 'to', state.fmaxText, state.fmaxUnit)}</div>
         </div>
         <p class="hint" id="dut-uses"></p>
         <p class="hint" id="dut-status" role="status"></p>
-        <p class="hint">A differential port's reference is twice the per-line value, its common-mode reference half. The DUT travels in the page link between calculators and into a copied link; nothing is stored on this device.</p>
+        <p class="hint">A differential port's reference is twice the per-line value, its common-mode reference half. The DUT travels in the link fragment between calculators and into copied links. Anyone with the link can read its values and name; browser history may retain them. Use nonsensitive names.</p>
         <div class="toolbar"><button type="button" class="ghost" id="dut-reset">Reset to 50 Ω differential, 100 MHz – 10 GHz</button></div>
       </div></details>`;
     fill();

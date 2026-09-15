@@ -583,12 +583,12 @@
     return { start, stop, points, step: (stop - start) / (points - 1), span: stop - start, exact: true, lastPoint: stop };
   }
 
-  // Planning estimate, not an instrument timing specification. The pairwise model is
-  // the P(P-1) full-correction sequence documented in Keysight's VNA sweep guidance.
+  // Planning estimate, not an instrument timing specification. Pairwise correction
+  // uses P(P-1) passes; this is a selectable sequence, not a universal port multiplier.
   // Source and custom modes allow other acquisition sequences without assuming that
   // the number of displayed S-parameters equals the number of passes.
   function sweepTiming(points, segments, options = {}) {
-    const { ports = 4, sequence = 'pairwise', customPasses = 1, averages = 1,
+    const { ports = 1, sequence = 'source', customPasses = 1, averages = 1,
       ifbw = null, ifFactor = 1, pointOverhead = 0, segmentOverhead = 0,
       cycleOverhead = 0 } = options;
     if (!Number.isSafeInteger(points) || points < 1 || !Number.isSafeInteger(segments) || segments < 1 ||

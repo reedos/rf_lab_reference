@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <script src="js/link-state.js?v=20260915-2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
   <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
@@ -9,8 +11,8 @@
   <title>Power &amp; noise · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-9">
-  <link rel="stylesheet" href="css/app.css?v=20260914-9"><link rel="stylesheet" href="css/workbench.css?v=20260914-9">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260915-2">
+  <link rel="stylesheet" href="css/app.css?v=20260915-2"><link rel="stylesheet" href="css/workbench.css?v=20260915-2">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -61,4 +63,4 @@
   </table>
 </section>
 <section class="panel"><h2>Model and reference</h2><p>Friis cascade: F = 1 + Σ (Fᵢ − 1)/Gbeforeᵢ, using linear power gain and noise factor. A passive loss L at temperature T has F = 1 + (L − 1)T/290 K. Noise output = kB[Tsource + 290 K(F − 1)]Gtotal.</p><p>Assumes matched stages, independent noise, and gain/noise figure constant over the chosen bandwidth. Coupler loss refers to the selected branch with other ports terminated. A filter's nominal bandwidth may differ from its equivalent noise bandwidth.</p><p><a href="https://helpfiles.keysight.com/csg/pxivna/Applications/Noise_Figure.htm">Keysight: noise figure measurements</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div><div id="toast" class="toast" role="status"></div><script src="js/theme.js?v=20260914-9"></script><script src="js/bench.js?v=20260914-9"></script><script src="js/diagram.js?v=20260914-9"></script><script src="js/rf.js?v=20260914-9"></script><script src="js/dut.js?v=20260914-9"></script><script src="js/snapshot.js?v=20260914-9"></script><script src="js/chain.js?v=20260914-9"></script></body></html>
+<p class="foot">Calculations stay in your browser. Shared links and exports include entered values; use nonsensitive examples.</p></div><div id="toast" class="toast" role="status"></div><script src="js/theme.js?v=20260915-2"></script><script src="js/bench.js?v=20260915-2"></script><script src="js/diagram.js?v=20260915-2"></script><script src="js/rf.js?v=20260915-2"></script><script src="js/dut.js?v=20260915-2"></script><script src="js/snapshot.js?v=20260915-2"></script><script src="js/chain.js?v=20260915-2"></script></body></html>

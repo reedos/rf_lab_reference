@@ -120,7 +120,7 @@
       String.raw`20\log_{10}(1\pm${tex(ripple.product)})`)];
   }
   function readQuery() {
-    const q = new URLSearchParams(location.search);
+    const q = LinkState.read();
     if (q.has('z0')) $('z0').value = q.get('z0');
     if (['rl','vswr','ml'].includes(q.get('chart'))) chart = q.get('chart');
     if (q.get('from') === 'point') { source = 'point'; re = RF.parseNumber(q.get('re')); im = RF.parseNumber(q.get('im')); return; }

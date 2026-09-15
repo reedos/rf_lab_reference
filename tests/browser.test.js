@@ -15,6 +15,7 @@ const server = http.createServer((req,res) => {
   if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
   fs.readFile(file,(err,data) => { res.writeHead(err ? 404 : 200, {'Content-Type':types[path.extname(file)] || 'application/octet-stream'}); res.end(err ? 'Not found' : data); });
 });
+const linkParams = url => new URLSearchParams(new URL(url).hash.slice(2));
 const near = (a,b,tol=1e-7) => assert.ok(Number.isFinite(a) && Math.abs(a-b)<tol,`${a} != ${b}`);
 let checks=0;
 (async () => {
@@ -48,6 +49,42 @@ let checks=0;
         };
         const valid=()=>page.evaluate(()=>window.Bench.valid);
         const menu=async id=>{ await page.locator('#export-menu > summary').click(); await page.locator('#'+id).click(); };
+        await check('Setup fragments survive navigation without sending entered values to the host',async()=>{
+          const requests = [];
+          const record = request => requests.push({url:request.url(), referer:request.headers().referer || ''});
+          page.on('request',record);
+          try {
+            for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
+              await go(file + '#?dut=PrivacyExample&fmax=12GHz');
+              assert.equal(new URL(page.url()).search,'');
+              assert.equal(linkParams(page.url()).get('dut'),'PrivacyExample');
+              await expect(page.locator('#dut-summary')).toContainText('PrivacyExample');
+              await page.locator('#copy-link').click();
+              const copied = await page.evaluate(()=>window.copiedText);
+              assert.equal(new URL(copied).search,''); assert.equal(linkParams(copied).get('dut'),'PrivacyExample');
+              await page.reload(); await expect(page.locator('#dut-summary')).toContainText('PrivacyExample');
+              const beforeSkip = new URL(page.url()).hash;
+              await page.locator('.skip').focus(); await page.locator('.skip').press('Enter');
+              assert.equal(new URL(page.url()).hash,beforeSkip);
+            }
+            await page.locator('nav a').filter({hasText:'Sweep'}).click();
+            await expect(page.locator('#dut-summary')).toContainText('PrivacyExample');
+            assert.equal(new URL(page.url()).search,'');
+            assert.ok(requests.every(r=>![r.url,r.referer].some(value=>value.includes('PrivacyExample') || value.includes('fmax='))), 'Setup values must never appear in requests or referrers');
+            // Stylesheets may send their own URL as a font referrer; page referrers are suppressed.
+            assert.ok(requests.every(r=>!r.referer || new URL(r.referer).pathname.endsWith('.css')));
+            // An old query is sent once by the browser, then replaced before assets load.
+            requests.length = 0;
+            await go('sweep.html?dut=LegacyExample&ifbw=2');
+            assert.equal(new URL(page.url()).search,'');
+            assert.equal(linkParams(page.url()).get('dut'),'LegacyExample');
+            await numeric('ifbw',2);
+            assert.equal(requests.filter(r=>r.url.includes('LegacyExample')).length,1);
+            assert.ok(requests.every(r=>!r.referer || new URL(r.referer).pathname.endsWith('.css')));
+            requests.length = 0; await page.reload();
+            assert.ok(requests.every(r=>![r.url,r.referer].some(value=>value.includes('LegacyExample'))));
+          } finally {page.off('request',record);}
+        });
         await check('VOPP drive, units, zero voltage, invalid impedance, and driver restoration',async()=>{
           // The DUT card defaults to a differential device, so the page opens differential.
           await go(''); await numeric('vopp',1.265);
@@ -56,7 +93,7 @@ let checks=0;
           await page.locator('#vopp-unit').selectOption('mV'); await numeric('vopp',1265);
           await fill('vopp',1000); await expect(page).toHaveURL(/from=vopp/); const saved=page.url();
           await page.reload(); await numeric('vopp',1000);
-          assert.equal(new URL(saved).searchParams.get('from'),'vopp');
+          assert.equal(linkParams(saved).get('from'),'vopp');
           await fill('zdut',0); await expect.poll(valid).toBe(false); assert.equal(await page.locator('#copy-link').isDisabled(),true);
           await fill('zdut',50); await fill('vopp',0); await expect.poll(valid).toBe(true);
           await expect(page.locator('#metrics')).toContainText(/∞/);
@@ -281,11 +318,11 @@ let checks=0;
           await page.locator('[data-panel="p1db"]').click(); await fill('p1-pout',7.123456789); await page.reload(); await numeric('p1-pout',7.123456789,1e-12);
           await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50'); await numeric('vopp',.123456789012,1e-12);
           await page.reload(); await numeric('vopp',.123456789012,1e-12);
-          near(Number(new URL(page.url()).searchParams.get('v')),.123456789012,1e-14);
+          near(Number(linkParams(page.url()).get('v')),.123456789012,1e-14);
         });
         await check('Rounded fields retain exact values across repeated unit changes and restoration',async()=>{
           await go('delay.html'); await numeric('delay',.3336);
-          const originalDelay=Number(new URL(page.url()).searchParams.get('t'));
+          const originalDelay=Number(linkParams(page.url()).get('t'));
           near(originalDelay,1e9*.1/299792458,1e-14);
           for(let i=0;i<3;i++) {
             await page.locator('#delay-unit').selectOption('ps'); await numeric('delay',333.6);
@@ -294,9 +331,9 @@ let checks=0;
             await page.locator('#len-unit').selectOption('mm'); await numeric('length',100); await numeric('delay',.3336);
           }
           await page.reload(); await numeric('delay',.3336);
-          near(Number(new URL(page.url()).searchParams.get('t')),originalDelay,1e-12);
+          near(Number(linkParams(page.url()).get('t')),originalDelay,1e-12);
           await page.locator('#phase-use').click(); await numeric('length',299.8);
-          await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('L'))).toBeCloseTo(299.792458,9);
+          await expect.poll(async()=>Number(linkParams(await page.evaluate(()=>location.href)).get('L'))).toBeCloseTo(299.792458,9);
           await page.reload(); await numeric('length',299.792458,1e-9);
           await go('index.html?from=vopp&v=0.123456789012&u=V&m=se&dir=src&zd=50');
           for(let i=0;i<3;i++) {
@@ -304,14 +341,14 @@ let checks=0;
             await page.locator('#vopp-unit').selectOption('V'); await numeric('vopp',.123456789012,1e-14);
           }
           await page.reload(); await numeric('vopp',.123456789012,1e-12);
-          near(Number(new URL(page.url()).searchParams.get('v')),.123456789012,1e-14);
+          near(Number(linkParams(page.url()).get('v')),.123456789012,1e-14);
           await go('match.html'); await fill('x',50); await numeric('gamma',.4472);
           await page.locator('.reference-details').first().locator('summary').click();
           await page.locator('[data-chart="vswr"]').click(); await fill('rl',-20);
-          await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('phase'))).toBeCloseTo(63.434948822922,9);
+          await expect.poll(async()=>Number(linkParams(await page.evaluate(()=>location.href)).get('phase'))).toBeCloseTo(63.434948822922,9);
         });
         await check('Preset buttons replace exact values even when their rounded displays match',async()=>{
-          const queryNumber=async key=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get(key));
+          const queryNumber=async key=>Number(linkParams(await page.evaluate(()=>location.href)).get(key));
           await go('match.html?z0=50.0001&z=50.0002&x=0');
           await numeric('z0',50.0001,1e-9); await numeric('z',50.0002,1e-9);
           await page.locator('[data-reference="50"]').click();
@@ -330,7 +367,7 @@ let checks=0;
           assert.equal(await page.locator('#freq').inputValue(),'2437.5');
           await page.reload(); assert.equal(await page.locator('#freq').inputValue(),'2437.5');
           await fill('length','1,000'); assert.equal(await page.locator('#length').inputValue(),'1,000');
-          await numeric('delay',3.336); await expect.poll(async()=>Number(new URL(await page.evaluate(()=>location.href)).searchParams.get('L'))).toBe(1000);
+          await numeric('delay',3.336); await expect.poll(async()=>Number(linkParams(await page.evaluate(()=>location.href)).get('L'))).toBe(1000);
           await fill('length','0x10'); await expect.poll(valid).toBe(false);
           await go('index.html?d=-10.123456789&from=dbm&m=se'); assert.equal(await page.locator('#dbm').inputValue(),'-10.123456789');
           await numeric('vopp',0.1972);
@@ -362,44 +399,47 @@ let checks=0;
           await expect.poll(valid).toBe(true);
         });
         await check('Sweep timing covers multiport correction, independent averaging, custom sequences and shared links',async()=>{
-          const rows = [{start:'100', startUnit:'MHz', stop:'10', stopUnit:'GHz', step:'100', stepUnit:'MHz'}];
-          const query = new URLSearchParams({segments:JSON.stringify(rows), ifbw:'300', 'ifbw-unit':'Hz'});
+          const rows = [{start:'10', startUnit:'MHz', stop:'10', stopUnit:'GHz', step:'10', stepUnit:'MHz'}];
+          const query = new URLSearchParams({segments:JSON.stringify(rows), ifbw:'1000', 'ifbw-unit':'Hz'});
           await go('sweep.html?' + query);
           const tile = label => page.locator('#sweep-metrics .metric').filter({has:page.locator('dt', {hasText:label})}).locator('dd');
-          await expect(page.locator('#timing-ports')).toHaveValue('4');
+          await expect(page.locator('#timing-ports')).toHaveValue('1');
+          await expect(page.locator('#timing-sequence')).toHaveValue('source');
+          await page.locator('#timing-ports').selectOption('4');
+          await page.locator('#timing-sequence').selectOption('pairwise');
           await expect(page.locator('#custom-passes-field')).toBeHidden();
-          await expect(tile('Total points')).toHaveText('1250');
-          await expect(tile('Complete measurement estimate')).toHaveText('≈ 50 s');
-          await expect(tile('Single-pass estimate')).toHaveText('≈ 4.167 s');
-          for (const [ports, time] of [['1','4.167'], ['2','8.333'], ['3','25'], ['4','50']]) {
+          await expect(tile('Total points')).toHaveText('1000');
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 12 s');
+          await expect(tile('Single-pass estimate')).toHaveText('≈ 1 s');
+          for (const [ports, time] of [['1','1'], ['2','2'], ['3','6'], ['4','12']]) {
             await page.locator('#timing-ports').selectOption(ports);
             await expect(tile('Complete measurement estimate')).toHaveText(`≈ ${time} s`);
           }
           await fill('nf-ref',''); await fill('nf-avg',16);
-          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 800 s · 16 complete measurements');
+          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 192 s · 16 complete measurements');
           await expect.poll(valid).toBe(true);
-          await page.locator('#timing-setup').selectOption('vna');
+          await fill('timing-max',6);
           await expect(page.locator('#timing-note')).toContainText('exceeds');
-          await page.locator('#timing-setup').selectOption('extender');
+          await fill('timing-max','');
           await expect(page.locator('#timing-note')).not.toContainText('exceeds');
           await page.locator('#timing-sequence').selectOption('source');
-          await expect(tile('Complete measurement estimate')).toHaveText('≈ 16.67 s');
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 4 s');
           await page.locator('#timing-sequence').selectOption('custom');
           await expect(page.locator('#custom-passes-field')).toBeVisible();
           await fill('timing-passes',5); await fill('if-factor',1.2);
           await fill('point-overhead',1000); await fill('segment-overhead',100);
           await fill('cycle-overhead',500);
-          // Five passes of (5 s IF + 1.25 s point + .1 s segment), then .5 s once.
-          await expect(tile('Complete measurement estimate')).toHaveText('≈ 32.25 s');
-          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 516 s · 16 complete measurements');
+          // Five passes of (1.2 s IF + 1 s point + .1 s segment), then .5 s once.
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 12 s');
+          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 192 s · 16 complete measurements');
           await page.reload();
           for (const [id,value] of [['timing-ports','4'],['timing-sequence','custom'],['timing-passes','5'],['if-factor','1.2'],['cycle-overhead','500'],['nf-avg','16'],['nf-ref','']]) {
             await expect(page.locator('#'+id)).toHaveValue(value);
           }
-          await expect(tile('Complete measurement estimate')).toHaveText('≈ 32.25 s');
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 12 s');
           await page.locator('#copy-result').click();
           assert.match(await page.evaluate(()=>window.copiedText), /5 acquisition pass\(es\).*IF timing factor 1.2/);
-          assert.match(await page.evaluate(()=>window.copiedText), /Complete measurement 32.25 s.*516 s/);
+          assert.match(await page.evaluate(()=>window.copiedText), /Complete measurement 12 s.*192 s/);
           await page.locator('.calculation summary').click();
           await expect(page.locator('#calculation-text')).toContainText('Complete measurement estimate');
           await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
@@ -413,8 +453,8 @@ let checks=0;
           await fill('point-overhead',''); await fill('segment-overhead',''); await fill('cycle-overhead','');
           await fill('if-factor',''); await fill('nf-avg','');
           await page.locator('#timing-sequence').selectOption('pairwise');
-          await expect(tile('Complete measurement estimate')).toHaveText('≈ 50 s');
-          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 50 s · 1 complete measurement');
+          await expect(tile('Complete measurement estimate')).toHaveText('≈ 12 s');
+          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 12 s · 1 complete measurement');
           await fill('ifbw',''); await fill('cycle-overhead',500);
           await expect(tile('Complete measurement estimate')).toHaveText('Enter IF bandwidth');
           await expect.poll(valid).toBe(true);
@@ -433,9 +473,9 @@ let checks=0;
           await expect.poll(timeTile).toContain('991 ms');
           await fill('point-overhead',20);
           await expect.poll(timeTile).toContain('single-pass estimate');
-          await expect.poll(timeTile).toContain('12.74 s');
+          await expect.poll(timeTile).toContain('1.011 s');
           await fill('segment-overhead',5);
-          await expect.poll(timeTile).toContain('12.75 s');
+          await expect.poll(timeTile).toContain('1.016 s');
           // The same IF bandwidth places the noise floor, and averaging moves it.
           await expect(page.locator('#sweep-metrics')).toContainText('100 ns round trip · 50 ns one way');
           await expect(page.locator('#sweep-metrics')).toContainText(/Time-domain resolution/);
@@ -488,7 +528,7 @@ let checks=0;
           await expect.poll(total).toContain('136');
           // Parking the third segment removes exactly its nine points.
           await page.locator('.segment').nth(2).locator('[data-key="enabled"]').uncheck();
-          await expect.poll(total).toContain('1277');
+          await expect.poll(total).toContain('127');
           await expect.poll(total).toContain('4 of 5 segments');
           await expect(page.locator('#sweep-status')).toContainText(/1 segment is switched off/);
           await expect(page.locator('.segment').nth(2)).toHaveClass(/is-off/);
@@ -501,7 +541,7 @@ let checks=0;
           await page.reload();
           await expect(page.locator('.segment').nth(2).locator('[data-key="enabled"]')).not.toBeChecked();
           await expect(page.locator('.segment').nth(2).locator('[data-key="start"]')).toHaveValue('1');
-          await expect.poll(total).toContain('1277');
+          await expect.poll(total).toContain('127');
           await page.locator('.segment').nth(2).locator('[data-key="enabled"]').check();
           await expect.poll(total).toContain('136');
           // Switching every segment off is an error, not an empty sweep.
@@ -519,7 +559,7 @@ let checks=0;
           await expect(page.locator('#sweep-metrics')).toContainText(/Not available for a segmented table/);
           await expect(page.locator('#boundary-rows tr.over-limit')).toHaveCount(0);
           await expect(page.locator('#sweep-status')).toContainText(/repeat their relative spacing/);
-          await expect(page.locator('#sweep-metrics')).toContainText(/9 to 403\.6 by segment/);
+          await expect(page.locator('#sweep-metrics')).toContainText(/9 to 49.89 by segment/);
           await page.locator('#mode').selectOption('absolute');
           await expect(page.locator('#boundary-rows tr.over-limit')).toHaveCount(4);
           await expect(page.locator('#sweep-status')).toContainText(/4 boundaries change the step size/);
@@ -539,8 +579,8 @@ let checks=0;
           await page.locator('.segment').first().locator('[data-key="stepUnit"]').selectOption('kHz');
           await expect(firstStep).toHaveValue('10');
           await expect(page.locator('#sweep-metrics')).toContainText('136');
-          await fill('limit','1001'); await expect(page.locator('#sweep-status')).toContainText(/exceeds/);
-          await fill('limit',''); await fill('ifbw','1 kHz'); await expect(page.locator('#sweep-metrics')).toContainText(/1\.286 s/);
+          await fill('limit','100'); await expect(page.locator('#sweep-status')).toContainText(/exceeds/);
+          await fill('limit',''); await fill('ifbw','1 kHz'); await expect(page.locator('#sweep-metrics')).toContainText(/136 ms/);
           await page.locator('.segment').last().locator('[data-action="remove"]').click(); assert.equal(await page.locator('.segment').count(),4);
           await page.locator('#add-segment').click(); assert.equal(await page.locator('.segment').count(),5);
           await page.locator('.segment').first().locator('[data-key="step"]').fill('bad'); await expect.poll(valid).toBe(false);
@@ -548,7 +588,7 @@ let checks=0;
           await page.locator('#generate').click(); assert.equal(await page.locator('.segment').count(),5);
           await expect(page.locator('#sweep-metrics')).toContainText('136'); await expect(page.locator('#generate-status')).toContainText('Generated 5 segments');
           await page.locator('#g-mult').selectOption('2'); await fill('g-tail',''); await page.locator('#generate').click();
-          assert.equal(await page.locator('.segment').count(),8); await expect(page.locator('#sweep-rows').locator('tr').last()).toContainText('200 GHz');
+          assert.equal(await page.locator('.segment').count(),7); await expect(page.locator('#sweep-rows').locator('tr').last()).toContainText('10 GHz');
           await fill('g-stop','1 kHz'); await page.locator('#generate').click(); await expect(page.locator('#generate-status')).toContainText(/Enter start/);
           await page.locator('[data-preset="wide"]').click();
           await fill('p-start',-20); await fill('p-stop',-4); await fill('p-step',0.1); await numeric('p-points',161);
@@ -915,11 +955,11 @@ let checks=0;
           await expect(page.locator('.metric.primary')).toContainText('S21 × 1.414');
           // Defaults leave the link clean; the sweep page checks coverage against the range.
           await go('sweep.html');
-          assert.equal(new URL(page.url()).searchParams.has('fmax'),false);
+          assert.equal(linkParams(page.url()).has('fmax'),false);
           await expect(page.locator('#sweep-metrics')).toContainText('Covered · 100 MHz – 10 GHz');
           await page.locator('.dut-details > summary').click();
           await fill('dut-fmax',200);
-          await expect(page.locator('#sweep-metrics')).toContainText(/Not covered: ends 75 GHz below 200 GHz/);
+          await expect(page.locator('#sweep-metrics')).toContainText(/Not covered: ends 190 GHz below 200 GHz/);
           await expect(page.locator('[data-preset="wide"]')).toHaveText('100 MHz–200 GHz, 10 MHz');
           await expect(page.locator('#g-stop')).toHaveValue('200');
           await page.reload(); await expect.poll(summary).toContain('100 MHz – 200 GHz');
@@ -929,7 +969,7 @@ let checks=0;
           await expect.poll(summary).toContain('100 MHz – 200 GHz');
           await page.locator('#dut-reset').click();
           await expect.poll(summary).toContain('100 MHz – 10 GHz');
-          assert.equal(new URL(page.url()).searchParams.has('fmax'),false);
+          assert.equal(linkParams(page.url()).has('fmax'),false);
           // Old links without card keys keep their own drive and impedance.
           await go('index.html?zd=200&d=0&from=dbm&dir=src');
           await expect(page.locator('#btn-se')).toHaveClass(/is-active/); await numeric('zdut',200);

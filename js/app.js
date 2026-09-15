@@ -120,7 +120,7 @@
   }
 
   function readQuery() {
-    const q = new URLSearchParams(window.location.search);
+    const q = LinkState.read();
     const drive = q.get("m");
     if (drive === "diff" || drive === "se") state.drive = drive;
     const path = q.get("dir");

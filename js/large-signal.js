@@ -137,7 +137,7 @@
   }
 
   function readQuery() {
-    const q = new URLSearchParams(window.location.search);
+    const q = LinkState.read();
     const requested = q.get("tab"), panel = requested === 'tones' || requested === 'imd3' ? 'twotone' : requested;
     if (panel && els.panels[panel]) state.panel = panel;
     if (q.get("m") === "diff" || q.get("m") === "se") state.drive = q.get("m");

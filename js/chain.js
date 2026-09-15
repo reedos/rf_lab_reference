@@ -13,7 +13,7 @@
     { name: 'Receiver · output pad', kind: 'passive', db: '6', temperature: '290', nf: '0', limit: '0' }
   ];
   function readQuery() {
-    const q = new URLSearchParams(location.search);
+    const q = LinkState.read();
     for (const id of ['source-power','bandwidth','source-temp','rx-comp','rx-damage','rx-margin']) if (q.has(id)) $(id).value = q.get(id);
     if (Object.hasOwn(scales, q.get('bandwidth-unit'))) $('bandwidth-unit').value = q.get('bandwidth-unit');
     bandwidthUnit = $('bandwidth-unit').value;

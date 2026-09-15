@@ -26,7 +26,7 @@
     Dut.set({ din: kin, dout: kout }, { silent: true });
   }
   function readQuery() {
-    const q = new URLSearchParams(location.search);
+    const q = LinkState.read();
     for (const [key, side] of [['p1', 'in'], ['p2', 'out']]) {
       if (!q.has(key)) continue;
       const ports = q.get(key).split(',').map(Number);

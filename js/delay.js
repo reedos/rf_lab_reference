@@ -16,7 +16,7 @@
   const phaseIds = ['phase-f1', 'phase-f2', 'phase-p1', 'phase-p2', 'phase-turns', 'phase-mode'];
   const skewIds = ['skew-length', 'skew-unit', 'skew-target'];
   function readQuery() {
-    const q = new URLSearchParams(location.search);
+    const q = LinkState.read();
     if (q.has('er')) $('er').value = q.get('er');
     const entries = { f: 'freq', fu: 'freq-unit', L: 'length', lu: 'len-unit', t: 'delay', tu: 'delay-unit', a: 'degrees' };
     for (const [key, id] of Object.entries(entries)) if (q.has(key)) {

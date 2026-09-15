@@ -32,10 +32,18 @@ scroll within their own panel on small screens. KaTeX loads the first time a cal
 panel opens; it, its fonts, and the page fonts are bundled locally, with MathML included
 for assistive technology. **Copy link** preserves the setup,
 including the input used to solve the other fields, and is the way to keep or share one.
-Nothing is stored on the device except the theme choice. Clipboard failures are reported
+The app stores only the theme choice in local storage; browser history and bookmarks may retain setup links. Clipboard failures are reported
 without preventing calculation.
 
-There is no account, backend, or measurement upload, and the pages make no external requests.
+Calculations run locally, without an application backend or measurement-upload endpoint. Page assets load from the site host. Defaults and examples are synthetic and do not describe an actual company, lab, or equipment inventory.
+
+## Privacy and sharing
+
+Calculator settings and optional DUT names are stored after `#?` in the URL. Browsers do not send this fragment in HTTP requests, including reloads and navigation. A no-referrer policy suppresses referrer headers. Legacy query links are accepted and converted before page assets load, but their initial request has already reached the host.
+
+Fragments are not encrypted. Recipients, browser history/sync, extensions, screenshots, and exported results can reveal the values. Avoid confidential device names and measurements in shared links or exports. Company-specific presets should stay in an approved private location, outside this public repository.
+
+The public examples are not a hardware inventory or instrument timing specification.
 
 ## The look
 
@@ -50,7 +58,7 @@ with a small icon each, and the block diagrams share the schematic's box treatme
 
 The pages follow the operating system's colour preference by default, and the button at the
 top right cycles **Auto**, **Light** and **Dark**. Its icon shows the choice in force. A pinned choice is the one word this site
-keeps in the browser besides named setups. The two palettes share their roles: amber for the
+writes to local storage. The two palettes share their roles: amber for the
 first quantity and teal for the second, which is the channel-one-yellow, channel-two-cyan
 order of most bench instruments, with every meaning-carrying colour clearing WCAG AA on its
 background in both themes. Exported images pick their theme independently of the page, and
@@ -83,9 +91,9 @@ clipboard, the PNG is downloaded instead.
 
 Every page opens with the same **DUT card**: input and output port topology, a per-line
 reference impedance for each side, and the operating range, with an optional name. It lives
-only in the page link. Navigation links carry it, a copied link carries it, and nothing is
-written to the device, so it disappears when the tab closes and can be pinned with a
-bookmark. Only values that differ from the default (50 Ω differential both sides, 100 MHz to
+only in the page link fragment. Navigation links and copied links carry it. The app does
+not write it to local storage, but browser history and bookmarks can retain it.
+Only values that differ from the default (50 Ω differential both sides, 100 MHz to
 10 GHz) appear in the link, so ordinary links stay short.
 
 Pages that use the card are bound to it both ways. VOPP looks at the input side when the VNA
@@ -356,11 +364,10 @@ points per decade, and instantaneous points per decade show the relative resolut
 log-sweep equivalent gives the point count that would match the finest or coarsest relative
 spacing over the whole span. An optional instrument point limit reports headroom.
 
-**Measurement timing** defaults to four active correction ports and the documented VNA
-pairwise full-correction estimate: M = max(1, P(P−1)), giving 1, 2, 6, or 12 acquisition
-passes for 1–4 ports. Alternative sequences use one pass per active source port or an
-explicit custom pass count. Count ports participating in acquisition or correction,
-not installed connectors or displayed traces. Verify the sequence on the analyzer.
+**Measurement timing** starts with one source port and one pass. Select 1–4 active
+ports, one pass per source port, pairwise correction M = max(1, P(P−1)), or a custom
+pass count. Pairwise correction is not universal. Check the actual acquisition sequence
+and use measured timing coefficients where available.
 
 Single-pass time, complete measurement time, and sweep averaging completion are shown
 separately, even with the noise-floor inputs blank:
@@ -370,21 +377,15 @@ separately, even with the noise-floor inputs blank:
 - t_average ≈ A t_measurement
 
 Blank overhead contributes zero; blank IF timing factor k and averaging factor A mean 1.
-A missing IF bandwidth leaves time unknown, even with overhead entered. Point and
-enabled-segment overhead repeats for each pass; extra measurement overhead is added once
-per complete measurement and repeated by sweep averaging. Avoid counting delays twice.
-Point averaging, automatic IF reduction, differing IF bandwidths per segment, and other
-active channels are not modeled automatically.
+A missing IF bandwidth leaves time unknown. Point and enabled-segment overhead repeats
+for each pass; extra measurement overhead is added once per complete measurement.
+Point averaging, automatic IF reduction, differing bandwidths by segment, and other
+active channels are not modeled automatically. The optional analyzer upper frequency
+is user supplied. There are no installed-equipment profiles.
 
-VNA direct (6 GHz) and VNA + generic-analyzer (10 GHz) selections identify hardware and
-flag sweeps above the chosen upper range. They do not supply measured timing coefficients
-or invent an extender slowdown. Settings persist in shareable URLs; calculation details
-and copied results include the timing assumptions. Old links without timing settings
-use the new four-port defaults.
-
-References: [Keysight VNA sweep sequencing](https://www.keysight.com/),
-[generic-analyzer timing](https://www.keysight.com/),
-and [generic-analyzer broadband timing](https://www.keysight.com/).
+Settings persist in shareable fragment links; calculation details and copied results
+include timing assumptions. Old links with explicit port/sequence settings retain them;
+links without those settings use the generic defaults.
 
 Power sweeps use the same count: −20 dBm to −4 dBm in 0.1 dB steps is 161 points. Enter the
 step or the number of points; the other updates.
@@ -488,7 +489,8 @@ typed-value display, and phone/tablet/desktop layout. Mathematical tests include
 checks, thermal equilibrium, and invalid-input boundaries. CI runs both engines.
 
 Shared math is in `js/rf.js`; each page has a separate controller. `js/bench.js`
-provides equation rendering, calculation details, clipboard handling, and local setups.
+provides equation rendering, calculation details, and clipboard handling. `js/link-state.js`
+keeps calculator state in URL fragments and migrates legacy query links.
 To refresh the committed KaTeX assets from the pinned dependency, run
 `npm run vendor:katex`; `npm run vendor:fonts` re-downloads the bundled latin font subsets
 (IBM Plex and Sora, SIL Open Font License). Normal use and GitHub Pages deployment need

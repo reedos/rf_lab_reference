@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <script src="js/link-state.js?v=20260915-2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
   <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
@@ -9,8 +11,8 @@
   <title>Mixed-mode S-parameters &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-9">
-  <link rel="stylesheet" href="css/app.css?v=20260914-9"><link rel="stylesheet" href="css/workbench.css?v=20260914-9">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260915-2">
+  <link rel="stylesheet" href="css/app.css?v=20260915-2"><link rel="stylesheet" href="css/workbench.css?v=20260915-2">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -41,7 +43,7 @@
 </div>
 
 <h2>Port mapping</h2>
-<p class="hint">Which analyzer ports make up each logical port. The default, 1 and 3 in and 2 and 4 out, is the usual arrangement on a four-port VNA; the first port of a pair is its positive line.</p>
+<p class="hint">Which analyzer ports make up each logical port. The default, 1 and 3 in and 2 and 4 out, is an example pairing for a four-port network; the first port of a pair is its positive line.</p>
 <div class="work-fields" id="mapping"></div>
 <p id="mapping-status" role="status"></p>
 
@@ -80,8 +82,8 @@
 <section class="panel"><h2>Model and limits</h2>
 <p>Linear network, each single-ended port referenced to the same real impedance on both lines of a pair. The transform is exact under that condition and depends only on the port assignment, not on the DUT. It does not model a physical balun or a source that drives only the differential mode; with a common-mode termination different from Z<sub>0</sub>/2, the common-mode terms change and the differential terms stay.</p>
 <p>Bockelman and Eisenstadt, "Combined differential and common-mode scattering parameters: theory and simulation", IEEE Trans. MTT 43(7), 1995.</p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
+<p class="foot">Calculations stay in your browser. Shared links and exports include entered values; use nonsensitive examples.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/theme.js?v=20260914-9"></script><script src="js/bench.js?v=20260914-9"></script><script src="js/diagram.js?v=20260914-9"></script><script src="js/rf.js?v=20260914-9"></script><script src="js/dut.js?v=20260914-9"></script><script src="js/snapshot.js?v=20260914-9"></script><script src="js/mixed.js?v=20260914-9"></script>
+<script src="js/theme.js?v=20260915-2"></script><script src="js/bench.js?v=20260915-2"></script><script src="js/diagram.js?v=20260915-2"></script><script src="js/rf.js?v=20260915-2"></script><script src="js/dut.js?v=20260915-2"></script><script src="js/snapshot.js?v=20260915-2"></script><script src="js/mixed.js?v=20260915-2"></script>
 </body>
 </html>

@@ -49,8 +49,8 @@
   };
   const timeScales = { 'µs': 1e-6, ms: 1e-3, s: 1 };
   const overheadIds = ['point-overhead', 'segment-overhead', 'cycle-overhead'];
-  const timingIds = ['timing-setup', 'timing-ports', 'timing-sequence', 'timing-passes', 'if-factor'];
-  const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step', 'nf-ref-bw'];
+  const timingIds = ['timing-ports', 'timing-sequence', 'timing-passes', 'if-factor'];
+  const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step', 'nf-ref-bw', 'timing-max'];
   const optionIds = ['mode', 'limit', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points', 'nf-ref', 'nf-avg', 'nf-signal']
     .concat(timingIds, frequencyIds, frequencyIds.map(id => id + '-unit'), overheadIds, overheadIds.map(id => id + '-unit'));
   // Every frequency field carries its own unit; changing it keeps the physical value.
@@ -66,7 +66,7 @@
   const segmentUnit = (s, key) => Object.hasOwn(scales, s[key]) ? s[key] : 'MHz';
   let segments = PRESETS.wide, powerSource = 'step', result = null, power = null, noise = null, timing = null, loadError = '', active = [];
   function readQuery() {
-    const q = new URLSearchParams(location.search);
+    const q = LinkState.read();
     for (const id of optionIds) if (q.has(id)) {
       const el = $(id), value = q.get(id);
       if (el.tagName !== 'SELECT' || Array.from(el.options).some(o => o.value === value)) el.value = value;
@@ -109,7 +109,7 @@
     const rounded = value => Number(value.toPrecision(4)).toString();
     return t === 0 ? '0 s' : t >= 1 ? `${rounded(t)} s` : t >= 1e-3 ? `${rounded(t * 1e3)} ms` : t >= 1e-6 ? `${rounded(t * 1e6)} µs` : t >= 1e-9 ? `${rounded(t * 1e9)} ns` : `${rounded(t * 1e12)} ps`;
   }
-  const setupName = () => $('timing-setup').value === 'vna' ? 'VNA direct · 6 GHz' : 'VNA + generic-analyzer · 10 GHz';
+  const setupName = () => $('timing-max').value.trim() === '' ? 'Generic analyzer' : `Analyzer upper frequency ${freq(readHz($('timing-max')))}`;
   const sequenceName = () => $('timing-sequence').selectedOptions[0].textContent;
   function timingSummary() {
     return `${setupName()} | ${timing.ports} active port(s) | ${sequenceName()} | ${timing.passes} acquisition pass(es) per measurement | IF timing factor ${fmt(timing.ifFactor)} | IFBW ${result.ifbw === null ? 'unspecified' : freq(result.ifbw)}`;
@@ -174,10 +174,11 @@
       cycleOverhead: overhead['cycle-overhead']
     });
     if (!timing) return invalidSweep('Timing needs 1–4 ports, positive whole-number pass and averaging counts, a positive IF timing factor, and finite nonnegative overheads.');
-    const maxFrequency = $('timing-setup').value === 'vna' ? 6e9 : 10e9;
-    $('timing-note').className = result.last > maxFrequency ? 'over-limit' : 'hint';
+    const maxFrequency = $('timing-max').value.trim() === '' ? null : readHz($('timing-max'));
+    if (maxFrequency !== null && (!Number.isFinite(maxFrequency) || maxFrequency <= 0)) return invalidSweep('Analyzer upper frequency must be positive, or blank if unspecified.');
+    $('timing-note').className = maxFrequency !== null && result.last > maxFrequency ? 'over-limit' : 'hint';
     $('timing-note').textContent = timingSummary() + '. Planning estimate; verify acquisition sequencing and overhead on your analyzer.' +
-      (result.last > maxFrequency ? ` The active sweep exceeds this setup's ${freq(maxFrequency)} upper range.` : '');
+      (maxFrequency !== null && result.last > maxFrequency ? ` The active sweep exceeds the entered ${freq(maxFrequency)} upper range.` : '');
     const sharp = result.boundaries.filter(b => b.sharp).length, broken = result.boundaries.filter(b => b.kind !== 'contiguous').length;
     const notes = [];
     if (result.inexact) notes.push(`${result.inexact} ${result.inexact === 1 ? 'segment does' : 'segments do'} not land on the stop frequency`);
@@ -271,7 +272,7 @@
       ] : ['A segmented table cannot be transformed to the time domain: there is no single step to set the alias-free range. Use one linear segment for gating or TDR.']),
       eq('Log sweep with the same relative spacing', String.raw`N_{\log} &= \left\lceil\frac{\ln(f_{\mathrm{last}}/f_{\mathrm{first}})}{\ln(1+r)}\right\rceil+1`, String.raw`${tex(result.log.finePoints)}\text{ for } r=${tex(result.log.fine)},\ ${tex(result.log.coarsePoints)}\text{ for } r=${tex(result.log.coarse)}`),
       `Boundaries are compared by ${mode === 'relative' ? 'relative step at each segment start, which is smooth for a repeating decade pattern' : 'absolute step size'}.`,
-      'Timing is a planning estimate for one channel and a common IF bandwidth. Unentered overhead, automatic IF reduction, and point averaging are not modeled. Full correction uses the documented VNA pairwise sequence; verify it on your analyzer. Hardware selection does not imply measured timing coefficients.',
+      'Timing is a planning estimate for one channel and a common IF bandwidth. Unentered overhead, automatic IF reduction, and point averaging are not modeled. Verify the selected acquisition sequence on your analyzer; pairwise correction is not universal. Example settings do not describe an actual lab.',
       eq('Power sweep points', String.raw`N_{P} &= \frac{P_{\mathrm{stop}}-P_{\mathrm{start}}}{\Delta P}+1`, tex(power.points), String.raw`\frac{${tex(power.stop, 'dBm', false)}-(${tex(power.start, 'dBm', false)})}{${tex(power.step, 'dB', false)}}+1`),
       ...(noise ? [
         eq('Noise floor at the working IF bandwidth', String.raw`P_{\mathrm{floor}} &= P_{\mathrm{ref}} + 10\log_{10}\frac{\mathrm{IFBW}}{\mathrm{IFBW}_{\mathrm{ref}}} - 10\log_{10}N`, tex(noise.floor, 'dBm'),
@@ -320,7 +321,7 @@
   document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     segments = PRESETS[b.dataset.preset].map(s => ({ ...s })); loadError = ''; renderSegments(); compute();
   }));
-  ['mode', 'limit', 'ifbw', 'jump', 'nf-ref', 'nf-avg', 'nf-signal'].concat(timingIds, overheadIds, overheadIds.map(id => id + '-unit'))
+  ['mode', 'limit', 'ifbw', 'jump', 'nf-ref', 'nf-avg', 'nf-signal', 'timing-max'].concat(timingIds, overheadIds, overheadIds.map(id => id + '-unit'))
     .forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { loadError = ''; compute(); }));
   frequencyIds.forEach(bindUnit);
   ['g-start', 'g-stop', 'g-mult', 'g-tail', 'g-tail-step'].forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { $('generate-status').textContent = ''; if (Bench.valid) writeQuery(); }));

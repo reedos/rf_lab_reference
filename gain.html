@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <script src="js/link-state.js?v=20260915-2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
   <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
@@ -9,8 +11,8 @@
   <title>Voltage &amp; power gain &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-9">
-  <link rel="stylesheet" href="css/app.css?v=20260914-9"><link rel="stylesheet" href="css/workbench.css?v=20260914-9">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260915-2">
+  <link rel="stylesheet" href="css/app.css?v=20260915-2"><link rel="stylesheet" href="css/workbench.css?v=20260915-2">
 </head>
 <body>
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -99,8 +101,8 @@
 <p>Small-signal linear two-port, real positive reference impedances, each port terminated in its own reference. A differential port behaves as an ordinary port with its own differential reference impedance; that impedance is twice the per-line value only when the two lines are uncoupled. A real coupled pair has a differential impedance of twice its odd-mode impedance, which is lower.</p>
 <p>The conversion depends only on the ratio of the two reference impedances, so it is a fixed offset for a given topology, not a frequency-dependent correction. It does not describe a DUT terminated in something other than its reference impedance, and it says nothing about compression or distortion, which depend on the load the device physically sees.</p>
 <p><a href="https://helpfiles.keysight.com/csg/m9485a/tutorials/comp_imped.htm">Keysight: complex impedance and the Smith chart</a></p></section>
-<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
+<p class="foot">Calculations stay in your browser. Shared links and exports include entered values; use nonsensitive examples.</p></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="js/theme.js?v=20260914-9"></script><script src="js/bench.js?v=20260914-9"></script><script src="js/diagram.js?v=20260914-9"></script><script src="js/rf.js?v=20260914-9"></script><script src="js/dut.js?v=20260914-9"></script><script src="js/snapshot.js?v=20260914-9"></script><script src="js/gain.js?v=20260914-9"></script>
+<script src="js/theme.js?v=20260915-2"></script><script src="js/bench.js?v=20260915-2"></script><script src="js/diagram.js?v=20260915-2"></script><script src="js/rf.js?v=20260915-2"></script><script src="js/dut.js?v=20260915-2"></script><script src="js/snapshot.js?v=20260915-2"></script><script src="js/gain.js?v=20260915-2"></script>
 </body>
 </html>

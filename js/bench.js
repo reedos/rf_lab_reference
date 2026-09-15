@@ -197,6 +197,7 @@
     area.className = 'bench-tools';
     area.setAttribute('aria-label', 'Calculation');
     area.innerHTML = `<details class="calculation"><summary>Show calculation</summary><p class="hint">Linear results use four significant figures; dB values and angles use hundredths. Calculations and saved links retain full precision. Substituted values and results below are rounded.</p><div id="calculation-text"></div></details>
+      <p class="hint">Shared links and exports include entered values and DUT names. Link fragments stay out of HTTP requests, but are readable by recipients and may remain in browser history.</p>
       <p id="bench-status" class="hint" role="status"></p>`;
     calc.after(area);
     detail = document.getElementById('calculation-text');

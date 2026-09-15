@@ -39,7 +39,7 @@
   let topology = 'dd', result = null, terminal = null;
 
   function readQuery() {
-    const q = new URLSearchParams(location.search);
+    const q = LinkState.read();
     if (Object.hasOwn(PORTS, q.get('t'))) topology = q.get('t');
     for (const key of Object.keys(store)) {
       const value = RF.parseNumber(q.get(key));

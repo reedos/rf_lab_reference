@@ -43,7 +43,7 @@ test('frequency text takes SI prefixes, units, or a default scale', () => {
   assert.equal(RF.parseFrequency('10k'), 1e4); assert.equal(RF.parseFrequency('100 MHz'), 1e8); assert.equal(RF.parseFrequency('10G'), 10e9);
   assert.equal(RF.parseFrequency('2.4 GHz'), 2.4e9); assert.equal(RF.parseFrequency('100', 1e6), 1e8); assert.equal(RF.parseFrequency('1,000 Hz'), 1000);
   for (const text of ['10 x', 'ten', '', '0x10']) assert.ok(Number.isNaN(RF.parseFrequency(text, 1)), text);
-  assert.deepEqual(RF.formatFrequency(124.99e9), { value: 124.99, unit: 'GHz', text: '124.99 GHz' });
+  assert.deepEqual(RF.formatFrequency(9.99e9), { value: 9.99, unit: 'GHz', text: '9.99 GHz' });
   assert.equal(RF.formatFrequency(10e3).text, '10 kHz');
 });
 test('sweep point counts land exactly on the stop when the step divides the span', () => {
@@ -59,11 +59,11 @@ test('sweep point counts land exactly on the stop when the step divides the span
 test('segmented sweeps total points and flag step jumps, gaps, overlaps and duplicates', () => {
   const decades = [[10e3, 90e3, 10e3], [100e3, 900e3, 100e3], [1e6, 9e6, 1e6], [10e6, 90e6, 10e6], [100e6, 10e9, 100e6]].map(([start, stop, step]) => ({ start, stop, step }));
   const r = RF.segmentedSweep(decades, { maxPoints: 100001, ifbw: 1000 });
-  assert.deepEqual(r.rows.map(x => x.points), [9, 9, 9, 9, 1250]); assert.equal(r.points, 136);
+  assert.deepEqual(r.rows.map(x => x.points), [9, 9, 9, 9, 100]); assert.equal(r.points, 136);
   assert.equal(r.boundaries.length, 4); assert.ok(r.boundaries.every(b => b.kind === 'contiguous' && !b.sharp && Math.abs(b.stepRatio - 10) < 1e-9 && Math.abs(b.patternRatio - 1) < 1e-9));
   assert.equal(r.headroom, 100001 - 136); near(r.sweepTime, .136); assert.equal(r.problems, 0); assert.equal(r.mode, 'relative');
   for (const row of r.rows.slice(0, 4)) near(row.decadePoints, 9, 1e-9);
-  near(r.rows[4].decadePoints, 1250 / Math.log10(10.1e9 / 100e6), 1e-9); near(r.decadePoints.min, 9, 1e-9);
+  near(r.rows[4].decadePoints, 100 / Math.log10(10.1e9 / 100e6), 1e-9); near(r.decadePoints.min, 9, 1e-9);
   const absolute = RF.segmentedSweep(decades, { mode: 'absolute' });
   assert.equal(absolute.problems, 4); assert.ok(absolute.boundaries.every(b => b.sharp));
   const dense = RF.segmentedSweep([{ start: 1e6, stop: 9e6, step: 1e6 }, { start: 10e6, stop: 90e6, step: 1e6 }]);
@@ -127,8 +127,8 @@ test('the highest analyzer floor is the one that limits an IM3 measurement', () 
   assert.equal(RF.tonePlan(1e9, 1.001e9, { toneLevel: -20, toi: 15 }).floors.length, 1);
 });
 test('harmonics are placed against the analyzer range and the DUT passband', () => {
-  const plan = RF.harmonicPlan(70e9, 5, { instrumentMax: 10e9 });
-  assert.equal(plan.highestMeasurable, 1); near(plan.maxFundamental, 25e9, 1e-3);
+  const plan = RF.harmonicPlan(7e9, 5, { instrumentMax: 10e9 });
+  assert.equal(plan.highestMeasurable, 1); near(plan.maxFundamental, 2e9, 1e-3);
   assert.deepEqual(plan.rows.map(r => r.aboveInstrument), [false, true, true, true, true]);
   const band = RF.harmonicPlan(1.5e9, 3, { band: { low: 1e9, high: 2e9 } });
   assert.deepEqual(band.rows.map(r => r.inBand), [true, false, false]);
@@ -265,16 +265,16 @@ test('sweep time adds instrument overhead to the dwell floor', () => {
   assert.equal(RF.segmentedSweep(wide, { pointOverhead: -1, segmentOverhead: NaN }).overheadTime, 0);
 });
 test('complete measurement timing distinguishes correction passes from source ports', () => {
-  for (const [ports, passes, seconds] of [[1, 1, 1250/300], [2, 2, 25/3], [3, 6, 25], [4, 12, 50]]) {
-    const t = RF.sweepTiming(1250, 1, { ifbw: 300, ports });
-    assert.equal(t.passes, passes); near(t.passTime, 1250/300); near(t.measurementTime, seconds);
-    near(RF.sweepTiming(1250, 1, { ifbw: 300, ports, sequence: 'source' }).measurementTime, ports * 1250/300);
+  for (const [ports, passes, seconds] of [[1, 1, 1], [2, 2, 2], [3, 6, 6], [4, 12, 12]]) {
+    const t = RF.sweepTiming(1000, 1, { ifbw: 1000, ports, sequence: 'pairwise' });
+    assert.equal(t.passes, passes); near(t.passTime, 1); near(t.measurementTime, seconds);
+    near(RF.sweepTiming(1000, 1, { ifbw: 1000, ports, sequence: 'source' }).measurementTime, ports * 1);
   }
-  const custom = RF.sweepTiming(1250, 2, { ifbw: 300, sequence: 'custom', customPasses: 4,
+  const custom = RF.sweepTiming(1000, 2, { ifbw: 1000, sequence: 'custom', customPasses: 4,
     ifFactor: 1.2, pointOverhead: .001, segmentOverhead: .1, cycleOverhead: .5, averages: 16 });
-  near(custom.acquisitionTime, 5); near(custom.passTime, 6.45);
-  near(custom.measurementTime, 26.3); near(custom.averagedTime, 420.8);
-  const unknown = RF.sweepTiming(1250, 1, { pointOverhead: .001 });
+  near(custom.acquisitionTime, 1.2); near(custom.passTime, 2.4);
+  near(custom.measurementTime, 10.1); near(custom.averagedTime, 161.6);
+  const unknown = RF.sweepTiming(1000, 1, { pointOverhead: .001 });
   assert.ok(Number.isNaN(unknown.passTime)); assert.ok(Number.isNaN(unknown.measurementTime));
   assert.ok(Number.isNaN(unknown.averagedTime));
 });
@@ -284,10 +284,10 @@ test('timing rejects invalid counts, bandwidth, factors and overhead', () => {
     {sequence: 'unknown'}, {sequence: 'custom', customPasses: 0}, {sequence: 'custom', customPasses: 1.5},
     {ifbw: 0}, {ifbw: NaN}, {ifbw: Infinity}, {ifFactor: 0}, {ifFactor: Infinity},
     {pointOverhead: -1}, {segmentOverhead: NaN}, {cycleOverhead: -1},
-    {ifbw: Number.MIN_VALUE}, {ifbw: 300, cycleOverhead: Number.MAX_VALUE, averages: 2}]) {
-    assert.equal(RF.sweepTiming(1250, 1, options), null, JSON.stringify(options));
+    {ifbw: Number.MIN_VALUE}, {ifbw: 1000, cycleOverhead: Number.MAX_VALUE, averages: 2}]) {
+    assert.equal(RF.sweepTiming(1000, 1, options), null, JSON.stringify(options));
   }
-  assert.equal(RF.sweepTiming(0, 1), null); assert.equal(RF.sweepTiming(1250, 0), null);
+  assert.equal(RF.sweepTiming(0, 1), null); assert.equal(RF.sweepTiming(1000, 0), null);
 });
 
 test('blank-as-zero parser changes only empty input, not invalid input', () => {

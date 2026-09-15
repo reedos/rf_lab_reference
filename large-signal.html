@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <script src="js/link-state.js?v=20260915-2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
   <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
@@ -9,8 +11,8 @@
   <title>Large-signal · RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-9">
-  <link rel="stylesheet" href="css/app.css?v=20260914-9"><link rel="stylesheet" href="css/workbench.css?v=20260914-9">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260915-2">
+  <link rel="stylesheet" href="css/app.css?v=20260915-2"><link rel="stylesheet" href="css/workbench.css?v=20260915-2">
 </head>
 <body data-drive="se">
   <a class="skip" href="#calc">Skip to calculator</a>
@@ -216,7 +218,7 @@
         <p class="hint">The fundamental places every harmonic at n·f<sub>0</sub>. The analyzer maximum flags harmonics you physically cannot reach, and the passband flags harmonics the device was never meant to pass.</p>
         <div class="work-fields">
           <div class="quantity-field"><label for="thd-f0">Fundamental f<sub>0</sub> (optional)</label><div class="unit-pair"><input id="thd-f0" value="" placeholder="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Fundamental frequency"><select id="thd-f0-unit" aria-label="Fundamental frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
-          <div class="quantity-field"><label for="thd-fmax">Analyzer max frequency (optional)</label><div class="unit-pair"><input id="thd-fmax" value="" placeholder="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer maximum frequency"><select id="thd-fmax-unit" aria-label="Analyzer maximum frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+          <div class="quantity-field"><label for="thd-fmax">Analyzer max frequency (optional)</label><div class="unit-pair"><input id="thd-fmax" value="" placeholder="e.g. 10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Analyzer maximum frequency"><select id="thd-fmax-unit" aria-label="Analyzer maximum frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
           <div class="quantity-field"><label for="thd-band-low">DUT passband low (optional)</label><div class="unit-pair"><input id="thd-band-low" value="" placeholder="0.9" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband low"><select id="thd-band-low-unit" aria-label="DUT passband low unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
           <div class="quantity-field"><label for="thd-band-high">DUT passband high (optional)</label><div class="unit-pair"><input id="thd-band-high" value="" placeholder="1.1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="DUT passband high"><select id="thd-band-high-unit" aria-label="DUT passband high unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
         </div>
@@ -280,7 +282,7 @@
     <p class="foot">Static page. Calculations stay in your browser.</p>
   </div>
   <div class="toast" id="toast" role="status"></div>
-  <script src="js/theme.js?v=20260914-9"></script><script src="js/bench.js?v=20260914-9"></script><script src="js/diagram.js?v=20260914-9"></script><script src="js/rf.js?v=20260914-9"></script><script src="js/dut.js?v=20260914-9"></script><script src="js/snapshot.js?v=20260914-9"></script>
-  <script src="js/large-signal.js?v=20260914-9"></script>
+  <script src="js/theme.js?v=20260915-2"></script><script src="js/bench.js?v=20260915-2"></script><script src="js/diagram.js?v=20260915-2"></script><script src="js/rf.js?v=20260915-2"></script><script src="js/dut.js?v=20260915-2"></script><script src="js/snapshot.js?v=20260915-2"></script>
+  <script src="js/large-signal.js?v=20260915-2"></script>
 </body>
 </html>
