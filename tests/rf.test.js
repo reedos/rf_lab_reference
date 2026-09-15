@@ -40,6 +40,32 @@ test('mixed-mode conversion follows the pairing and conserves power between mode
   assert.equal(RF.mixedMode(S, [{ ports: [1, 3] }, { ports: [2, 5] }]), null);
 });
 
+test('Touchstone 1 files read in every form, with the two-port order and noise data handled', () => {
+  const twoPort = ['! two-port with a noise block', '# MHz S MA R 50',
+    '100 0.1 45 0.9 -30 0.01 10 0.2 -60', '200 0.1 90 0.8 -60 0.02 20 0.2 -120', '100 2.0 0.5 30 0.3', '200 2.5 0.6 40 0.2'].join('\n');
+  const a = RF.parseTouchstone(twoPort, 2);
+  assert.equal(a.error, undefined); assert.equal(a.ports, 2); assert.equal(a.points.length, 2); assert.equal(a.first, 100e6);
+  const p = RF.toPolar(a.points[0].S[2][1]); near(p.mag, 0.9); near(p.deg, -30);
+  near(RF.toPolar(a.points[0].S[1][2]).mag, 0.01);
+  near(RF.toPolar(a.points[1].S[2][2]).deg, -120);
+  const fourPort = ['# GHz S DB R 100', '1 -20 0 -1 -45 -40 0 -40 0', '  -1 -45 -20 0 -40 0 -40 0', '  -40 0 -40 0 -20 0 -1 -45', '  -40 0 -40 0 -1 -45 -20 0',
+    '2 -20 0 -2 -90 -40 0 -40 0', '  -2 -90 -20 0 -40 0 -40 0', '  -40 0 -40 0 -20 0 -2 -90', '  -40 0 -40 0 -2 -90 -20 0'].join('\n');
+  const b = RF.parseTouchstone(fourPort, 4);
+  assert.equal(b.ports, 4); assert.equal(b.reference, 100); assert.equal(b.points.length, 2);
+  near(RF.toPolar(b.points[1].S[4][3]).db, -2); near(RF.toPolar(b.points[1].S[4][3]).deg, -90);
+  const c = RF.parseTouchstone(fourPort);
+  assert.equal(c.ports, 4, 'port count inferred from the data');
+  const ri = RF.parseTouchstone('# Hz S RI R 50\n1e9 0.5 0.5', 1);
+  near(ri.points[0].S[1][1].re, 0.5); near(RF.toPolar(ri.points[0].S[1][1]).deg, 45);
+  assert.match(RF.parseTouchstone('[Version] 2.0\n# GHz S MA R 50', 2).error, /Touchstone 2/);
+  assert.match(RF.parseTouchstone('# GHz Y MA R 50\n1 1 0', 1).error, /Y-parameters/);
+  assert.match(RF.parseTouchstone('# GHz S MA R 50\n1 0.5 abc', 1).error, /abc/);
+  // Mixed-mode of the four-port: Sdd21 = 1/2 (S21 - S23 - S41 + S43) with 1,3 in and 2,4 out.
+  const m = RF.mixedMode(b.points[0].S, [{ ports: [1, 3] }, { ports: [2, 4] }]);
+  const t = RF.fromPolar(-1, -45), x = RF.fromPolar(-40, 0), expected = RF.toPolar({ re: t.re - x.re, im: t.im - x.im });
+  near(m.byName.Sdd21.value.db, expected.db, 1e-9); near(m.byName.Sdd21.value.deg, expected.deg, 1e-9);
+});
+
 test('the receiver budget reports headroom and rounds the pad up to a stock value', () => {
   let b = RF.receiverBudget(-9, { compression: 10, damage: 30, margin: 3 });
   near(b.headroom, 19); near(b.damageHeadroom, 39); assert.equal(b.pad, 0); assert.equal(b.state, 'ok');

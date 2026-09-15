@@ -16,6 +16,7 @@ No build step. Classic scripts, no bundler.
 | [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
 | [Gain](https://reedos.github.io/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
 | [Mixed-mode](https://reedos.github.io/rf_lab_reference/mixed.html) | Mixed-mode S-parameters written out in terms of the single-ended ones for any port mapping, three- and four-port |
+| [Touchstone](https://reedos.github.io/rf_lab_reference/touchstone.html) | Drop an .s1p to .s4p file and read it at one frequency: the single-ended set, the mixed-mode set for the DUT card's topology, the voltage gain of the through path, and a magnitude plot |
 | [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, phase-slope length estimates, intra-pair skew |
 | [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
 | [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
@@ -299,6 +300,20 @@ reference; renormalising to something else needs the whole single-ended matrix f
 Enter the measured values on the analyzer, which does the conversion itself. Copy result gives every parameter as a line of plain text.
 The link at the bottom carries the DUT card to the Gain page to turn the parameter into a
 voltage gain.
+
+## Touchstone
+
+Drop a Touchstone 1 file (.s1p to .s4p, S-parameters in MA, DB or RI form, one reference for
+every port) or choose it with the button. The file is read in the browser and never uploaded
+or kept in the link; a built-in example, a lossy differential pair with a little skew, is shown
+until a file is dropped. Type a frequency or move the slider to read the nearest point;
+nothing is interpolated. The page shows the single-ended set at that point, the mixed-mode set
+for the DUT card's topology with the same port mapping as the Mixed-mode page, the through
+path's voltage gain under the topology's references (the file's value per port, doubled for a
+differential side) and the terminal-referred form using the file's own input reflection, and
+a magnitude plot of any parameter with a marker at the reading. Two-port files are read in the
+S11 S21 S12 S22 order Touchstone 1 uses for that port count, and noise parameters after the
+data are ignored. Touchstone 2 and Y, Z, G or H parameters are refused with a message.
 
 ## Match and Smith chart
 

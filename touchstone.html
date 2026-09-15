@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090b10">
+  <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
+  <meta name="description" content="Drop a Touchstone file and read it at one frequency: single-ended S-parameters, mixed-mode conversion, voltage gain, and a magnitude plot. Nothing leaves the browser.">
+  <title>Touchstone &middot; RF Lab Reference</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260914-8">
+  <link rel="stylesheet" href="css/app.css?v=20260914-8"><link rel="stylesheet" href="css/workbench.css?v=20260914-8">
+</head>
+<body>
+  <a class="skip" href="#calc">Skip to calculator</a>
+  <div class="shell">
+    <header class="top">
+      <a class="wordmark" href="./">RF<span>/</span>LAB</a>
+      <nav aria-label="Calculators">
+        <a href="./">VOPP</a>
+        <a href="match.html">Match</a>
+        <a href="large-signal.html">Large-signal</a>
+        <a href="gain.html">Gain</a>
+        <a href="mixed.html">Mixed-mode</a>
+        <a class="is-active" href="touchstone.html">Touchstone</a>
+        <a href="delay.html">Delay</a>
+        <a href="sweep.html">Sweep</a>
+      <a href="chain.html">Power &amp; noise</a></nav>
+    </header>
+    <div id="dut-card"></div>
+
+<section class="lede"><p class="kicker">Measured data</p><h1>Touchstone</h1><p>Drop an .s1p to .s4p file and read it at one frequency: the single-ended set, the mixed-mode set for the DUT card's topology, the voltage gain of the through path, and a magnitude plot. The file stays in the browser and is not kept in the link.</p></section>
+
+<section class="board work-board" id="calc">
+<h2>File</h2>
+<label class="drop" id="drop" for="file"><input type="file" id="file" accept=".s1p,.s2p,.s3p,.s4p,.snp,.ts,text/plain"><span class="drop-title">Drop a Touchstone file here, or choose one</span><span class="drop-sub hint">Touchstone 1 with S-parameters in MA, DB or RI form, up to four ports. Only this page reads it; nothing is uploaded.</span></label>
+<p id="file-status" role="status"></p>
+<dl id="file-metrics" class="metrics" aria-live="polite"></dl>
+
+<div id="reader" hidden>
+<h2>Frequency</h2>
+<div class="work-fields"><div class="quantity-field"><label for="freq">Read at</label><div class="unit-pair"><input id="freq" value="" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Frequency to read at"><select id="freq-unit" aria-label="Frequency unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+<label for="point">Point in the file<input id="point" type="range" min="0" max="0" value="0" aria-label="Point in the file"></label>
+<label for="plot-of">Plot<select id="plot-of" aria-label="Parameter to plot"></select></label></div>
+<p class="hint" id="freq-note"></p>
+
+<svg class="ts-plot" id="plot" viewBox="0 0 680 240" role="img" aria-label="Magnitude against frequency"></svg>
+<p class="hint colour-key" id="plot-key"></p>
+
+<h2>At this frequency</h2>
+<dl id="metrics" class="metrics" aria-live="polite"></dl>
+<h3 class="table-title">Single-ended</h3>
+<div class="chain-results"><table><thead id="se-head"></thead><tbody id="se-rows"></tbody></table></div>
+<div id="mixed-block" hidden>
+<h3 class="table-title">Mixed-mode for the DUT card's topology</h3>
+<p class="hint">Logical ports follow the mapping below, positive line first. The references are the file's per-port value, doubled for a differential mode and halved for a common mode.</p>
+<div class="work-fields" id="mapping"></div>
+<p id="mapping-status" role="status"></p>
+<div class="chain-results"><table><thead id="mm-head"></thead><tbody id="mm-rows"></tbody></table></div>
+</div>
+<div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button><a class="ghost link-button" data-dut-link href="gain.html">Gain conversion →</a></div>
+</div>
+</section>
+
+<section class="ref">
+  <div class="ref-head"><h2>Rules of thumb</h2><p>Order-of-magnitude only</p></div>
+  <table class="thumbs">
+    <thead><tr><th>Item</th><th>Thumb</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td>Touchstone 1 two-port order</td><td class="num">S11 S21 S12 S22</td><td>The only port count where the file is column-major; a reader that assumes row order swaps S21 and S12</td></tr>
+      <tr><td>Reference impedance</td><td class="num">the R on the option line, same for every port</td><td>Mixed-mode references are 2R differential and R/2 common</td></tr>
+      <tr><td>Passivity</td><td class="num">|S21|² + |S11|² ≤ 1 for a passive two-port</td><td>A value above 0 dB in a passive file is a calibration or de-embedding error, not gain</td></tr>
+      <tr><td>Phase between points</td><td class="num">keep steps under 180° of phase change</td><td>Otherwise delay from the phase slope is ambiguous by whole turns</td></tr>
+    </tbody>
+  </table>
+</section>
+<section class="panel"><h2>Model and limits</h2>
+<p>Touchstone 1 files only, S-parameters, MA, DB or RI form, one reference impedance for every port. Reading is at the nearest point in the file; nothing is interpolated. Mixed-mode conversion assumes both lines of a pair share the file's reference. The voltage gain uses the file's reference for each side of the DUT card's topology, doubled for a differential side, and the terminal-referred form uses the file's input reflection at the same point.</p>
+<p>The file is read in this browser and discarded when the page closes. The link keeps the frequency, the mapping and the plot choice, not the file.</p></section>
+<p class="foot">Static calculations in your browser. No measurement data is uploaded.</p></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="js/theme.js?v=20260914-8"></script><script src="js/bench.js?v=20260914-8"></script><script src="js/diagram.js?v=20260914-8"></script><script src="js/rf.js?v=20260914-8"></script><script src="js/dut.js?v=20260914-8"></script><script src="js/snapshot.js?v=20260914-8"></script><script src="js/touchstone.js?v=20260914-8"></script>
+</body>
+</html>

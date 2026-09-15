@@ -32,6 +32,23 @@ summary { cursor: pointer; font-weight: 500; }
 .segment button { min-height: 42px; }
 .sweep-hint { margin: 6px 0 0; }
 /* Mixed-mode page: the single-ended entry grid and the mixed-mode result table. */
+/* Touchstone: the drop zone and the magnitude plot. */
+.drop { position: relative; display: block; margin: 12px 0; padding: 22px 18px; text-align: center; cursor: pointer; background: var(--bg-inset); border: 1.5px dashed var(--line-strong); border-radius: var(--radius-sm); box-shadow: inset 0 1px 0 var(--edge); }
+.drop.is-over, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.drop-title { display: block; font: 500 .95rem var(--font-ui); color: var(--text); }
+.drop-sub { display: block; margin-top: 4px; font-size: .85rem; }
+.ts-plot { width: 100%; height: auto; display: block; margin: 8px 0 6px; }
+.ts-plot .axis { stroke: var(--line-strong); stroke-width: 1; fill: none; }
+.ts-plot .grid { stroke: var(--line); stroke-width: 1; }
+.ts-plot .trace { stroke: var(--accent); stroke-width: 2; fill: none; }
+.ts-plot .marker { fill: var(--port-out); stroke: var(--bg); stroke-width: 2; }
+.ts-plot .marker-line { stroke: var(--port-out); stroke-dasharray: 3 3; }
+.ts-plot text { fill: var(--muted); font: 11px var(--font-mono); }
+.ts-plot text.marker-text { fill: var(--port-out); }
+.table-title { margin: 22px 0 8px; font: 500 12px var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+#mapping label span { display: block; }
+@media (max-width: 700px) { .ts-plot text { font-size: 19px; } }
 .equation-group { margin: 0 0 8px; font: 500 12px var(--font-display); color: var(--muted); }
 #mixed-equations .gain-result { margin: 12px 0; }
 .link-button { display: inline-flex; align-items: center; text-decoration: none; }
