@@ -18,7 +18,7 @@ summary { cursor: pointer; font-weight: 500; }
 .equation-error { color: var(--danger); font-size: 13px; }
 @media (max-width: 700px) { .equation { padding: 14px 10px; } .equation-math .katex { font-size: 1em; } .gain-result { padding: 14px 12px; } .gain-result .katex { font-size: 1em; } }
 .muted, .hint { color: var(--muted); }
-.work-fields input, .work-fields select, .stage input, .stage select, .segment input, .dut-body input, .dut-body select {
+.work-fields input, .work-fields select, .stage input, .stage select, .segment input, .segment select, .dut-body input, .dut-body select {
   display: block; width: 100%; margin-top: 7px; background: var(--bg-well); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; padding: 11px 12px; font: 15px var(--font-mono); font-variant-numeric: tabular-nums; min-width: 0; box-shadow: var(--shadow-inset);
 }
 .work-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 18px 0; }
@@ -32,6 +32,17 @@ summary { cursor: pointer; font-weight: 500; }
 .segment.is-off .segment-index { color: var(--muted); text-decoration: line-through; }
 .segment button { min-height: 42px; }
 .sweep-hint { margin: 6px 0 0; }
+.sweep-page .sweep-details { border-top: 1px solid var(--line); margin: 18px 0; padding: 14px 0 0; min-width: 0; }
+.sweep-page .sweep-details > summary { font-size: 14px; color: var(--muted); }
+.sweep-page .sweep-details[open] > summary { color: var(--text); margin-bottom: 16px; }
+.sweep-page .sweep-extra { margin: 16px 0; }
+.sweep-page .sweep-extra[open] > summary { margin-bottom: 20px; }
+.sweep-page .timing-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sweep-page #calc #sweep-metrics { margin-top: 24px; }
+.sweep-page #calc #sweep-metrics .metric.primary { grid-column: auto; }
+.sweep-page .segment button[hidden] { display: none; }
+.sweep-page #sweep-status:empty { display: none; }
+@media (max-width: 540px) { .sweep-page .timing-fields { grid-template-columns: minmax(0, 1fr); } }
 /* Mixed-mode page: the single-ended entry grid and the mixed-mode result table. */
 .equation-group { margin: 0 0 8px; font: 500 12px var(--font-display); color: var(--muted); }
 #mixed-equations .gain-result { margin: 12px 0; }

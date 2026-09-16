@@ -58,10 +58,10 @@ test('sweep point counts land exactly on the stop when the step divides the span
 });
 test('segmented sweeps total points and flag step jumps, gaps, overlaps and duplicates', () => {
   const decades = [[10e3, 90e3, 10e3], [100e3, 900e3, 100e3], [1e6, 9e6, 1e6], [10e6, 90e6, 10e6], [100e6, 10e9, 100e6]].map(([start, stop, step]) => ({ start, stop, step }));
-  const r = RF.segmentedSweep(decades, { maxPoints: 100001, ifbw: 1000 });
+  const r = RF.segmentedSweep(decades, { ifbw: 1000 });
   assert.deepEqual(r.rows.map(x => x.points), [9, 9, 9, 9, 100]); assert.equal(r.points, 136);
   assert.equal(r.boundaries.length, 4); assert.ok(r.boundaries.every(b => b.kind === 'contiguous' && !b.sharp && Math.abs(b.stepRatio - 10) < 1e-9 && Math.abs(b.patternRatio - 1) < 1e-9));
-  assert.equal(r.headroom, 100001 - 136); near(r.sweepTime, .136); assert.equal(r.problems, 0); assert.equal(r.mode, 'relative');
+  near(r.sweepTime, .136); assert.equal(r.problems, 0); assert.equal(r.mode, 'relative');
   for (const row of r.rows.slice(0, 4)) near(row.decadePoints, 9, 1e-9);
   near(r.rows[4].decadePoints, 100 / Math.log10(10.1e9 / 100e6), 1e-9); near(r.decadePoints.min, 9, 1e-9);
   const absolute = RF.segmentedSweep(decades, { mode: 'absolute' });
@@ -82,7 +82,6 @@ test('segmented sweeps total points and flag step jumps, gaps, overlaps and dupl
   near(hole.boundaries[0].gap, 9.1e6, 1); near(hole.boundaries[0].previousStep, 100e3, 1e-6);
   // The decade table stays contiguous under the stricter rule.
   assert.ok(RF.segmentedSweep(decades).boundaries.every(b => b.kind === 'contiguous'));
-  assert.equal(RF.segmentedSweep([{ start: 1e9, stop: 2e9, step: 10e6 }], { maxPoints: 50 }).problems, 1);
   for (const bad of [[], [{ start: 0, stop: 1e9, step: 1e6 }], [{ start: 2e9, stop: 1e9, step: 1e6 }], [{ start: 1e9, stop: 2e9, step: 0 }]]) assert.equal(RF.segmentedSweep(bad), null);
 });
 test('log-style tables generate one round-number segment per decade with an optional linear tail', () => {

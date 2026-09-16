@@ -48,6 +48,12 @@ let checks=0;
           }
         };
         const valid=()=>page.evaluate(()=>window.Bench.valid);
+        const openSweepDetails=async()=>{
+          for (const id of ['generator-panel','timing-advanced','segment-details','noise-panel','power-panel']) {
+            const panel=page.locator('#'+id);
+            if (await panel.count() && !await panel.evaluate(el=>el.open)) await panel.locator(':scope > summary').click();
+          }
+        };
         const menu=async id=>{ await page.locator('#export-menu > summary').click(); await page.locator('#'+id).click(); };
         await check('Setup fragments survive navigation without sending entered values to the host',async()=>{
           const requests = [];
@@ -398,11 +404,39 @@ let checks=0;
           assert.equal(await gain.inputValue(),'-10');
           await expect.poll(valid).toBe(true);
         });
+        await check('Sweep keeps the main workflow visible and optional tools out of the way',async()=>{
+          await go('sweep.html?limit=bad');
+          await expect(page.locator('#limit')).toHaveCount(0);
+          await expect.poll(valid).toBe(true);
+          assert.equal(linkParams(page.url()).has('limit'),false);
+          for (const id of ['generator-panel','timing-advanced','segment-details','noise-panel','power-panel','sweep-reference']) {
+            assert.equal(await page.locator('#'+id).evaluate(el=>el.open),false,id);
+          }
+          for (const id of ['segments','ifbw','timing-ports','timing-sequence','nf-avg','sweep-metrics']) await expect(page.locator('#'+id)).toBeVisible();
+          for (const id of ['point-overhead','sweep-rows','nf-ref','p-start']) await expect(page.locator('#'+id)).toBeHidden();
+          await expect(page.locator('#sweep-metrics .metric')).toHaveCount(3);
+          assert.equal(await page.evaluate(()=>{
+            const before=(a,b)=>Boolean(document.querySelector(a).compareDocumentPosition(document.querySelector(b)) & Node.DOCUMENT_POSITION_FOLLOWING);
+            return before('#segments','#ifbw') && before('#ifbw','#sweep-metrics') && before('#sweep-metrics','#noise-panel');
+          }),true);
+          await fill('ifbw',1); await fill('nf-avg',4);
+          await expect(page.locator('#sweep-metrics')).toContainText('≈ 3.964 s');
+          await page.locator('#timing-advanced > summary').click();
+          await fill('point-overhead',20);
+          await page.locator('#timing-advanced > summary').click();
+          await expect(page.locator('#timing-note')).toContainText('timing adjustments applied');
+          await page.reload(); await expect(page.locator('#point-overhead')).toBeVisible();
+          await expect(page.locator('#point-overhead')).toHaveValue('20');
+          await expect(page.locator('#nf-ref')).toBeHidden();
+          await page.locator('#noise-panel > summary').click();
+          await expect(page.locator('#nf-ref')).toBeVisible();
+          await expect(page.locator('#noise-metrics')).toContainText('Noise floor');
+        });
         await check('Sweep timing covers multiport correction, independent averaging, custom sequences and shared links',async()=>{
           const rows = [{start:'10', startUnit:'MHz', stop:'10', stopUnit:'GHz', step:'10', stepUnit:'MHz'}];
           const query = new URLSearchParams({segments:JSON.stringify(rows), ifbw:'1000', 'ifbw-unit':'Hz'});
-          await go('sweep.html?' + query);
-          const tile = label => page.locator('#sweep-metrics .metric').filter({has:page.locator('dt', {hasText:label})}).locator('dd');
+          await go('sweep.html?' + query); await openSweepDetails();
+          const tile = label => page.locator('#sweep-metrics .metric, #timing-details .metric').filter({has:page.locator('dt', {hasText:label})}).locator('dd');
           await expect(page.locator('#timing-ports')).toHaveValue('1');
           await expect(page.locator('#timing-sequence')).toHaveValue('source');
           await page.locator('#timing-ports').selectOption('4');
@@ -454,16 +488,16 @@ let checks=0;
           await fill('if-factor',''); await fill('nf-avg','');
           await page.locator('#timing-sequence').selectOption('pairwise');
           await expect(tile('Complete measurement estimate')).toHaveText('≈ 12 s');
-          await expect(tile('Sweep averaging completion estimate')).toHaveText('≈ 12 s · 1 complete measurement');
+          await expect(tile('Sweep averaging completion estimate')).toHaveCount(0);
           await fill('ifbw',''); await fill('cycle-overhead',500);
           await expect(tile('Complete measurement estimate')).toHaveText('Enter IF bandwidth');
           await expect.poll(valid).toBe(true);
         });
         await check('Sweep time takes overhead, and the gain page refers to the input terminal',async()=>{
-          await go('sweep.html');
+          await go('sweep.html'); await openSweepDetails();
           await fill('ifbw',1);
           const timeTile=async()=>{
-            for (const tile of await page.locator('#sweep-metrics .metric').all()) {
+            for (const tile of await page.locator('#sweep-metrics .metric, #timing-details .metric').all()) {
               const text=await tile.innerText();
               if (/SINGLE-PASS ESTIMATE/i.test(text)) return text.replace(/\n/g,' ').toLowerCase();
             }
@@ -477,8 +511,8 @@ let checks=0;
           await fill('segment-overhead',5);
           await expect.poll(timeTile).toContain('1.016 s');
           // The same IF bandwidth places the noise floor, and averaging moves it.
-          await expect(page.locator('#sweep-metrics')).toContainText('100 ns round trip · 50 ns one way');
-          await expect(page.locator('#sweep-metrics')).toContainText(/Time-domain resolution/);
+          await expect(page.locator('#spacing-metrics')).toContainText('100 ns round trip · 50 ns one way');
+          await expect(page.locator('#spacing-metrics')).toContainText(/Time-domain resolution/);
           await expect(page.locator('#noise-metrics')).toContainText('-100 dBm');
           await expect(page.locator('#noise-metrics')).toContainText('40 dB at -60 dBm');
           await expect(page.locator('#noise-metrics')).toContainText('0.06 dB rms');
@@ -522,7 +556,7 @@ let checks=0;
           assert.equal(await page.locator('#thd-status').getAttribute('class'),'over-limit');
         });
         await check('Segments can be parked without losing their values',async()=>{
-          await go('sweep.html');
+          await go('sweep.html'); await openSweepDetails();
           await page.locator('[data-preset="decades"]').click();
           const total=()=>page.locator('#sweep-metrics .metric').first().innerText();
           await expect.poll(total).toContain('136');
@@ -552,19 +586,19 @@ let checks=0;
           await expect.poll(valid).toBe(true);
         });
         await check('Sweep segments count points, flag step jumps and gaps, and size power sweeps',async()=>{
-          await go('sweep.html'); await expect(page.locator('#sweep-rows')).toContainText('991');
+          await go('sweep.html'); await openSweepDetails(); await expect(page.locator('#sweep-rows')).toContainText('991');
           await expect(page.locator('#sweep-metrics')).toContainText('991');
           await page.locator('[data-preset="decades"]').click(); assert.equal(await page.locator('.segment').count(),5);
           await expect(page.locator('#sweep-metrics')).toContainText('136');
-          await expect(page.locator('#sweep-metrics')).toContainText(/Not available for a segmented table/);
+          await expect(page.locator('#spacing-metrics')).toContainText(/Not available for a segmented table/);
           await expect(page.locator('#boundary-rows tr.over-limit')).toHaveCount(0);
           await expect(page.locator('#sweep-status')).toContainText(/repeat their relative spacing/);
-          await expect(page.locator('#sweep-metrics')).toContainText(/9 to 49.89 by segment/);
+          await expect(page.locator('#spacing-metrics')).toContainText(/9 to 49.89 by segment/);
           await page.locator('#mode').selectOption('absolute');
           await expect(page.locator('#boundary-rows tr.over-limit')).toHaveCount(4);
           await expect(page.locator('#sweep-status')).toContainText(/4 boundaries change the step size/);
           await page.locator('#mode').selectOption('relative');
-          await page.reload(); assert.equal(await page.locator('.segment').count(),5); await expect(page.locator('#sweep-metrics')).toContainText('136');
+          await page.reload(); await openSweepDetails(); assert.equal(await page.locator('.segment').count(),5); await expect(page.locator('#sweep-metrics')).toContainText('136');
           await page.locator('.segment').nth(1).locator('[data-key="start"]').fill('85 kHz');
           await expect(page.locator('#boundary-rows')).toContainText(/Overlap/);
           await page.locator('.segment').nth(1).locator('[data-key="start"]').fill('200 kHz');
@@ -579,8 +613,8 @@ let checks=0;
           await page.locator('.segment').first().locator('[data-key="stepUnit"]').selectOption('kHz');
           await expect(firstStep).toHaveValue('10');
           await expect(page.locator('#sweep-metrics')).toContainText('136');
-          await fill('limit','100'); await expect(page.locator('#sweep-status')).toContainText(/exceeds/);
-          await fill('limit',''); await fill('ifbw','1 kHz'); await expect(page.locator('#sweep-metrics')).toContainText(/136 ms/);
+          await expect(page.locator('#limit')).toHaveCount(0);
+          await fill('ifbw','1 kHz'); await expect(page.locator('#sweep-metrics')).toContainText(/136 ms/);
           await page.locator('.segment').last().locator('[data-action="remove"]').click(); assert.equal(await page.locator('.segment').count(),4);
           await page.locator('#add-segment').click(); assert.equal(await page.locator('.segment').count(),5);
           await page.locator('.segment').first().locator('[data-key="step"]').fill('bad'); await expect.poll(valid).toBe(false);
@@ -815,8 +849,9 @@ let checks=0;
           await page.locator('#export-equations').click();
           await expect(status).toContainText(/Image copied \(dark/);
           assert.equal(await page.locator('.calculation').getAttribute('open'),null);
-          // Tables copy as tab-separated text and as an image.
+          // Tables copy as text and images even while their optional details are closed.
           await go('sweep.html');
+          await expect(page.locator('#sweep-rows')).toBeHidden();
           await page.locator('#export-table').click();
           const tsv=await page.evaluate(()=>window.copiedText);
           assert.match(tsv,/^#\tStart\tStop\tStep\tPoints/); assert.match(tsv,/\t991\t/); assert.match(tsv,/At\tTransition/);
@@ -850,9 +885,9 @@ let checks=0;
             assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${file} overflows the page`);
           }
           // A table that runs past the phone's edge says so; one that fits does not.
-          await go('sweep.html');
+          await go('sweep.html'); await openSweepDetails();
           await page.setViewportSize({width:768,height:900});
-          await go('sweep.html');
+          await go('sweep.html'); await openSweepDetails();
           const frame=()=>page.locator('#sweep-rows').locator('xpath=ancestor::div[contains(@class,"chain-results")]');
           await expect.poll(()=>frame().getAttribute('data-scroll')).toBe('right');
           await page.evaluate(()=>{const el=document.querySelector('#sweep-rows').closest('.chain-results'); el.scrollLeft=el.scrollWidth;});
@@ -875,13 +910,13 @@ let checks=0;
             assert.deepEqual(over,[],file+' scrolls sideways');
           }
           // Results tables stack into cards, each value under its own heading.
-          await go('sweep.html');
+          await go('sweep.html'); await openSweepDetails();
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#sweep-rows tr')).display),'grid');
           assert.equal(await page.evaluate(()=>document.querySelector('#sweep-rows td:nth-child(2)').getAttribute('data-label')),'Start');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs thead')).display),'none');
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs tbody tr')).display),'block');
           await page.setViewportSize({width:1280,height:900});
-          await go('sweep.html');
+          await go('sweep.html'); await openSweepDetails();
           assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.thumbs tbody tr')).display),'table-row');
         });
         await check('The page follows the system theme, remembers a choice, and exports either theme',async()=>{
@@ -954,7 +989,7 @@ let checks=0;
           await expect(page.locator('#z2')).toHaveValue('150'); await expect.poll(summary).toContain('SE out · 150 Ω');
           await expect(page.locator('.metric.primary')).toContainText('S21 × 1.414');
           // Defaults leave the link clean; the sweep page checks coverage against the range.
-          await go('sweep.html');
+          await go('sweep.html'); await openSweepDetails();
           assert.equal(linkParams(page.url()).has('fmax'),false);
           await expect(page.locator('#sweep-metrics')).toContainText('Covered · 100 MHz – 10 GHz');
           await page.locator('.dut-details > summary').click();

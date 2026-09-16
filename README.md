@@ -336,6 +336,12 @@ links to instrument documentation for the control conventions.
 
 ## Sweep setup
 
+The main flow is **segments → measurement timing → total points and time**. IF bandwidth,
+active ports, acquisition sequence, and sweep averages stay visible. Timing adjustments,
+the log-table generator, and segment diagnostics are expandable. Noise analysis and power
+sweeps live in separate collapsed sections below the frequency sweep. Customized settings
+in saved links reopen their section. Point limits are not part of the interface.
+
 Each segment is a linear sweep: N = (f_stop − f_start)/Δf + 1, counting both ends. One
 segment is a plain linear sweep; 100 MHz to 10 GHz in 10 MHz steps is 991 points.
 Each of a segment's start, stop and step carries its own unit, so one row can run from
@@ -362,15 +368,16 @@ table that repeats its pattern is smooth even though its absolute step jumps 10�
 comparison uses step size for tables meant to be linear throughout. Per-segment Δf/f, average
 points per decade, and instantaneous points per decade show the relative resolution, and a
 log-sweep equivalent gives the point count that would match the finest or coarsest relative
-spacing over the whole span. An optional instrument point limit reports headroom.
+spacing over the whole span. These diagnostics are under **Segment details & boundary checks**.
 
 **Measurement timing** starts with one source port and one pass. Select 1–4 active
 ports, one pass per source port, pairwise correction M = max(1, P(P−1)), or a custom
 pass count. Pairwise correction is not universal. Check the actual acquisition sequence
 and use measured timing coefficients where available.
 
-Single-pass time, complete measurement time, and sweep averaging completion are shown
-separately, even with the noise-floor inputs blank:
+Complete measurement time is shown beside total points; averaging completion appears when
+more than one sweep is requested. Single-pass time and pass count are under **Timing adjustments**.
+Timing works independently of the noise-floor inputs:
 
 - t_pass ≈ k N / IFBW + N t_point + S t_segment
 - t_measurement ≈ M t_pass + t_extra

@@ -51,7 +51,7 @@
   const overheadIds = ['point-overhead', 'segment-overhead', 'cycle-overhead'];
   const timingIds = ['timing-ports', 'timing-sequence', 'timing-passes', 'if-factor'];
   const frequencyIds = ['ifbw', 'g-start', 'g-stop', 'g-tail', 'g-tail-step', 'nf-ref-bw', 'timing-max'];
-  const optionIds = ['mode', 'limit', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points', 'nf-ref', 'nf-avg', 'nf-signal']
+  const optionIds = ['mode', 'jump', 'g-mult', 'p-start', 'p-stop', 'p-step', 'p-points', 'nf-ref', 'nf-avg', 'nf-signal']
     .concat(timingIds, frequencyIds, frequencyIds.map(id => id + '-unit'), overheadIds, overheadIds.map(id => id + '-unit'));
   // Every frequency field carries its own unit; changing it keeps the physical value.
   const unitScale = el => scales[document.getElementById(el.id + '-unit').value];
@@ -69,9 +69,12 @@
     const q = LinkState.read();
     for (const id of optionIds) if (q.has(id)) {
       const el = $(id), value = q.get(id);
+      const initial = el.value, panel = el.closest('details');
       if (el.tagName !== 'SELECT' || Array.from(el.options).some(o => o.value === value)) el.value = value;
+      // Restored custom settings stay discoverable, including invalid entries.
+      if (panel && id !== 'p-points' && el.value !== initial) panel.open = true;
     }
-    if (q.get('pfrom') === 'points') powerSource = 'points';
+    if (q.get('pfrom') === 'points') { powerSource = 'points'; $('power-panel').open = true; }
     if (!q.has('g-tail') && !q.has('g-stop')) rangeFromCard();
     if (q.has('segments')) {
       try {
@@ -101,7 +104,7 @@
     $('segments').innerHTML = segments.map((s, i) => `<div class="segment${isOn(s) ? '' : ' is-off'}" data-index="${i}" role="group" aria-label="Segment ${i + 1}">
       <div class="segment-lead"><input type="checkbox" id="seg${i}-on" data-key="enabled" ${isOn(s) ? 'checked' : ''} aria-label="Include segment ${i + 1} in the sweep"><label class="segment-index" for="seg${i}-on">${i + 1}</label></div>
       ${field(s, i, 'start', 'Start')}${field(s, i, 'stop', 'Stop')}${field(s, i, 'step', 'Step')}
-      <button class="ghost" type="button" data-action="remove" aria-label="Remove segment ${i + 1}" ${segments.length === 1 ? 'disabled' : ''}>Remove</button></div>`).join('');
+      <button class="ghost" type="button" data-action="remove" aria-label="Remove segment ${i + 1}" ${segments.length === 1 ? 'hidden disabled' : ''}>Remove</button></div>`).join('');
     $('add-segment').disabled = segments.length >= 100;
   }
   function seconds(t) {
@@ -116,10 +119,10 @@
   }
   function timingMetrics() {
     const estimate = t => Number.isFinite(t) ? `≈ ${seconds(t)}` : 'Enter IF bandwidth';
+    $('timing-details').innerHTML = metric('Acquisition passes per measurement', `${timing.passes} · ${timing.ports} active port${timing.ports === 1 ? '' : 's'}`) +
+      metric('Single-pass estimate', estimate(timing.passTime));
     return metric('Complete measurement estimate', estimate(timing.measurementTime), 'primary') +
-      metric('Acquisition passes per measurement', `${timing.passes} · ${timing.ports} active port${timing.ports === 1 ? '' : 's'}`) +
-      metric('Single-pass estimate', estimate(timing.passTime)) +
-      metric('Sweep averaging completion estimate', estimate(timing.averagedTime) + ` · ${timing.averages} complete measurement${timing.averages === 1 ? '' : 's'}`);
+      (timing.averages > 1 ? metric('Sweep averaging completion estimate', estimate(timing.averagedTime) + ` · ${timing.averages} complete measurements`) : '');
   }
   // The transform needs one linear segment; a table has no single step to set the range.
   function timeDomainTile() {
@@ -138,7 +141,7 @@
     result = null; timing = null;
     $('timing-note').textContent = '';
     $('sweep-status').textContent = message; $('sweep-status').className = 'status-error';
-    ['sweep-rows', 'boundary-rows', 'sweep-metrics'].forEach(id => $(id).replaceChildren());
+    ['sweep-rows', 'boundary-rows', 'sweep-metrics', 'spacing-metrics', 'timing-details'].forEach(id => $(id).replaceChildren());
   }
   function computeSweep() {
     const custom = $('timing-sequence').value === 'custom';
@@ -149,8 +152,8 @@
     if (!active.length) return invalidSweep('Every segment is switched off. Enable at least one to size the sweep.');
     const parsed = active.map(({ s }) => ({ start: RF.parseFrequency(s.start, scales[segmentUnit(s, 'startUnit')]),
       stop: RF.parseFrequency(s.stop, scales[segmentUnit(s, 'stopUnit')]), step: RF.parseFrequency(s.step, scales[segmentUnit(s, 'stepUnit')]) }));
-    const limitBlank = $('limit').value.trim() === '', ifbwBlank = $('ifbw').value.trim() === '';
-    const maxPoints = limitBlank ? null : Bench.read('limit'), ifbw = ifbwBlank ? null : readHz($('ifbw')), jumpLimit = Bench.read('jump'), mode = $('mode').value;
+    const ifbwBlank = $('ifbw').value.trim() === '';
+    const ifbw = ifbwBlank ? null : readHz($('ifbw')), jumpLimit = Bench.read('jump'), mode = $('mode').value;
     const overhead = {};
     for (const id of overheadIds) {
       const text = $(id).value.trim();
@@ -159,10 +162,10 @@
       if (!(value >= 0) || !Number.isFinite(value)) return invalidSweep('Overhead entries must be zero or a positive time. Leave them blank if unknown.');
       overhead[id] = value;
     }
-    if ((maxPoints !== null && !(Number.isInteger(maxPoints) && maxPoints > 0)) || (ifbw !== null && !(ifbw > 0)) || !(jumpLimit > 1)) {
-      return invalidSweep('Point limit must be a positive whole number, IF bandwidth positive, and the step-ratio flag above 1.');
+    if ((ifbw !== null && !(ifbw > 0)) || !(jumpLimit > 1)) {
+      return invalidSweep('IF bandwidth must be positive, and the step-ratio flag above 1.');
     }
-    result = RF.segmentedSweep(parsed, { maxPoints, ifbw, jumpLimit, mode,
+    result = RF.segmentedSweep(parsed, { ifbw, jumpLimit, mode,
       pointOverhead: overhead['point-overhead'], segmentOverhead: overhead['segment-overhead'] });
     if (!result) return invalidSweep('Each segment needs a positive start, a stop at or above it, and a positive step. Pick each unit beside its field.');
     timing = RF.sweepTiming(result.points, result.rows.length, {
@@ -177,25 +180,26 @@
     const maxFrequency = $('timing-max').value.trim() === '' ? null : readHz($('timing-max'));
     if (maxFrequency !== null && (!Number.isFinite(maxFrequency) || maxFrequency <= 0)) return invalidSweep('Analyzer upper frequency must be positive, or blank if unspecified.');
     $('timing-note').className = maxFrequency !== null && result.last > maxFrequency ? 'over-limit' : 'hint';
-    $('timing-note').textContent = timingSummary() + '. Planning estimate; verify acquisition sequencing and overhead on your analyzer.' +
+    const adjustments = timing.ifFactor !== 1 || Object.values(overhead).some(t => t > 0);
+    $('timing-note').textContent = `${timing.passes} acquisition pass${timing.passes === 1 ? '' : 'es'} per measurement${adjustments ? ' · timing adjustments applied' : ''}. Planning estimate; verify the sequence and overhead on your analyzer. Averaging repeats the complete sweep.` +
+      (timing.sequence === 'pairwise' ? ' Pairwise correction is instrument-dependent.' : '') +
       (maxFrequency !== null && result.last > maxFrequency ? ` The active sweep exceeds the entered ${freq(maxFrequency)} upper range.` : '');
     const sharp = result.boundaries.filter(b => b.sharp).length, broken = result.boundaries.filter(b => b.kind !== 'contiguous').length;
     const notes = [];
     if (result.inexact) notes.push(`${result.inexact} ${result.inexact === 1 ? 'segment does' : 'segments do'} not land on the stop frequency`);
     if (broken) notes.push(`${broken} boundar${broken === 1 ? 'y has' : 'ies have'} a gap, overlap, or duplicate point`);
     if (sharp) notes.push(`${sharp} boundar${sharp === 1 ? 'y changes' : 'ies change'} ${mode === 'relative' ? 'the relative step Δf/f at the segment start' : 'the step size'} by more than ${fmt(result.jumpLimit)}×`);
-    if (result.headroom !== null && result.headroom < 0) notes.push(`the total exceeds the ${result.maxPoints}-point limit by ${-result.headroom}`);
     const parked = segments.length - active.length;
     $('sweep-status').className = notes.length ? 'over-limit' : '';
     const parkedNote = parked ? ` ${parked} segment${parked === 1 ? ' is' : 's are'} switched off and excluded.` : '';
-    $('sweep-status').textContent = (notes.length ? `Check: ${notes.join('; ')}.` : `Segments are contiguous, ${mode === 'relative' ? 'repeat their relative spacing pattern' : 'change step size evenly'}, and land exactly on their stop frequencies.`) + parkedNote;
+    $('sweep-status').textContent = (notes.length ? `Check: ${notes.join('; ')}.` : active.length === 1 ? '' : `Segments are contiguous, ${mode === 'relative' ? 'repeat their relative spacing pattern' : 'change step size evenly'}, and land exactly on their stop frequencies.`) + parkedNote;
     $('sweep-rows').innerHTML = result.rows.map((r, i) => `<tr class="${r.exact ? '' : 'over-limit'}"><td>${active[i].i + 1}</td><td>${freq(r.start)}</td><td>${freq(r.stop)}</td><td>${freq(r.step)}</td><td>${r.points}</td><td>${freq(r.lastPoint)}${r.exact ? '' : ` · use ${freq(r.stepCeil)} for ${r.pointsCeil} points`}</td><td>${fmt(r.fractionalStart * 100)} → ${fmt(r.fractionalStop * 100)} %</td><td>${fmt(r.decadePoints)}</td><td>${fmt(r.pointsPerDecadeStart)} → ${fmt(r.pointsPerDecadeStop)}</td></tr>`).join('');
     $('boundary-rows').innerHTML = result.boundaries.length ? result.boundaries.map(b => `<tr class="${b.sharp || b.kind !== 'contiguous' ? 'over-limit' : ''}"><td>${freq(b.frequency)}</td><td>${boundaryText(b)}</td><td class="${mode === 'absolute' && b.sharp ? 'over-limit' : ''}">${fmt(b.stepRatio)}×</td><td class="${mode === 'relative' && b.sharp ? 'over-limit' : ''}">${fmt(b.patternRatio)}×</td><td>${b.sharp ? (mode === 'relative' ? 'Pattern change' : 'Sharp step change') : b.kind !== 'contiguous' ? 'Fix boundary' : 'OK'}</td></tr>`).join('')
       : '<tr><td colspan="5">One segment: no boundaries to check.</td></tr>';
-    $('sweep-metrics').innerHTML = metric('Total points', String(result.points) + (parked ? ` · ${active.length} of ${segments.length} segments` : ''), 'primary') + metric('Span', `${freq(result.first)} → ${freq(result.last)}`) + metric('DUT range', coverage()) +
+    $('sweep-metrics').innerHTML = metric('Total points', String(result.points) + (parked ? ` · ${active.length} of ${segments.length} segments` : ''), 'primary') +
+      timingMetrics() + metric('DUT range', coverage());
+    $('spacing-metrics').innerHTML = metric('Span', `${freq(result.first)} → ${freq(result.last)}`) +
       metric('Points per decade', result.decadePoints.min === result.decadePoints.max ? fmt(result.decadePoints.min) : `${fmt(result.decadePoints.min)} to ${fmt(result.decadePoints.max)} by segment`) +
-      metric('Point limit', result.maxPoints === null ? 'None specified' : `${result.maxPoints} · ${result.headroom >= 0 ? `${result.headroom} spare` : `<span class="over-limit">${-result.headroom} over</span>`}`) +
-      timingMetrics() +
       metric('Log sweep, same coverage', `${result.log.finePoints} points at the finest Δf/f (${fmt(result.log.fine * 100)} %)`) +
       metric('Log sweep, coarsest', `${result.log.coarsePoints} points at ${fmt(result.log.coarse * 100)} %`) + timeDomainTile();
   }
@@ -247,6 +251,8 @@
     computeSweep(); computePower();
     const mode = $('mode').value;
     const noiseOk = computeNoise();
+    if (!noiseOk) $('noise-panel').open = true;
+    if (!power) $('power-panel').open = true;
     const valid = Boolean(result && power && noiseOk);
     const lines = valid ? [
       'Linear segments with equal steps. Points include both ends. A step that divides the span lands exactly on the stop frequency.',
@@ -321,7 +327,7 @@
   document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
     segments = PRESETS[b.dataset.preset].map(s => ({ ...s })); loadError = ''; renderSegments(); compute();
   }));
-  ['mode', 'limit', 'ifbw', 'jump', 'nf-ref', 'nf-avg', 'nf-signal', 'timing-max'].concat(timingIds, overheadIds, overheadIds.map(id => id + '-unit'))
+  ['mode', 'ifbw', 'jump', 'nf-ref', 'nf-avg', 'nf-signal', 'timing-max'].concat(timingIds, overheadIds, overheadIds.map(id => id + '-unit'))
     .forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { loadError = ''; compute(); }));
   frequencyIds.forEach(bindUnit);
   ['g-start', 'g-stop', 'g-mult', 'g-tail', 'g-tail-step'].forEach(id => $(id).addEventListener($(id).tagName === 'SELECT' ? 'change' : 'input', () => { $('generate-status').textContent = ''; if (Bench.valid) writeQuery(); }));

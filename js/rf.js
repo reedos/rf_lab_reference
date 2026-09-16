@@ -646,20 +646,18 @@
     const first = rows[0].start, last = rows[rows.length - 1].lastPoint;
     const fine = Math.min(...rows.map(r => r.fractionalStop)), coarse = Math.max(...rows.map(r => r.fractionalStart));
     const logPoints = ratio => last > first ? Math.ceil(Math.log(last / first) / Math.log(1 + ratio)) + 1 : 1;
-    const maxPoints = Number.isInteger(opts.maxPoints) && opts.maxPoints > 0 ? opts.maxPoints : null;
     const ifbw = opts.ifbw > 0 ? opts.ifbw : null;
     // Legacy single-pass approximation. Use sweepTiming for complete measurement estimates.
     const pointOverhead = opts.pointOverhead > 0 ? opts.pointOverhead : 0;
     const segmentOverhead = opts.segmentOverhead > 0 ? opts.segmentOverhead : 0;
     const overheadTime = points * pointOverhead + rows.length * segmentOverhead;
-    return { rows, boundaries, points, first, last, jumpLimit, mode, maxPoints, ifbw,
-      headroom: maxPoints === null ? null : maxPoints - points,
+    return { rows, boundaries, points, first, last, jumpLimit, mode, ifbw,
       sweepTime: ifbw === null ? NaN : points / ifbw,
       pointOverhead, segmentOverhead, overheadTime,
       sweepTimeTotal: ifbw === null ? (overheadTime > 0 ? overheadTime : NaN) : points / ifbw + overheadTime,
       inexact: rows.filter(r => !r.exact).length,
       decadePoints: { min: Math.min(...rows.map(r => r.decadePoints)), max: Math.max(...rows.map(r => r.decadePoints)) },
-      problems: rows.filter(r => !r.exact).length + boundaries.filter(b => b.sharp || b.kind !== 'contiguous').length + (maxPoints !== null && points > maxPoints ? 1 : 0),
+      problems: rows.filter(r => !r.exact).length + boundaries.filter(b => b.sharp || b.kind !== 'contiguous').length,
       log: { fine, coarse, finePoints: logPoints(fine), coarsePoints: logPoints(coarse) } };
   }
 

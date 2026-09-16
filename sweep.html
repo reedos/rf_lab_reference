@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
-  <script src="js/link-state.js?v=20260915-2"></script>
+  <script src="js/link-state.js?v=20260915-3"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
   <script>(function(){var t='dark';try{var s=localStorage.getItem('rf-lab:theme');t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
@@ -11,10 +11,10 @@
   <title>Sweep setup &middot; RF Lab Reference</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260915-2">
-  <link rel="stylesheet" href="css/app.css?v=20260915-2"><link rel="stylesheet" href="css/workbench.css?v=20260915-2">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=20260915-3">
+  <link rel="stylesheet" href="css/app.css?v=20260915-3"><link rel="stylesheet" href="css/workbench.css?v=20260915-3">
 </head>
-<body>
+<body class="sweep-page">
   <a class="skip" href="#calc">Skip to calculator</a>
   <div class="shell">
     <header class="top">
@@ -31,50 +31,68 @@
     </header>
     <div id="dut-card"></div>
 
-<section class="lede"><p class="kicker">VNA setup</p><h1>Sweep setup</h1><p>Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, and power-sweep sizing.</p></section>
-<section class="board work-board" id="calc"><h2>Frequency sweep segments</h2>
-<p class="hint">The checkbox beside a segment number parks it without losing its values. A parked segment is left out of the totals and the boundary checks, so switching a middle one off reports the gap it leaves. One segment is a plain linear sweep. Every frequency carries its own unit, so a kilohertz step sits beside a gigahertz stop. Points include both ends, so 100 MHz to 10 GHz in 10 MHz steps is 991 points.</p>
-<div class="work-fields"><label>Instrument point limit (optional)<input id="limit" value="" placeholder="e.g. 100001" inputmode="numeric" autocomplete="off" aria-label="Instrument point limit"></label><div class="quantity-field"><label for="ifbw">IF bandwidth (optional)</label><div class="unit-pair"><input id="ifbw" value="" placeholder="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="IF bandwidth"><select id="ifbw-unit" aria-label="IF bandwidth unit"><option value="Hz">Hz</option><option value="kHz" selected>kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><label>Compare boundaries by<select id="mode" aria-label="Boundary comparison"><option value="relative">Δf/f at starts (log-style)</option><option value="absolute">Step size (linear)</option></select></label><label>Flag ratio above<input id="jump" value="3" inputmode="decimal" autocomplete="off" aria-label="Ratio flag threshold"></label>
-<div class="quantity-field"><label for="point-overhead">Per-point overhead (optional)</label><div class="unit-pair"><input id="point-overhead" value="" placeholder="e.g. 20" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Per-point overhead"><select id="point-overhead-unit" aria-label="Per-point overhead unit"><option value="µs" selected>µs</option><option value="ms">ms</option><option value="s">s</option></select></div></div>
-<div class="quantity-field"><label for="segment-overhead">Per-segment retune (optional)</label><div class="unit-pair"><input id="segment-overhead" value="" placeholder="e.g. 5" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Per-segment retune time"><select id="segment-overhead-unit" aria-label="Per-segment retune unit"><option value="µs">µs</option><option value="ms" selected>ms</option><option value="s">s</option></select></div></div></div>
-<p class="hint">Per-point overhead includes extra settling and dwell; per-segment retune applies to each enabled segment. Both repeat for every acquisition pass. Blank overheads mean zero added time, not a measured zero cost.</p>
-<h2>Measurement timing</h2>
-<div class="work-fields timing-fields">
-<div class="quantity-field"><label for="timing-max">Analyzer upper frequency (optional)</label><div class="unit-pair"><input id="timing-max" value="" placeholder="e.g. 6" inputmode="decimal" autocomplete="off" aria-label="Analyzer upper frequency"><select id="timing-max-unit" aria-label="Analyzer upper frequency unit"><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
-<label>Active measurement / correction ports<select id="timing-ports" aria-label="Active measurement ports"><option value="1" selected>1 port</option><option value="2">2 ports</option><option value="3">3 ports</option><option value="4">4 ports</option></select></label>
-<label>Acquisition sequence<select id="timing-sequence" aria-label="Acquisition sequence"><option value="source" selected>One pass per source port</option><option value="pairwise">Pairwise correction</option><option value="custom">Custom pass count</option></select></label>
-<label id="custom-passes-field" hidden>Passes per complete measurement<input id="timing-passes" value="1" inputmode="numeric" autocomplete="off" aria-label="Custom acquisition passes"></label>
-<label>IF timing factor (optional)<input id="if-factor" value="" placeholder="1" inputmode="decimal" autocomplete="off" aria-label="IF timing factor"></label>
-<label>Sweep averaging factor<input id="nf-avg" value="1" inputmode="numeric" autocomplete="off" aria-label="Averaging factor"></label>
-<div class="quantity-field"><label for="cycle-overhead">Extra time per complete measurement (optional)</label><div class="unit-pair"><input id="cycle-overhead" value="" placeholder="e.g. 100" inputmode="decimal" autocomplete="off" aria-label="Extra time per complete measurement"><select id="cycle-overhead-unit" aria-label="Extra measurement time unit"><option value="ms" selected>ms</option><option value="s">s</option></select></div></div>
-</div>
-<p id="timing-note" class="hint" role="status"></p>
-<p class="hint">Example settings are generic, not an equipment profile. Choose the sequence your analyzer uses: one pass per source port, pairwise correction max(1, P × (P − 1)), or a custom count. Pairwise correction is not universal. Count ports included in acquisition or correction, not installed connectors or displayed traces. Set the optional upper frequency and timing factor from your own instrument data. Extra measurement time covers remaining switching, band changes, retrace, triggering, or transfer delays once per complete measurement. Avoid counting the same delay twice. Averaging here means repeated complete sweeps, not point averaging.</p>
-<h2>Noise floor and trace noise</h2>
-<p class="hint">The IF bandwidth above sets the floor as well as the time. Take the floor your analyzer's datasheet quotes at one bandwidth; it rises 10 dB per decade of bandwidth and falls 10 log₁₀ N with N averages. Enter the level you need to see at the receiver, source power plus the DUT's |S21| at that point, to get the margin and the trace noise it produces.</p>
-<div class="work-fields"><label>Datasheet noise floor (dBm)<input data-signed id="nf-ref" value="-120" inputmode="decimal" autocomplete="off" aria-label="Datasheet noise floor in dBm"></label><div class="quantity-field"><label for="nf-ref-bw">at IF bandwidth</label><div class="unit-pair"><input id="nf-ref-bw" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Datasheet IF bandwidth"><select id="nf-ref-bw-unit" aria-label="Datasheet IF bandwidth unit"><option value="Hz" selected>Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><label>Level at the receiver (dBm, optional)<input data-signed id="nf-signal" value="-60" placeholder="source + |S21|" inputmode="decimal" autocomplete="off" aria-label="Level at the receiver in dBm"></label></div>
-<p id="noise-status" role="status"></p>
-<dl id="noise-metrics" class="metrics" aria-live="polite"></dl>
-<h2>Build a log-style table</h2>
-<p class="hint">Points at 1, 1+k, 1+2k … times each decade, one linear segment per decade, so every frequency is a round number. The linear tail starts at the bottom of the DUT's range and the table stops at the top, both from the DUT card. The decades below that give coarse coverage. Generating replaces the segment rows below.</p>
-<div class="work-fields"><div class="quantity-field"><label for="g-start">Start</label><div class="unit-pair"><input id="g-start" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Log table start"><select id="g-start-unit" aria-label="Log table start unit"><option value="Hz">Hz</option><option value="kHz" selected>kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><div class="quantity-field"><label for="g-stop">Stop</label><div class="unit-pair"><input id="g-stop" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Log table stop"><select id="g-stop-unit" aria-label="Log table stop unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div><label>In-decade step k<select id="g-mult" aria-label="In-decade multiplier step"><option value="1">1, 2 … 9 (9/decade)</option><option value="0.5">1, 1.5 … 9.5 (18)</option><option value="0.2">1, 1.2 … 9.8 (45)</option><option value="0.1">1, 1.1 … 9.9 (90)</option><option value="2">1, 3, 5, 7, 9 (5)</option><option value="3">1, 4, 7 (3)</option></select></label><div class="quantity-field"><label for="g-tail">Linear tail from (optional)</label><div class="unit-pair"><input id="g-tail" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Linear tail start"><select id="g-tail-unit" aria-label="Linear tail start unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz" selected>MHz</option><option value="GHz">GHz</option></select></div></div><div class="quantity-field"><label for="g-tail-step">Tail step</label><div class="unit-pair"><input id="g-tail-step" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Linear tail step"><select id="g-tail-step-unit" aria-label="Linear tail step unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz" selected>MHz</option><option value="GHz">GHz</option></select></div></div></div>
-<div class="toolbar"><button id="generate" class="ghost" type="button">Generate segments</button></div><p id="generate-status" role="status"></p>
-<h2>Segments</h2>
+<section class="lede"><p class="kicker">VNA setup</p><h1>Sweep setup</h1><p>Set your frequency sweep and estimate the complete measurement time.</p></section>
+<section class="board work-board" id="calc"><h2>Frequency sweep</h2>
+<p class="hint">Set start, stop, and step for each segment. Uncheck a segment to leave it out.</p>
+
 <div class="match-controls" aria-label="Sweep presets"><button class="chip" type="button" data-preset="wide">100 MHz–10 GHz, 10 MHz</button><button class="chip" type="button" data-preset="decades">Decade table 10 kHz–10 GHz</button></div>
 <div id="segments"></div>
 <div class="toolbar"><button id="add-segment" class="ghost" type="button">+ Segment</button></div>
+<details id="generator-panel" class="sweep-details"><summary>Build a log-style table</summary>
+
+<p class="hint">Build round-number segments across decades, with an optional linear tail. Generate replaces the current segments.</p>
+<div class="work-fields"><div class="quantity-field"><label for="g-start">Start</label><div class="unit-pair"><input id="g-start" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Log table start"><select id="g-start-unit" aria-label="Log table start unit"><option value="Hz">Hz</option><option value="kHz" selected>kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><div class="quantity-field"><label for="g-stop">Stop</label><div class="unit-pair"><input id="g-stop" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Log table stop"><select id="g-stop-unit" aria-label="Log table stop unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div><label>In-decade step k<select id="g-mult" aria-label="In-decade multiplier step"><option value="1">1, 2 … 9 (9/decade)</option><option value="0.5">1, 1.5 … 9.5 (18)</option><option value="0.2">1, 1.2 … 9.8 (45)</option><option value="0.1">1, 1.1 … 9.9 (90)</option><option value="2">1, 3, 5, 7, 9 (5)</option><option value="3">1, 4, 7 (3)</option></select></label><div class="quantity-field"><label for="g-tail">Linear tail from (optional)</label><div class="unit-pair"><input id="g-tail" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Linear tail start"><select id="g-tail-unit" aria-label="Linear tail start unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz" selected>MHz</option><option value="GHz">GHz</option></select></div></div><div class="quantity-field"><label for="g-tail-step">Tail step</label><div class="unit-pair"><input id="g-tail-step" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Linear tail step"><select id="g-tail-step-unit" aria-label="Linear tail step unit"><option value="Hz">Hz</option><option value="kHz">kHz</option><option value="MHz" selected>MHz</option><option value="GHz">GHz</option></select></div></div></div>
+<div class="toolbar"><button id="generate" class="ghost" type="button">Generate segments</button></div><p id="generate-status" role="status"></p>
+</details>
 <p id="sweep-status" role="status"></p>
+<h2>Measurement timing</h2>
+<div class="work-fields timing-fields">
+<div class="quantity-field"><label for="ifbw">IF bandwidth (optional)</label><div class="unit-pair"><input id="ifbw" value="" placeholder="1" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="IF bandwidth"><select id="ifbw-unit" aria-label="IF bandwidth unit"><option value="Hz">Hz</option><option value="kHz" selected>kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div>
+<label>Active ports<select id="timing-ports" aria-label="Active measurement ports"><option value="1" selected>1 port</option><option value="2">2 ports</option><option value="3">3 ports</option><option value="4">4 ports</option></select></label>
+<label>Acquisition sequence<select id="timing-sequence" aria-label="Acquisition sequence"><option value="source" selected>One pass per source port</option><option value="pairwise">Pairwise correction</option><option value="custom">Custom pass count</option></select></label>
+<label>Sweep averages<input id="nf-avg" value="1" inputmode="numeric" autocomplete="off" aria-label="Averaging factor"></label>
+<label id="custom-passes-field" hidden>Passes per complete measurement<input id="timing-passes" value="1" inputmode="numeric" autocomplete="off" aria-label="Custom acquisition passes"></label>
+</div>
+<details id="timing-advanced" class="sweep-details"><summary>Timing adjustments</summary>
+<p class="hint">Use measured timing factors and overheads when available. Blank overheads add zero; a blank IF factor means 1.</p>
+<div class="work-fields timing-fields">
+<label>IF timing factor (optional)<input id="if-factor" value="" placeholder="1" inputmode="decimal" autocomplete="off" aria-label="IF timing factor"></label>
+<div class="quantity-field"><label for="point-overhead">Per-point overhead (optional)</label><div class="unit-pair"><input id="point-overhead" value="" placeholder="e.g. 20" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Per-point overhead"><select id="point-overhead-unit" aria-label="Per-point overhead unit"><option value="µs" selected>µs</option><option value="ms">ms</option><option value="s">s</option></select></div></div>
+<div class="quantity-field"><label for="segment-overhead">Per-segment retune (optional)</label><div class="unit-pair"><input id="segment-overhead" value="" placeholder="e.g. 5" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Per-segment retune time"><select id="segment-overhead-unit" aria-label="Per-segment retune unit"><option value="µs">µs</option><option value="ms" selected>ms</option><option value="s">s</option></select></div></div>
+<div class="quantity-field"><label for="cycle-overhead">Extra time per complete measurement (optional)</label><div class="unit-pair"><input id="cycle-overhead" value="" placeholder="e.g. 100" inputmode="decimal" autocomplete="off" aria-label="Extra time per complete measurement"><select id="cycle-overhead-unit" aria-label="Extra measurement time unit"><option value="ms" selected>ms</option><option value="s">s</option></select></div></div>
+<div class="quantity-field"><label for="timing-max">Analyzer upper frequency (optional)</label><div class="unit-pair"><input id="timing-max" value="" placeholder="e.g. 6" inputmode="decimal" autocomplete="off" aria-label="Analyzer upper frequency"><select id="timing-max-unit" aria-label="Analyzer upper frequency unit"><option value="MHz">MHz</option><option value="GHz" selected>GHz</option></select></div></div>
+</div>
+<p class="hint">Point and segment overhead repeat each acquisition pass. Extra measurement time is added once per complete measurement. Avoid counting the same delay twice.</p>
+<dl id="timing-details" class="metrics" aria-live="polite"></dl>
+</details>
+<p id="timing-note" class="hint" role="status"></p>
 <dl id="sweep-metrics" class="metrics" aria-live="polite"></dl>
+<details id="segment-details" class="sweep-details"><summary>Segment details &amp; boundary checks</summary>
+<div class="work-fields">
+<label>Compare boundaries by<select id="mode" aria-label="Boundary comparison"><option value="relative">Δf/f at starts (log-style)</option><option value="absolute">Step size (linear)</option></select></label><label>Flag ratio above<input id="jump" value="3" inputmode="decimal" autocomplete="off" aria-label="Ratio flag threshold"></label>
+</div>
 <div class="chain-results"><table><thead><tr><th>#</th><th>Start</th><th>Stop</th><th>Step</th><th>Points</th><th>Last point</th><th>Δf/f start → stop</th><th>Avg points / decade</th><th>Points / decade start → stop</th></tr></thead><tbody id="sweep-rows"></tbody></table></div>
 <h2>Boundaries between segments</h2>
-<p class="hint">Contiguous means the next segment starts within one step of the previous last point. A log-style decade table repeats its pattern, so comparing the relative step Δf/f at adjacent segment starts is smooth (ratio 1×) even though the absolute step jumps 10×. Choose the absolute comparison for tables meant to be linear throughout. A linear tail that is denser than the decades is reported through its points per decade, not as a boundary fault.</p>
+<p class="hint">Check for gaps, overlaps, duplicate points, and changes in spacing. Relative spacing suits decade tables; absolute step size suits linear tables.</p>
 <div class="chain-results"><table><thead><tr><th>At</th><th>Transition</th><th>Step ratio</th><th>Δf/f-at-start ratio</th><th>Check</th></tr></thead><tbody id="boundary-rows"></tbody></table></div>
-<hr><h2>Power sweep</h2>
+<dl id="spacing-metrics" class="metrics" aria-live="polite"></dl>
+</details>
+<div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+<details id="noise-panel" class="reference-details sweep-extra"><summary>Noise floor &amp; trace noise</summary>
+
+<p class="hint">Uses the IF bandwidth and averaging above. Enter a specified receiver floor to estimate the margin and trace noise.</p>
+<div class="work-fields"><label>Datasheet noise floor (dBm)<input data-signed id="nf-ref" value="-120" inputmode="decimal" autocomplete="off" aria-label="Datasheet noise floor in dBm"></label><div class="quantity-field"><label for="nf-ref-bw">at IF bandwidth</label><div class="unit-pair"><input id="nf-ref-bw" value="10" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Datasheet IF bandwidth"><select id="nf-ref-bw-unit" aria-label="Datasheet IF bandwidth unit"><option value="Hz" selected>Hz</option><option value="kHz">kHz</option><option value="MHz">MHz</option><option value="GHz">GHz</option></select></div></div><label>Level at the receiver (dBm, optional)<input data-signed id="nf-signal" value="-60" placeholder="source + |S21|" inputmode="decimal" autocomplete="off" aria-label="Level at the receiver in dBm"></label></div>
+<p id="noise-status" role="status"></p>
+<dl id="noise-metrics" class="metrics" aria-live="polite"></dl>
+</details>
+<details id="power-panel" class="reference-details sweep-extra"><summary>Power sweep</summary>
+
 <p class="hint">Enter step or points; the other updates. Points include both ends: −20 dBm to −4 dBm in 0.1 dB steps is 161 points.</p>
 <div class="work-fields"><label>Start (dBm)<input data-signed id="p-start" value="-20" inputmode="decimal" autocomplete="off" aria-label="Power sweep start (dBm)"></label><label>Stop (dBm)<input data-signed id="p-stop" value="-4" inputmode="decimal" autocomplete="off" aria-label="Power sweep stop (dBm)"></label><label>Step (dB)<input id="p-step" value="0.1" inputmode="decimal" autocomplete="off" aria-label="Power sweep step (dB)"></label><label>Points<input id="p-points" value="" inputmode="numeric" autocomplete="off" aria-label="Power sweep points"></label></div>
 <p id="power-status" role="status"></p>
 <dl id="power-metrics" class="metrics" aria-live="polite"></dl>
-<div class="toolbar"><button id="copy-result" class="copy" type="button">Copy result</button><button id="copy-link" class="ghost" type="button">Copy link</button></div></section>
+</details>
+<details id="sweep-reference" class="reference-details sweep-extra"><summary>Rules of thumb &amp; model assumptions</summary>
 <section class="ref">
   <div class="ref-head"><h2>Rules of thumb</h2><p>Order-of-magnitude only</p></div>
   <table class="thumbs">
@@ -93,4 +111,5 @@
   </table>
 </section>
 <section class="panel"><h2>Model and reference</h2><p>N = (stop − start)/step + 1 for a linear segment. Relative spacing Δf/f sets how well narrow features are resolved; points per decade is 1/log₁₀(1 + Δf/f). A log sweep with the same span needs ⌈ln(f<sub>last</sub>/f<sub>first</sub>)/ln(1 + r)⌉ + 1 points for relative spacing r. Acquisition time per pass is approximated by k N/IFBW. A complete measurement includes all acquisition passes and entered overhead; sweep averaging repeats that complete measurement. These are planning estimates, not guaranteed minimum times.</p><p>Segment count, total points, and per-segment IF bandwidth or power are instrument settings; check the analyzer's limits. This estimate assumes one IF bandwidth for all points. Automatic IF reduction, filter shape, point averaging, and other active channels are not modeled automatically.</p><p>Acquisition sequences and timing coefficients must be checked against the documentation for the instrument in use. Public examples are synthetic and do not identify an installed system.</p></section>
-<p class="foot">Calculations stay in your browser. Shared links and exports include entered values; use nonsensitive examples.</p></div><div id="toast" class="toast" role="status"></div><script src="js/theme.js?v=20260915-2"></script><script src="js/bench.js?v=20260915-2"></script><script src="js/diagram.js?v=20260915-2"></script><script src="js/rf.js?v=20260915-2"></script><script src="js/dut.js?v=20260915-2"></script><script src="js/snapshot.js?v=20260915-2"></script><script src="js/sweep.js?v=20260915-2"></script></body></html>
+</details>
+<p class="foot">Calculations stay in your browser. Shared links and exports include entered values; use nonsensitive examples.</p></div><div id="toast" class="toast" role="status"></div><script src="js/theme.js?v=20260915-3"></script><script src="js/bench.js?v=20260915-3"></script><script src="js/diagram.js?v=20260915-3"></script><script src="js/rf.js?v=20260915-3"></script><script src="js/dut.js?v=20260915-3"></script><script src="js/snapshot.js?v=20260915-3"></script><script src="js/sweep.js?v=20260915-3"></script></body></html>
