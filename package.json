@@ -3,7 +3,7 @@
   "private": true,
   "description": "Quick RF lab reference: dBm ↔ VOPP, match, large-signal, delay.",
   "scripts": {
-    "test": "node --test tests/rf.test.js tests/workbench.test.js",
+    "test": "node scripts/test-unit.js",
     "test:browser": "node tests/browser.test.js",
     "vendor:katex": "node scripts/vendor-katex.js",
     "vendor:fonts": "node scripts/vendor-fonts.js"

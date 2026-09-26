@@ -231,8 +231,9 @@ VOPP_diff  = 2 · VOPP_SE
 - **P1dB:** OP1dB = IP1dB + G₀ − 1 dB.
 - **THD:** RSS of harmonics in dBc. −40 dBc on one harmonic is 1%. With a fundamental
   frequency the harmonics are placed and checked against the analyzer's top frequency and the
-  DUT passband; a harmonic above the analyzer range cannot be measured at all. A device corner
-  frequency estimates how much the DUT's own rolloff hides:
+  DUT passband; a harmonic above the analyzer range cannot be measured at all. An optional
+  model of identical first-order low-pass poles estimates how much the DUT's rolloff hides.
+  Each pole has corner frequency f_c; for multiple poles this is not the combined −3 dB frequency:
 
   ```
   A_n = 10 p log10[ (1 + (f0/fc)^2) / (1 + (n f0/fc)^2) ]
@@ -342,7 +343,8 @@ the log-table generator, and segment diagnostics are expandable. Noise analysis 
 sweeps live in separate collapsed sections below the frequency sweep. Customized settings
 in saved links reopen their section. Point limits are not part of the interface.
 
-Each segment is a linear sweep: N = (f_stop − f_start)/Δf + 1, counting both ends. One
+Each segment is a linear sweep: N = floor((f_stop − f_start)/Δf) + 1. The stop is included
+only when the step divides the span; otherwise the last point is below it. One
 segment is a plain linear sweep; 100 MHz to 10 GHz in 10 MHz steps is 991 points.
 Each of a segment's start, stop and step carries its own unit, so one row can run from
 100 MHz to 10 GHz in 10 MHz steps without retyping anything in a common unit. A step that
@@ -494,6 +496,13 @@ They exercise inputs, reference planes, units, saved links/setups, clipboard and
 storage failures, chart interactions, stage order/limits, sweep segments and boundaries,
 typed-value display, and phone/tablet/desktop layout. Mathematical tests include known values, inverse conversions, conservation
 checks, thermal equilibrium, and invalid-input boundaries. CI runs both engines.
+
+`npm test` discovers the numerical and controller suites in `tests/`; browser checks
+remain a separate command. Independent checks cover all eight calculators: power and
+voltage, complex match, IP3/THD, gain, mixed-mode basis transforms, delay/skew, sweep
+sizing/timing, and cascaded noise. Controller fixtures execute the real scripts and URL
+state code, but do not replace the browser tests for rendering or interaction. The
+correctness review and its limits are recorded in [VERIFICATION.md](VERIFICATION.md).
 
 Shared math is in `js/rf.js`; each page has a separate controller. `js/bench.js`
 provides equation rendering, calculation details, and clipboard handling. `js/link-state.js`

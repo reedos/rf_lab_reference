@@ -131,8 +131,10 @@
     let text = String(raw).trim();
     if (text.includes(",")) {
       if (text.includes(".")) {
-        const thousands = text.lastIndexOf(".") > text.lastIndexOf(",") ? "," : ".";
-        text = text.split(thousands).join("").replace(",", ".");
+        // Both marks are only unambiguous when one has valid three-digit groups.
+        if (/^[-+]?\d{1,3}(,\d{3})+\.\d*([eE][-+]?\d+)?$/.test(text)) text = text.split(",").join("");
+        else if (/^[-+]?\d{1,3}(\.\d{3})+,\d*([eE][-+]?\d+)?$/.test(text)) text = text.split(".").join("").replace(",", ".");
+        else return NaN;
       } else if (/^[-+]?[1-9]\d{0,2}(,\d{3})+$/.test(text)) {
         text = text.split(",").join("");
       } else if (text.split(",").length === 2) {
@@ -329,14 +331,12 @@
   function mismatchLossFromGamma(gamma) {
     if (!Number.isFinite(gamma) || gamma < 0) return NaN;
     if (gamma >= 1) return Infinity;
-    return -10 * Math.log10(1 - gamma * gamma);
+    return gamma === 0 ? 0 : -10 * Math.log1p(-gamma * gamma) / Math.LN10;
   }
 
   function gammaFromMismatchLoss(mloss) {
     if (!Number.isFinite(mloss) || mloss < 0) return NaN;
-    const delivered = Math.pow(10, -mloss / 10);
-    if (delivered > 1) return NaN;
-    return Math.sqrt(1 - delivered);
+    return Math.sqrt(-Math.expm1(-mloss * Math.LN10 / 10));
   }
 
   function matchFromGamma(gamma) {
@@ -345,7 +345,7 @@
       rl: rlFromGamma(gamma),
       vswr: vswrFromGamma(gamma),
       mloss: mismatchLossFromGamma(gamma),
-      delivered: gamma < 1 ? 1 - gamma * gamma : 0
+      delivered: gamma < 1 ? (1 - gamma) * (1 + gamma) : 0
     };
   }
 
@@ -455,22 +455,49 @@
   // Passive loads, real positive reference impedance. Handles short and open.
   function complexMatch(r, x, z0) {
     if (![r, x, z0].every(Number.isFinite) || r < 0 || !(z0 > 0)) return null;
-    const a = r / z0, b = x / z0;
-    const den = (a + 1) ** 2 + b * b;
-    if (!Number.isFinite(den)) return null;
-    return matchFromComplexGamma((a * a + b * b - 1) / den, 2 * b / den, z0);
+    // Scale before squaring: large but finite impedances must not overflow the
+    // transform. Keep the supplied R and X rather than inverting rounded Γ.
+    const scale = Math.max(r, Math.abs(x), z0);
+    const a = r / scale, b = x / scale, c = z0 / scale;
+    const den = (a + c) ** 2 + b * b;
+    const re = ((a - c) * (a + c) + b * b) / den, im = 2 * b * c / den;
+    const gamma = r === 0 ? 1 : Math.min(1, Math.hypot(a - c, b) / Math.sqrt(den));
+    const m = matchFromGamma(gamma);
+    // 4 R Z0 / |Z + Z0|² remains accurate near the lossless boundary, where
+    // subtracting |Γ|² from 1 can lose the load's small but nonzero resistance.
+    m.delivered = Math.min(1, 4 * a * c / den);
+    m.vswr = m.delivered > 0 ? (1 + gamma) ** 2 / m.delivered : Infinity;
+    m.mloss = m.delivered < 0.5 ? -10 * Math.log10(m.delivered) : mismatchLossFromGamma(gamma);
+    if (m.delivered === 0 && r > 0) m.mloss = 10 * (2 * Math.log10(scale) + Math.log10(den) - Math.log10(4) - Math.log10(r) - Math.log10(z0));
+    if (gamma === 1 && m.delivered > 0) m.rl = -10 * Math.log1p(-m.delivered) / Math.LN10;
+    return Object.assign(m, { re, im, r, x, z0,
+      phase: gamma === 0 ? 0 : Math.atan2(im, re) * 180 / Math.PI });
   }
 
-  function matchFromComplexGamma(re, im, z0) {
+  function matchFromComplexGamma(re, im, z0, magnitude) {
     if (![re, im, z0].every(Number.isFinite) || !(z0 > 0)) return null;
     let mag = Math.hypot(re, im);
     if (mag > 1 + 1e-12) return null;
-    if (mag > 1) { re /= mag; im /= mag; mag = 1; }
+    if (magnitude !== undefined) {
+      // Polar entries and clamped chart points know their magnitude before the
+      // sine/cosine roundoff. Never infer an ideal load from merely being close.
+      if (!Number.isFinite(magnitude) || magnitude < 0 || magnitude > 1 || Math.abs(magnitude - mag) > 8 * Number.EPSILON) return null;
+      mag = magnitude;
+    } else if (mag > 1) { re /= mag; im /= mag; mag = 1; }
+    const m = matchFromGamma(mag);
     const den = (1 - re) ** 2 + im * im;
-    const r = den === 0 ? Infinity : z0 * Math.max(0, 1 - mag * mag) / den;
-    const x = den === 0 ? 0 : z0 * 2 * im / den;
-    return Object.assign(matchFromGamma(mag), { re, im, r, x, z0,
+    const r = den === 0 ? Infinity : z0 * (m.delivered / den);
+    const x = den === 0 ? 0 : z0 * (2 * im / den);
+    return Object.assign(m, { re, im, r, x, z0,
       phase: mag === 0 ? 0 : Math.atan2(im, re) * 180 / Math.PI });
+  }
+
+  function matchFromPolarGamma(gamma, phase, z0) {
+    if (![gamma, phase, z0].every(Number.isFinite) || gamma < 0 || gamma > 1 || !(z0 > 0)) return null;
+    const angle = phase % 360, radians = angle * Math.PI / 180;
+    const cos = Math.abs(angle) % 180 === 90 ? 0 : Math.cos(radians);
+    const sin = angle % 180 === 0 ? 0 : Math.sin(radians);
+    return matchFromComplexGamma(gamma * cos, gamma * sin, z0, gamma);
   }
 
   // Absolute IM3 is measured at the OUTPUT. dBc is relative to one output tone.
@@ -570,15 +597,20 @@
   function sweepPoints(start, stop, step) {
     if (![start, stop, step].every(Number.isFinite) || !(step > 0) || stop < start) return null;
     const span = stop - start, n = span / step, nearest = Math.round(n);
-    const exact = Math.abs(n - nearest) <= 1e-9 * Math.max(1, n);
+    if (!Number.isFinite(span) || !Number.isFinite(n)) return null;
+    // Permit arithmetic roundoff, never a sizeable fraction of a sweep step.
+    const tolerance = Math.min(1e-6, 8 * Number.EPSILON * Math.max(1, n));
+    const exact = Math.abs(n - nearest) <= tolerance;
     const points = (exact ? nearest : Math.floor(n)) + 1;
+    const pointsCeil = exact ? points : Math.ceil(n) + 1;
+    if (!Number.isSafeInteger(points) || !Number.isSafeInteger(pointsCeil)) return null;
     return { start, stop, step, span, points, exact, lastPoint: exact ? stop : start + (points - 1) * step,
-      pointsCeil: exact ? points : Math.ceil(n) + 1, stepCeil: exact ? step : span / Math.ceil(n),
+      pointsCeil, stepCeil: exact ? step : span / Math.ceil(n),
       stepFloor: exact ? step : Math.floor(n) > 0 ? span / Math.floor(n) : NaN };
   }
 
   function sweepStep(start, stop, points) {
-    if (![start, stop].every(Number.isFinite) || !Number.isInteger(points) || points < 1 || stop < start) return null;
+    if (![start, stop, stop - start].every(Number.isFinite) || !Number.isSafeInteger(points) || points < 1 || stop < start) return null;
     if (points === 1) return stop === start ? { start, stop, points, step: 0, span: 0, exact: true, lastPoint: stop } : null;
     return { start, stop, points, step: (stop - start) / (points - 1), span: stop - start, exact: true, lastPoint: stop };
   }
@@ -643,6 +675,7 @@
         sharp: outside(mode === 'relative' ? patternRatio : stepRatio) });
     }
     const points = rows.reduce((sum, r) => sum + r.points, 0);
+    if (!Number.isSafeInteger(points)) return null;
     const first = rows[0].start, last = rows[rows.length - 1].lastPoint;
     const fine = Math.min(...rows.map(r => r.fractionalStop)), coarse = Math.max(...rows.map(r => r.fractionalStart));
     const logPoints = ratio => last > first ? Math.ceil(Math.log(last / first) / Math.log(1 + ratio)) + 1 : 1;
@@ -664,9 +697,9 @@
   // Ripple between two mismatches facing each other, from their return losses in dB. The
   // reflections interact through their product, and the trace moves between 20 log10(1 ± |Γ1Γ2|).
   function mismatchRipple(rl1, rl2) {
-    if (![rl1, rl2].every(v => Number.isFinite(v) && v >= 0)) return null;
+    if (![rl1, rl2].every(v => typeof v === 'number' && v >= 0)) return null;
     const gamma1 = Math.pow(10, -rl1 / 20), gamma2 = Math.pow(10, -rl2 / 20), product = gamma1 * gamma2;
-    const up = 20 * Math.log10(1 + product), down = product < 1 ? 20 * Math.log10(1 - product) : -Infinity;
+    const up = 20 * Math.log1p(product) / Math.LN10, down = product === 0 ? 0 : product < 1 ? 20 * Math.log1p(-product) / Math.LN10 : -Infinity;
     return { rl1, rl2, gamma1, gamma2, product, up, down, peakToPeak: up - down };
   }
 
@@ -725,14 +758,14 @@
   }
 
   // What arrives at the receiver against its 0.1 dB compression and damage levels, and the
-  // attenuator that would bring it under the compression point with the margin asked for,
-  // rounded up to a stock value.
+  // attenuator that meets both the compression margin and damage limit, rounded
+  // up to a stock value.
   const PAD_VALUES = [1, 2, 3, 6, 10, 20, 30, 40];
   function receiverBudget(levelDbm, opts) {
     const o = opts || {};
     if (![levelDbm, o.compression, o.damage].every(Number.isFinite) || !(o.margin >= 0) || !Number.isFinite(o.margin)) return null;
     const headroom = o.compression - levelDbm, damageHeadroom = o.damage - levelDbm;
-    const excess = Math.max(0, levelDbm - (o.compression - o.margin));
+    const excess = Math.max(0, levelDbm - Math.min(o.compression - o.margin, o.damage));
     const stock = PAD_VALUES.find(v => v >= excess);
     const pad = excess === 0 ? 0 : stock === undefined ? Math.ceil(excess) : stock;
     return { level: levelDbm, compression: o.compression, damage: o.damage, margin: o.margin, headroom, damageHeadroom, excess, pad, afterPad: levelDbm - pad,
@@ -946,10 +979,16 @@
   // 1 + S11, which needs the reflection's phase as well as its magnitude.
   function terminalCorrection(s11Db, s11Deg) {
     if (![s11Db, s11Deg].every(Number.isFinite) || s11Db > 0) return null;
-    const magnitude = 10 ** (s11Db / 20), radians = (s11Deg * Math.PI) / 180;
-    const re = 1 + magnitude * Math.cos(radians), im = magnitude * Math.sin(radians);
+    const logarithm = s11Db * Math.LN10 / 20, magnitude = Math.exp(logarithm);
+    let angle = s11Deg % 360;
+    if (angle > 180) angle -= 360;
+    if (angle < -180) angle += 360;
+    const radians = angle * Math.PI / 180, opposite = Math.abs(angle) === 180;
+    // 1 - |Γ| and the half-angle form avoid cancellation near a short.
+    const re = -Math.expm1(logarithm) + (opposite ? 0 : 2 * magnitude * Math.cos(radians / 2) ** 2);
+    const im = opposite ? 0 : magnitude * Math.sin(radians);
     const denominator = Math.hypot(re, im);
-    const degenerate = denominator < 1e-9;
+    const degenerate = s11Db === 0 && opposite;
     return { magnitude, re, im, denominator, degenerate,
       db: degenerate ? Infinity : -20 * Math.log10(denominator) };
   }
@@ -957,7 +996,7 @@
   const RF = {
     formatNumber, parseZero, parseFrequency, formatFrequency, frequencyDigits, sweepPoints, sweepStep, segmentedSweep, sweepTiming, logTable, noiseFloor, timeDomain, mismatchRipple, receiverBudget, PAD_VALUES, mixedModeRows, mixedMode, fromPolar, toPolar,
     tonePlan, harmonicPlan, bandLimitAttenuation, bandLimitedThd, contaminationRange, gainConversion, GAIN_TOPOLOGIES, pairSkew, skewBudget, terminalCorrection,
-    complexMatch, matchFromComplexGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
+    complexMatch, matchFromComplexGamma, matchFromPolarGamma, ip3Measurement, phaseDelay, cascade, K_BOLTZMANN, T_REF,
     SQRT2,
     TWO_SQRT2,
     C_LIGHT,

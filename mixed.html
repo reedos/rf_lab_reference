@@ -80,7 +80,7 @@
   </table>
 </section>
 <section class="panel"><h2>Model and limits</h2>
-<p>Linear network, each single-ended port referenced to the same real impedance on both lines of a pair. The transform is exact under that condition and depends only on the port assignment, not on the DUT. It does not model a physical balun or a source that drives only the differential mode; with a common-mode termination different from Z<sub>0</sub>/2, the common-mode terms change and the differential terms stay.</p>
+<p>Linear network, each single-ended port referenced to the same real impedance on both lines of a pair. The transform is exact under that condition and depends only on the port assignment, not on the DUT. It does not model a physical balun or a source that drives only the differential mode. A different common-mode termination can also change the differential response when mode conversion is present; use the full mixed-mode matrix and the actual termination.</p>
 <p>Bockelman and Eisenstadt, "Combined differential and common-mode scattering parameters: theory and simulation", IEEE Trans. MTT 43(7), 1995.</p></section>
 <p class="foot">Calculations stay in your browser. Shared links and exports include entered values; use nonsensitive examples.</p></div>
 <div id="toast" class="toast" role="status"></div>

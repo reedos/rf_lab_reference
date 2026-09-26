@@ -258,6 +258,63 @@ let checks=0;
           await page.reload(); await expect(page.locator('#metrics')).toContainText(/Open/);
           await page.locator('[data-load="75"]').click(); await page.reload(); await fill('z0',75); await numeric('gamma',0);
         });
+        await check('Smith lossless boundaries, ripple links, and invalidation remain consistent',async()=>{
+          await go('match.html');
+          await page.locator('.reference-details').nth(1).locator('summary').click();
+          await expect(page.locator('#ripple-metrics')).toContainText('0 dB');
+          await expect(page.locator('#ripple-status')).toHaveText('');
+          await fill('z',0); await fill('x',5);
+          await expect(page.locator('#vswr')).toHaveValue('∞');
+          await expect(page.locator('#mloss')).toHaveValue('∞');
+          await fill('gamma',1); await fill('phase',-176);
+          await expect(page.locator('#vswr')).toHaveValue('∞');
+          await page.reload(); await expect(page.locator('#vswr')).toHaveValue('∞');
+          await page.locator('.reference-details').nth(1).locator('summary').click();
+          await fill('ripple-rl1',20); await fill('ripple-rl2',30);
+          await page.locator('[data-special="short"]').click();
+          await expect(page.locator('#ripple-metrics')).toContainText('0.05 dB');
+          await page.reload();
+          await expect(page.locator('#ripple-rl1')).toHaveValue('20');
+          await expect(page.locator('#ripple-rl2')).toHaveValue('30');
+          await page.locator('.reference-details').nth(1).locator('summary').click();
+          await fill('ripple-rl1',''); await fill('ripple-rl2',20);
+          await page.locator('[data-load="75"]').click();
+          await expect(page.locator('#ripple-metrics')).toContainText('0.35 dB');
+          await fill('z',-1);
+          await expect(page.locator('#ripple-metrics')).toBeEmpty();
+          await expect(page.locator('#copy-result')).toBeDisabled();
+        });
+        await check('A one-point sweep keeps calculating without a time-domain transform',async()=>{
+          const one = (stop, step) => 'sweep.html#?' + new URLSearchParams({segments: JSON.stringify([
+            {start:'1',stop,step,startUnit:'GHz',stopUnit:'GHz',stepUnit:'GHz'}
+          ])});
+          for (const [stop, step] of [['1','0.1'],['1.1','0.2']]) {
+            await go(one(stop,step)); await expect.poll(valid).toBe(true);
+            await expect(page.locator('#spacing-metrics')).toContainText('two distinct frequency points');
+            await page.locator('#copy-link').click();
+            assert.equal(await page.evaluate(()=>window.copiedText),page.url());
+            await page.reload(); await expect.poll(valid).toBe(true);
+          }
+          await page.locator('[data-preset="wide"]').click();
+          await expect(page.locator('#spacing-metrics')).toContainText('Time-domain range');
+        });
+        await check('Receiver protection honors damage and compression independently',async()=>{
+          await go('chain.html');
+          await fill('rx-damage',-20);
+          await expect(page.locator('#budget-status')).toContainText('add at least 20 dB');
+          await expect(page.locator('#budget-metrics')).toContainText('20 dB at the last connection → -29.00 dBm');
+        });
+        await check('An analyzer below the fundamental measures no harmonics',async()=>{
+          await go('large-signal.html?tab=thd');
+          await fill('thd-f0','2 GHz'); await fill('thd-fmax','1 GHz');
+          await expect(page.locator('#thd-band-metrics')).toContainText(/None|none/);
+          for (const id of ['thd-f0','thd-fmax','thd-fc']) {
+            await fill(id, -1); await expect.poll(valid).toBe(false);
+            await expect(page.locator('#thd-band-metrics')).toBeEmpty();
+            await fill(id, id === 'thd-f0' ? '2 GHz' : id === 'thd-fmax' ? '1 GHz' : '');
+            await expect.poll(valid).toBe(true);
+          }
+        });
         await check('Smith chart responds to keyboard and pointer interaction',async()=>{
           await go('match.html'); const smith=page.locator('#smith'); await smith.focus(); await page.keyboard.press('ArrowUp');
           await numeric('gamma',.01); await numeric('phase',90);
