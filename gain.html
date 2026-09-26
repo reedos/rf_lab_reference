@@ -48,7 +48,7 @@
 <p class="hint" id="diagram-caption">Differential in, differential out</p>
 
 <h2>Reference impedances</h2>
-<p class="hint">These are the reference impedances of the parameter you already have, which are the source and load terminations it assumes. A raw measurement is referenced to the analyzer's own ports (100 Ω differential, 50 Ω single-ended), so enter those and the factor is one. After port-impedance conversion on the analyzer, the references are the device's own impedances; enter those and use the converted S<sub>11</sub> below. Renormalising needs the whole S-matrix, so it is done on the analyzer, not here.</p>
+<p class="hint">These are the reference impedances of the parameter you already have, which are the source and load terminations it assumes. For a raw measurement on 50 Ω analyzer ports, use 100 Ω differential and 50 Ω single-ended. The voltage factor is one only when the input and output references are equal; differential-to-single-ended gives 1/√2, and single-ended-to-differential gives √2. After port-impedance conversion on the analyzer, enter the converted references and use the converted S<sub>11</sub> below. Renormalising needs the whole S-matrix, so it is done on the analyzer, not here.</p>
 <div class="work-fields">
   <label for="z1"><span id="text-z1">Input reference Z<sub>d1</sub>, differential (Ω)</span><input id="z1" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Input differential reference impedance in ohms"></label>
   <label for="z2"><span id="text-z2">Output reference Z<sub>d2</sub>, differential (Ω)</span><input id="z2" value="100" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Output differential reference impedance in ohms"></label>

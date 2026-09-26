@@ -409,16 +409,22 @@
       contam: optionalField(els.thdContam, RF.parseNumber)
     };
     if (!Object.values(fields).every(field => field.ok)) return clear('Optional frequency and level entries must be numeric. Leave them blank if unknown.');
+    if (['f0', 'fmax', 'fc'].some(key => !fields[key].blank && !(fields[key].value > 0))) return clear('Fundamental, analyzer maximum, and corner frequencies must be positive when entered.');
     if (fields.bandLow.blank !== fields.bandHigh.blank) return clear('Enter both passband edges, or leave both blank.');
     if (!fields.poles.blank && !(Number.isInteger(fields.poles.value) && fields.poles.value >= 1)) return clear('Poles must be a whole number of 1 or more.');
     if (!fields.fc.blank && fields.f0.blank) return clear('Enter the fundamental frequency to use the band-limit correction.');
     const band = fields.bandLow.blank ? null : { low: fields.bandLow.value, high: fields.bandHigh.value };
-    if (band && !(band.high > band.low)) return clear('The passband high edge must be above the low edge.');
+    if (band && !(band.low > 0 && band.high > band.low)) return clear('Use a positive passband low edge and a high edge above it.');
     const entered = values.map((value, i) => ({ n: i + 2, dbc: value })).filter(h => Number.isFinite(h.dbc));
     const poles = fields.poles.blank ? 1 : fields.poles.value;
     const plan = fields.f0.blank ? null : RF.harmonicPlan(fields.f0.value, 5, { instrumentMax: fields.fmax.blank ? null : fields.fmax.value, band });
     const limited = fields.fc.blank ? null : RF.bandLimitedThd(entered, fields.f0.value, fields.fc.value, poles);
     const contamination = fields.contam.blank ? null : RF.contaminationRange(fields.contam.value);
+    if ((!fields.f0.blank && (!plan || plan.rows.some(row => !Number.isFinite(row.frequency)))) ||
+        (!fields.fc.blank && (!limited || !Number.isFinite(limited.intrinsic.percent))) ||
+        (!fields.contam.blank && (!contamination || !Number.isFinite(contamination.high)))) {
+      return clear('The requested frequency or correction is outside the supported numeric range.');
+    }
     const h2 = values[0];
     els.thdMetrics.innerHTML = [
       metric('THD', `${RF.formatNumber(thd.percent)} %`, 'primary'),
@@ -451,7 +457,8 @@
         metric('Understated by', `${RF.formatNumber(limited.intrinsic.db - limited.measured.db, 'dB')} dB`)] : []),
       ...(contamination ? [metric('Contamination range',
         `+${RF.formatNumber(contamination.high, 'dB')} / ${contamination.low === -Infinity ? '−∞' : RF.formatNumber(contamination.low, 'dB')} dB`)] : []),
-      ...(plan && !limited ? [metric('Highest harmonic in range', plan.highestMeasurable === null ? 'Enter the analyzer maximum' : `H${Math.max(1, plan.highestMeasurable)}`)] : [])
+      ...(plan && !limited ? [metric('Highest harmonic in range', plan.highestMeasurable === null ? 'Enter the analyzer maximum' :
+        plan.highestMeasurable < 1 ? 'None; the fundamental is above the analyzer range' : `H${plan.highestMeasurable}`)] : [])
     ].join('');
     els.thdHarmonics.innerHTML = !plan ? '' : plan.rows.map(row => {
       const corrected = limited ? limited.rows.find(r => r.n === row.n) : null;
@@ -465,7 +472,7 @@
       eq('Distortion level', String.raw`\mathrm{THD}_{\mathrm{dB}} &= 20\log_{10}r_{\mathrm{THD}}`, tex(thd.db, 'dB')),
       ...(plan ? [eq('Harmonic frequencies', String.raw`f_n &= n f_0`, plan.rows.slice(1).map(row => tex(row.frequency, 'Hz')).join(',\\ '))] : []),
       ...(limited ? [
-        `Band-limit correction for a ${poles}-pole rolloff at ${freqText(limited.fc)}. It assumes the nonlinearity precedes the band limit; a feedback amplifier moves the other way because loop gain also falls with frequency.`,
+        `Band-limit correction for ${poles} identical first-order low-pass section${poles === 1 ? '' : 's'}, each with a corner at ${freqText(limited.fc)}. This is the per-pole corner, not the combined response's 3 dB bandwidth. It assumes the nonlinearity precedes the band limit; a feedback amplifier moves the other way because loop gain also falls with frequency.`,
         eq('Harmonic attenuation', String.raw`A_n &= 10p\log_{10}\frac{1+(f_0/f_{\mathrm c})^2}{1+(nf_0/f_{\mathrm c})^2}`,
           limited.rows.map(row => String.raw`A_{${row.n}}=${tex(row.attenuation, 'dB')}`).join(',\\ ')),
         eq('Intrinsic harmonic level', String.raw`H_{n,\mathrm{intrinsic}} &= H_{n,\mathrm{measured}}-A_n`,

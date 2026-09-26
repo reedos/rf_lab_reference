@@ -128,6 +128,7 @@
   function timeDomainTile() {
     if (result.rows.length !== 1) return metric('Time domain', '<span class="over-limit">Not available for a segmented table; use one linear segment for gating or TDR</span>');
     const td = RF.timeDomain(result.rows[0].step, result.last - result.first);
+    if (!td) return metric('Time domain', 'Not available: at least two distinct frequency points are required');
     return metric('Time-domain range', `${seconds(td.range)} round trip · ${seconds(td.rangeOneWay)} one way`) +
       metric('Time-domain resolution', `≈ ${seconds(td.resolution)}`);
   }
@@ -255,9 +256,9 @@
     if (!power) $('power-panel').open = true;
     const valid = Boolean(result && power && noiseOk);
     const lines = valid ? [
-      'Linear segments with equal steps. Points include both ends. A step that divides the span lands exactly on the stop frequency.',
+      'Linear segments with equal steps. The first point is included; the stop is included only when the step divides the span. Otherwise the last acquired point is below the stop.',
       ...result.rows.flatMap((r, i) => [`Segment ${i + 1}: ${freq(r.start)} to ${freq(r.stop)} in ${freq(r.step)} steps.`,
-        eq(`Segment ${i + 1} points`, String.raw`N_{${i + 1}} &= \frac{f_{\mathrm{stop}}-f_{\mathrm{start}}}{\Delta f}+1`, tex(r.points), String.raw`\frac{${tex(r.stop, 'Hz', false)}-${tex(r.start, 'Hz', false)}}{${tex(r.step, 'Hz', false)}}+1`),
+        eq(`Segment ${i + 1} points`, String.raw`N_{${i + 1}} &= \left\lfloor\frac{f_{\mathrm{stop}}-f_{\mathrm{start}}}{\Delta f}\right\rfloor+1`, tex(r.points), String.raw`\left\lfloor\frac{${tex(r.stop, 'Hz', false)}-${tex(r.start, 'Hz', false)}}{${tex(r.step, 'Hz', false)}}\right\rfloor+1`),
         eq(`Segment ${i + 1} relative spacing`, String.raw`\frac{\Delta f}{f_{\mathrm{start}}} &= ${tex(r.fractionalStart * 100, '%')} \\ \frac{\Delta f}{f_{\mathrm{stop}}} &= ${tex(r.fractionalStop * 100, '%')}`),
         eq(`Segment ${i + 1} points per decade`, String.raw`D &= \frac{1}{\log_{10}(1+\Delta f/f)}`, String.raw`${tex(r.pointsPerDecadeStart)}\text{ at start},\ ${tex(r.pointsPerDecadeStop)}\text{ at stop}`),
         eq(`Segment ${i + 1} average points per decade`, String.raw`\bar D &= \frac{N}{\log_{10}(f_{\mathrm{next}}/f_{\mathrm{start}})}`, tex(r.decadePoints))]),
@@ -271,15 +272,19 @@
         eq('Complete measurement estimate', String.raw`t_{\mathrm{measurement}} &\approx M t_{\mathrm{pass}} + t_{\mathrm{extra}}`, tex(timing.measurementTime, 's'), String.raw`${tex(timing.passes)}(${tex(timing.passTime, 's', false)})+${tex(timing.cycleOverhead, 's', false)}\,\mathrm s`),
         eq('Sweep averaging completion estimate', String.raw`t_{\mathrm{average}} &\approx A t_{\mathrm{measurement}}`, tex(timing.averagedTime, 's'), String.raw`${tex(timing.averages)}(${tex(timing.measurementTime, 's', false)})\,\mathrm s`)
       ]),
-      ...(result.rows.length === 1 ? [
+      ...(result.rows.length === 1 && result.last > result.first ? [
         eq('Alias-free range of the time-domain transform', String.raw`t_{\max} &= \frac{1}{\Delta f}`, tex(RF.timeDomain(result.rows[0].step, result.last - result.first).range, 's'), String.raw`\frac{1}{${tex(result.rows[0].step, 'Hz', false)}}\,\mathrm s`),
         eq('Response resolution', String.raw`\Delta t &\approx \frac{1}{f_{\mathrm{stop}}-f_{\mathrm{start}}}`, tex(RF.timeDomain(result.rows[0].step, result.last - result.first).resolution, 's')),
         'The range is round-trip time for reflection; one way is half of it. A segmented table has no single step, so analyzers do not transform it.'
-      ] : ['A segmented table cannot be transformed to the time domain: there is no single step to set the alias-free range. Use one linear segment for gating or TDR.']),
+      ] : [result.rows.length === 1
+        ? 'A one-point sweep has no frequency span. At least two distinct frequency points are required for a time-domain transform.'
+        : 'A segmented table cannot be transformed to the time domain: there is no single step to set the alias-free range. Use one linear segment for gating or TDR.']),
       eq('Log sweep with the same relative spacing', String.raw`N_{\log} &= \left\lceil\frac{\ln(f_{\mathrm{last}}/f_{\mathrm{first}})}{\ln(1+r)}\right\rceil+1`, String.raw`${tex(result.log.finePoints)}\text{ for } r=${tex(result.log.fine)},\ ${tex(result.log.coarsePoints)}\text{ for } r=${tex(result.log.coarse)}`),
       `Boundaries are compared by ${mode === 'relative' ? 'relative step at each segment start, which is smooth for a repeating decade pattern' : 'absolute step size'}.`,
       'Timing is a planning estimate for one channel and a common IF bandwidth. Unentered overhead, automatic IF reduction, and point averaging are not modeled. Verify the selected acquisition sequence on your analyzer; pairwise correction is not universal. Example settings do not describe an actual lab.',
-      eq('Power sweep points', String.raw`N_{P} &= \frac{P_{\mathrm{stop}}-P_{\mathrm{start}}}{\Delta P}+1`, tex(power.points), String.raw`\frac{${tex(power.stop, 'dBm', false)}-(${tex(power.start, 'dBm', false)})}{${tex(power.step, 'dB', false)}}+1`),
+      power.step === 0
+        ? eq('Power sweep points', String.raw`P_{\mathrm{start}} &= P_{\mathrm{stop}} \\ N_P &= ${tex(power.points)}`)
+        : eq('Power sweep points', String.raw`N_{P} &= \left\lfloor\frac{P_{\mathrm{stop}}-P_{\mathrm{start}}}{\Delta P}\right\rfloor+1`, tex(power.points), String.raw`\left\lfloor\frac{${tex(power.stop, 'dBm', false)}-(${tex(power.start, 'dBm', false)})}{${tex(power.step, 'dB', false)}}\right\rfloor+1`),
       ...(noise ? [
         eq('Noise floor at the working IF bandwidth', String.raw`P_{\mathrm{floor}} &= P_{\mathrm{ref}} + 10\log_{10}\frac{\mathrm{IFBW}}{\mathrm{IFBW}_{\mathrm{ref}}} - 10\log_{10}N`, tex(noise.floor, 'dBm'),
           String.raw`${tex(noise.floorRef, 'dBm', false)} + 10\log_{10}\frac{${tex(noise.ifbw, 'Hz', false)}}{${tex(noise.ifbwRef, 'Hz', false)}} \\ &\quad - 10\log_{10}${tex(noise.averages)}\,\mathrm{dBm}`),

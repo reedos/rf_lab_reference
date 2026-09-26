@@ -7,7 +7,7 @@
   const tint = Bench.tint;
   const textNum = id => { const v = $(id).value.trim(); return ['∞', 'Infinity'].includes(v) ? Infinity : ['-∞','-Infinity'].includes(v) ? -Infinity : n(id); };
   let source = 'z', chart = 'rl', result = null, ripple = null;
-  let re = 0, im = 0;
+  let re = 0, im = 0, pointMagnitude;
   const svg = $('smith'), NS = 'http://www.w3.org/2000/svg';
   function pathOf(points) { return points.map((p, i) => `${i ? 'L' : 'M'}${(220 + p.re * 190).toFixed(3)},${(220 - p.im * 190).toFixed(3)}`).join(' '); }
   function buildSmith() {
@@ -53,14 +53,13 @@
     const z0 = n('z0');
     let m = null;
     if (source === 'z') m = RF.complexMatch(n('z'), n('x'), z0);
-    else if (source === 'point') m = RF.matchFromComplexGamma(re, im, z0);
+    else if (source === 'point') m = RF.matchFromComplexGamma(re, im, z0, pointMagnitude);
     else {
       let g = n('gamma');
       if (source === 'rl') { const rl = textNum('rl'); g = rl <= 0 ? (rl === -Infinity ? 0 : 10 ** (rl / 20)) : NaN; }
       if (source === 'vswr') g = textNum('vswr') === Infinity ? 1 : RF.gammaFromVswr(n('vswr'));
       if (source === 'mloss') g = textNum('mloss') === Infinity ? 1 : RF.gammaFromMismatchLoss(n('mloss'));
-      const p = n('phase') * Math.PI / 180;
-      if (g >= 0 && g <= 1 && Number.isFinite(p)) m = RF.matchFromComplexGamma(g * Math.cos(p), g * Math.sin(p), z0);
+      m = RF.matchFromPolarGamma(g, n('phase'), z0);
     }
     result = m;
     drawRealChart();
@@ -69,6 +68,9 @@
       $('match-status').className = 'status-error'; $('metrics').replaceChildren();
       $('real-solutions').textContent = '';
       $('smith-marker').setAttribute('visibility', 'hidden'); $('smith-vector').setAttribute('visibility', 'hidden');
+      ripple = null; $('ripple-metrics').replaceChildren();
+      $('ripple-status').textContent = 'Correct the load inputs above before evaluating ripple.';
+      $('ripple-status').className = 'status-error';
       Bench.update({ valid: false, lines: ['Correct the inputs before calculating or saving. Passive impedances only.'] }); return;
     }
     re = m.re; im = m.im;
@@ -104,7 +106,7 @@
   // Two mismatches facing each other: the trace moves between 20 log10(1 ± |Γ1Γ2|).
   function computeRipple(m) {
     const blank = $('ripple-rl1').value.trim() === '';
-    const rl1 = blank ? m.rl : Bench.read('ripple-rl1'), rl2 = Bench.read('ripple-rl2');
+    const rl1 = blank ? m.rl : textNum('ripple-rl1'), rl2 = textNum('ripple-rl2');
     ripple = RF.mismatchRipple(rl1, rl2);
     if (!ripple) {
       $('ripple-status').textContent = 'Enter return losses of 0 dB or more.'; $('ripple-status').className = 'status-error';
@@ -123,11 +125,15 @@
     const q = LinkState.read();
     if (q.has('z0')) $('z0').value = q.get('z0');
     if (['rl','vswr','ml'].includes(q.get('chart'))) chart = q.get('chart');
-    if (q.get('from') === 'point') { source = 'point'; re = RF.parseNumber(q.get('re')); im = RF.parseNumber(q.get('im')); return; }
-    for (const [key,id] of Object.entries({z:'z',x:'x',g:'gamma',phase:'phase',rl:'rl',vswr:'vswr',ml:'mloss'})) if (q.has(key)) $(id).value = q.get(key);
-    if (['z','rl','vswr','gamma','mloss'].includes(q.get('from'))) source = q.get('from');
     if (q.has('r1')) $('ripple-rl1').value = q.get('r1');
     if (q.has('r2')) $('ripple-rl2').value = q.get('r2');
+    if (q.get('from') === 'point') {
+      source = 'point'; re = RF.parseNumber(q.get('re')); im = RF.parseNumber(q.get('im'));
+      if (q.has('g')) pointMagnitude = RF.parseNumber(q.get('g'));
+      return;
+    }
+    for (const [key,id] of Object.entries({z:'z',x:'x',g:'gamma',phase:'phase',rl:'rl',vswr:'vswr',ml:'mloss'})) if (q.has(key)) $(id).value = q.get(key);
+    if (['z','rl','vswr','gamma','mloss'].includes(q.get('from'))) source = q.get('from');
     // Legacy scalar links had no reflection phase and selected a real solution.
     if (!q.has('phase')) $('phase').value = '0';
   }
@@ -137,11 +143,12 @@
   ['ripple-rl1', 'ripple-rl2'].forEach(id => $(id).addEventListener('input', compute));
   document.querySelectorAll('[data-reference]').forEach(b => b.addEventListener('click', () => { Bench.setNumber('z0', Number(b.dataset.reference)); compute(); }));
   document.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => { source = 'z'; Bench.setNumber('z', Number(b.dataset.load)); Bench.setNumber('x', 0); compute(); }));
-  document.querySelectorAll('[data-special]').forEach(b => b.addEventListener('click', () => { source = 'point'; re = b.dataset.special === 'open' ? 1 : b.dataset.special === 'short' ? -1 : 0; im = 0; compute(); }));
+  document.querySelectorAll('[data-special]').forEach(b => b.addEventListener('click', () => { source = 'point'; re = b.dataset.special === 'open' ? 1 : b.dataset.special === 'short' ? -1 : 0; im = 0; pointMagnitude = Math.abs(re); compute(); }));
   document.querySelectorAll('[data-chart]').forEach(b => b.addEventListener('click', () => { chart = b.dataset.chart; compute(); }));
   function move(reNext, imNext) {
     const mag = Math.hypot(reNext, imNext);
     re = mag > 1 ? reNext / mag : reNext; im = mag > 1 ? imNext / mag : imNext;
+    pointMagnitude = mag >= 1 ? 1 : mag;
     source = 'point'; compute();
   }
   function pointer(event) {
