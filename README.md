@@ -3,7 +3,7 @@
 Quick RF lab reference. Static pages for a phone or tablet next to a VNA.
 
 - Repo: https://github.com/reedos/rf_lab_reference
-- Live: https://reedos.github.io/rf_lab_reference/
+- Live: https://reedos.dev/rf_lab_reference/
 
 No build step. Classic scripts, no bundler.
 
@@ -11,14 +11,14 @@ No build step. Classic scripts, no bundler.
 
 | Page | Use at the bench |
 | --- | --- |
-| [VOPP](https://reedos.github.io/rf_lab_reference/) | CW dBm to peak-to-peak voltage, single-ended and true differential |
-| [Match](https://reedos.github.io/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
-| [Large-signal](https://reedos.github.io/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
-| [Gain](https://reedos.github.io/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
-| [Mixed-mode](https://reedos.github.io/rf_lab_reference/mixed.html) | Mixed-mode S-parameters written out in terms of the single-ended ones for any port mapping, three- and four-port |
-| [Delay](https://reedos.github.io/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, phase-slope length estimates, intra-pair skew |
-| [Sweep](https://reedos.github.io/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
-| [Power & noise](https://reedos.github.io/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
+| [VOPP](https://reedos.dev/rf_lab_reference/) | CW dBm to peak-to-peak voltage, single-ended and true differential |
+| [Match](https://reedos.dev/rf_lab_reference/match.html) | Complex impedance R + jX, interactive Smith chart, S11, VSWR, and mismatch loss |
+| [Large-signal](https://reedos.dev/rf_lab_reference/large-signal.html) | Two-tone envelope, tone/harmonic frequency plan, IMD3 / IP3, P1dB, THD |
+| [Gain](https://reedos.dev/rf_lab_reference/gain.html) | Mixed-mode transmission parameter to voltage gain when the port reference impedances differ |
+| [Mixed-mode](https://reedos.dev/rf_lab_reference/mixed.html) | Mixed-mode S-parameters written out in terms of the single-ended ones for any port mapping, three- and four-port |
+| [Delay](https://reedos.dev/rf_lab_reference/delay.html) | Wavelength, one-way/round-trip delay, electrical degrees, phase-slope length estimates, intra-pair skew |
+| [Sweep](https://reedos.dev/rf_lab_reference/sweep.html) | Points for linear and segmented frequency sweeps, boundary checks for gaps and step jumps, power-sweep sizing |
+| [Power & noise](https://reedos.dev/rf_lab_reference/chain.html) | Power at each connection, user-defined output limits, and cascaded noise figure |
 
 Diagrams are drawn from the current inputs. The two-tone spectrum places its tones and
 third-order products at the entered frequencies and level, with higher orders marked at their
@@ -35,7 +35,7 @@ including the input used to solve the other fields, and is the way to keep or sh
 The app stores only the theme choice in local storage; browser history and bookmarks may retain setup links. Clipboard failures are reported
 without preventing calculation.
 
-Calculations run locally, without an application backend or measurement-upload endpoint. Page assets load from the site host. Defaults and examples are synthetic and do not describe an actual company, lab, or equipment inventory.
+Calculations run locally, without an application backend or measurement-upload endpoint. Calculator scripts, fonts and KaTeX load from the site host. The pages also load Cloudflare Web Analytics from `static.cloudflareinsights.com`; the beacon is configured in each HTML page. Defaults and examples are synthetic and do not describe an actual company, lab, or equipment inventory.
 
 ## Privacy and sharing
 
