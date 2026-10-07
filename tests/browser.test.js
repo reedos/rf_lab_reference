@@ -38,7 +38,16 @@ let checks=0;
         });
         const page=await context.newPage(), errors=[];
         page.on('pageerror',e=>errors.push(e.message));
-        const go=async file=>{await page.goto(base+file); await page.locator('#calculation-text').waitFor({state:'attached'});};
+        const go=async file=>{
+          const target=new URL(base+file), current=new URL(page.url());
+          const fragmentReload=current.origin===target.origin && current.pathname===target.pathname &&
+            current.search===target.search && current.hash!==target.hash && target.hash.startsWith('#?');
+          // LinkState reloads on a new setup fragment. goto alone finishes at the
+          // same-document navigation, before that reload destroys the old context.
+          if (fragmentReload) await Promise.all([page.waitForEvent('load'),page.goto(target.href)]);
+          else await page.goto(target.href);
+          await page.locator('#calculation-text').waitFor({state:'attached'});
+        };
         const num=async id=>Number(await page.locator('#'+id).inputValue());
         const numeric=async(id, expected, tolerance=1e-7)=>expect.poll(async()=>Math.abs(await num(id)-expected)).toBeLessThan(tolerance);
         const fill=async(id,v)=>page.locator('#'+id).fill(String(v));
@@ -58,6 +67,22 @@ let checks=0;
           }
         };
         const menu=async id=>{ await page.locator('#export-menu > summary').click(); await page.locator('#'+id).click(); };
+        await check('Default calculator values remain fully visible beside units at phone widths',async()=>{
+          for (const width of [360,390,430]) for (const file of ['delay.html','large-signal.html','sweep.html','chain.html']) {
+            await page.setViewportSize({width,height:900}); await go(file);
+            await page.evaluate(()=>document.fonts.ready);
+            const clipped=await page.evaluate(()=>{
+              const ctx=document.createElement('canvas').getContext('2d');
+              return Array.from(document.querySelectorAll('.work-fields input')).filter(el=>el.getBoundingClientRect().width && el.value).filter(el=>{
+                const style=getComputedStyle(el); ctx.font=style.font;
+                const space=el.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
+                return ctx.measureText(el.value).width>space+1;
+              }).map(el=>el.id);
+            });
+            assert.deepEqual(clipped,[],`${file} clips default input values at ${width}px`);
+          }
+          await page.setViewportSize({width:1280,height:900});
+        });
         await check('Setup fragments survive navigation without sending entered values to the host',async()=>{
           const requests = [];
           const record = request => requests.push({url:request.url(), referer:request.headers().referer || ''});

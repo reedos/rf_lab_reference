@@ -14,6 +14,9 @@ Branch: `astra/ex-3`. All inputs and screenshots are synthetic.
   palette. Ported its ground, surface, border, ink and #e6ba82 amber tokens; removed
   decorative gradients and header blur. Kept bundled calculator fonts, control
   geometry and labeled RF quantity colors. Updated dark export checks and metadata.
+- The delay page's more specific two-column rule defeated the 360 px field rule,
+  clipping the default delay beside its unit. Fields now stack through 540 px;
+  browser checks measure actual text against usable input width on phone screens.
 
 ## Numerical evidence
 
@@ -42,12 +45,14 @@ versus displayed frequency units. No new unit-label defect found.
 
 ## Browser and privacy evidence
 
-`npm run test:browser`: 48 Chromium scenarios passed. All eight calculators pass
+`npm run test:browser`: 49 Chromium scenarios passed. All eight calculators pass
 at 360, 390, 430, 768 and 1440 px. At 360 px, all detail panels also pass expanded
 in both themes with a long synthetic DUT name, rendered equations and no document
 overflow. Screenshots saved under ignored `tmp/screenshots/chromium/` were visually
 inspected. Existing tests cover blank/invalid states, clipboard failures, unit
 changes, navigation, chart interaction and figure/equation export.
+The new input-readability check reproduced the clipped default delay before the
+CSS fix; it checks delay, large-signal, sweep and chain values at all three phone widths.
 
 DUT values survive navigation/reload in the URL fragment. Request/referrer checks
 verify they are not sent to the local host; local storage contains only the theme

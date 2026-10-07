@@ -162,4 +162,8 @@ button:disabled { opacity: .45; cursor: default; }
   .segment-index { grid-row: 1 / span 4; align-self: center; padding-bottom: 0; }
   .segment > .quantity-field, .segment button { grid-column: 2; }
 }
-@media (max-width: 360px) { .work-fields { grid-template-columns: minmax(0, 1fr); } }
+/* A unit selector plus a readable numeric value needs more than half a phone.
+   Include the delay selector's specificity so it cannot restore two columns. */
+@media (max-width: 540px) {
+  .work-fields, .delay-page .work-fields { grid-template-columns: minmax(0, 1fr); }
+}
