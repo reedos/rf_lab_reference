@@ -9,7 +9,7 @@
     "vendor:fonts": "node scripts/vendor-fonts.js"
   },
   "devDependencies": {
-    "katex": "0.18.7",
-    "playwright": "1.62.1"
+    "katex": "0.19.0",
+    "playwright": "1.63.0"
   }
 }
