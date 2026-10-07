@@ -747,9 +747,8 @@
         terms.push({ coefficient, i: a.port, j: b.port });
         re += coefficient * S[a.port][b.port].re; im += coefficient * S[a.port][b.port].im;
       }
-      // A balanced entry cancels exactly in algebra and to about 1e-17 in floating point;
-      // report that as zero rather than as a -340 dB residue.
-      if (Math.hypot(re, im) < 1e-12) { re = 0; im = 0; }
+      // Preserve small measurements: an absolute cutoff invents a noise floor and
+      // destroys the identity transform. Exact balanced terms still cancel to zero.
       entries.push({ row: ri, col: ci, name: 'S' + r.mode + c.mode + r.side + c.side, from: c, to: r, terms, value: toPolar({ re, im }) });
     }));
     const byName = {};
@@ -893,7 +892,15 @@
   function bandLimitAttenuation(f0, fc, n, poles) {
     const p = poles == null ? 1 : poles;
     if (!(f0 > 0) || !(fc > 0) || !(n >= 1) || !(p >= 1) || ![f0, fc, n, p].every(Number.isFinite)) return NaN;
-    return 10 * p * Math.log10((1 + (f0 / fc) ** 2) / (1 + (n * f0 / fc) ** 2));
+    // Above the corner, divide both transfer functions by their frequency term.
+    // This avoids Infinity/Infinity and retains the finite high-frequency limit.
+    if (f0 >= fc) {
+      const inverse = fc / f0;
+      return 10 * p / Math.LN10 * (Math.log1p(inverse ** 2) - Math.log1p((inverse / n) ** 2) - 2 * Math.log(n));
+    }
+    const ratio = f0 / fc, harmonic = n * ratio;
+    const denominator = harmonic <= 1 ? Math.log1p(harmonic ** 2) : 2 * Math.log(Math.hypot(1, harmonic));
+    return 10 * p / Math.LN10 * (Math.log1p(ratio ** 2) - denominator);
   }
 
   function bandLimitedThd(harmonics, f0, fc, poles) {

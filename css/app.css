@@ -1,25 +1,26 @@
-/* Dark tokens: the page by default, and any dark export drawn from a light page. */
+/* Foundation ported from intelligence_factory/src/styles.css: ground, surfaces,
+   borders, ink and the shared amber. RF quantity colors remain semantic labels. */
 :root,
 .snap-dark {
-  --bg: #090b10;
-  --bg-elev: #12151c;
-  --bg-inset: #0b0d12;
-  --bg-well: #171b24;
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.16);
-  --amber: #f3b63a;
-  --amber-soft: rgba(243, 182, 58, 0.14);
+  --bg: #000;
+  --bg-elev: #0b1015;
+  --bg-inset: #0b1015;
+  --bg-well: #121920;
+  --line: rgba(240, 240, 250, 0.14);
+  --line-strong: rgba(240, 240, 250, 0.3);
+  --amber: #e6ba82;
+  --amber-soft: rgba(230, 186, 130, 0.14);
   --cyan: #4fd6c8;
   --cyan-soft: rgba(79, 214, 200, 0.14);
-  --text: #f2f1ea;
-  --muted: #9aa1ae;
-  --dim: #6b7382;
+  --text: #f0f0fa;
+  --muted: #aab2b9;
+  --dim: #6b747c;
   --danger: #ef6a5c;
-  --plus: #f3b63a;
+  --plus: #e6ba82;
   --minus: #7aa2ff;
   /* Port identity. Literal values, not aliases, so a quantity keeps its colour even on
      pages where --accent flips with the drive mode, and so scripts can read them back. */
-  --port-in: #f3b63a;
+  --port-in: #e6ba82;
   --port-out: #4fd6c8;
   --accent: var(--amber);
   --accent-soft: var(--amber-soft);
@@ -36,11 +37,6 @@
   --radius: 18px;
   --radius-sm: 12px;
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
-}
-
-body[data-drive="diff"] {
-  --accent: var(--cyan);
-  --accent-soft: var(--cyan-soft);
 }
 
 *,
@@ -68,16 +64,10 @@ body {
   color: var(--text);
   line-height: 1.45;
   background-color: var(--bg);
-  background-image:
-    radial-gradient(900px 480px at 8% -8%, rgba(243, 182, 58, 0.1), transparent 55%),
-    radial-gradient(800px 420px at 100% 0%, rgba(79, 214, 200, 0.08), transparent 50%);
   -webkit-font-smoothing: antialiased;
 }
 
 [data-theme="light"] body {
-  background-image:
-    radial-gradient(900px 480px at 8% -8%, rgba(180, 83, 9, 0.07), transparent 55%),
-    radial-gradient(800px 420px at 100% 0%, rgba(15, 118, 110, 0.06), transparent 50%);
   -webkit-font-smoothing: auto;
 }
 
@@ -129,15 +119,13 @@ a:hover {
   }
 }
 
-/* The one glass gesture: on a desktop the header stays put and blurs what scrolls beneath it. */
+/* Flat, opaque surface keeps the shared foundation legible while scrolling. */
 @media (min-width: 701px) {
   .top {
     position: sticky;
     top: 0;
     z-index: 30;
-    background: color-mix(in srgb, var(--bg) 82%, transparent);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    background: var(--bg);
   }
 }
 

@@ -27,6 +27,9 @@ let checks=0;
       const browser=await playwright[browserName].launch({headless:true});
       try {
         const context=await browser.newContext({viewport:{width:1280,height:900},colorScheme:'dark'});
+        // Synthetic local audit: never load analytics or other external services.
+        await context.route('**/*', route => new URL(route.request().url()).origin === new URL(base).origin
+          ? route.continue() : route.abort());
         await context.addInitScript(() => {
           Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{
             writeText: async text => { window.copiedText = text; },
@@ -981,7 +984,7 @@ let checks=0;
           const bodyBg=()=>page.evaluate(()=>getComputedStyle(document.body).backgroundColor);
           const eqColours=()=>page.evaluate(()=>Array.from(document.querySelectorAll('#gain-equation .katex-html [style*="color"]')).map(n=>n.style.color));
           await go('gain.html'); await expect(page.locator('#gain-equation .katex').first()).toBeVisible();
-          assert.equal(await theme(),'dark'); await expect.poll(bodyBg).toBe('rgb(9, 11, 16)');
+          assert.equal(await theme(),'dark'); await expect.poll(bodyBg).toBe('rgb(0, 0, 0)');
           // Auto follows the system, and the algebra takes the light port colours with it.
           await page.emulateMedia({colorScheme:'light'});
           await expect.poll(theme).toBe('light'); await expect.poll(bodyBg).toBe('rgb(255, 255, 255)');
@@ -993,15 +996,15 @@ let checks=0;
           await expect.poll(theme).toBe('light'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),'light');
           await expect(page.locator('#theme-button')).toHaveAttribute('data-theme-choice','light');
           await page.locator('#theme-button').click();
-          await expect.poll(theme).toBe('dark'); await expect.poll(eqColours).toContain('rgb(243, 182, 58)');
+          await expect.poll(theme).toBe('dark'); await expect.poll(eqColours).toContain('rgb(230, 186, 130)');
           await page.reload(); await page.locator('#calculation-text').waitFor({state:'attached'});
           assert.equal(await theme(),'dark'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),'dark');
           await expect(page.locator('#theme-button')).toHaveAttribute('data-theme-choice','dark');
           // Exports recolour the algebra for their own theme rather than the page's.
           const exported=t=>page.evaluate(t=>Array.from(Snapshot.prepare(document.getElementById('gain-equation'),t).querySelectorAll('.katex-html [style*="color"]')).map(n=>n.style.color),t);
           assert.ok((await exported('light')).includes('rgb(180, 83, 9)'),'light export uses light amber');
-          assert.ok(!(await exported('light')).includes('rgb(243, 182, 58)'),'light export drops dark amber');
-          assert.ok((await exported('dark')).includes('rgb(243, 182, 58)'),'dark export keeps dark amber');
+          assert.ok(!(await exported('light')).includes('rgb(230, 186, 130)'),'light export drops dark amber');
+          assert.ok((await exported('dark')).includes('rgb(230, 186, 130)'),'dark export keeps dark amber');
           // Auto again: back to the system, nothing stored.
           await page.locator('#theme-button').click();
           await expect.poll(theme).toBe('light'); assert.equal(await page.evaluate(()=>localStorage.getItem('rf-lab:theme')),null);
@@ -1221,7 +1224,7 @@ let checks=0;
         await check('Schematic wire runs between the two port nubs at every width',async()=>{
           // The nub is a 10px circle with a 3px ring, so its visible edge is 3px past the box.
           const RING=3, edges=async s=>{const b=await page.locator(s).boundingBox(); return {y:b.y+b.height/2,x1:b.x,x2:b.x+b.width};};
-          for (const width of [390,768,1440]) {
+          for (const width of [360,390,430,768,1440]) {
             await page.setViewportSize({width,height:900});
             for (const [url,block,rails] of [['index.html?m=se','.blk',['']],['index.html?m=se&dir=rx','.blk',['']],['index.html?m=diff','.blk',['.plus','.minus']]]) {
               await go(url);
@@ -1238,8 +1241,30 @@ let checks=0;
           }
           await page.setViewportSize({width:1280,height:900});
         });
+        await check('Every calculator fits 360px with expanded panels and URL-only DUT state',async()=>{
+          const dir=path.join(root,'tmp','screenshots',browserName); fs.mkdirSync(dir,{recursive:true});
+          for (const theme of ['dark','light']) for (const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
+            await page.setViewportSize({width:360,height:900});
+            await go(file+'#?dut=Synthetic%20phone%20audit%20with%20a%20long%20device%20name');
+            await page.evaluate(theme=>{Theme.set(theme); document.querySelectorAll('details:not(#export-menu)').forEach(el=>{el.open=true; el.dispatchEvent(new Event('toggle'));});},theme);
+            await expect(page.locator('#calculation-text .katex').first()).toBeVisible();
+            const state=await page.evaluate(()=>({
+              overflow:document.documentElement.scrollWidth>innerWidth+1,
+              local:Object.keys(localStorage), session:Object.keys(sessionStorage),
+              accent:getComputedStyle(document.body).getPropertyValue('--accent').trim(),
+              errors:document.querySelectorAll('.equation-error').length
+            }));
+            assert.equal(state.overflow,false,`${file} expanded panels overflow at 360px in ${theme}`);
+            assert.deepEqual(state.local,['rf-lab:theme'],`${file} persists calculator or DUT data`);
+            assert.deepEqual(state.session,[],`${file} persists session data`);
+            assert.equal(state.errors,0,`${file} equations fail in ${theme}`);
+            assert.equal(state.accent,theme==='dark'?'#e6ba82':'#b45309',`${file} changes the shared accent`);
+            await page.screenshot({path:path.join(dir,`astra-${theme}-${file}.png`),fullPage:true});
+          }
+          await page.evaluate(()=>Theme.set('system'));
+        });
         await check('Every page has working navigation, calculation detail, and responsive layout',async()=>{
-          for(const width of [390,768,1440]) for(const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
+          for(const width of [360,390,430,768,1440]) for(const file of ['index.html','match.html','large-signal.html','gain.html','mixed.html','delay.html','sweep.html','chain.html']) {
             await page.setViewportSize({width,height:900}); await go(file);
             assert.equal(await valid(),true,`${file} default invalid`);
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);

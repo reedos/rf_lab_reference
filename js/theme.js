@@ -21,7 +21,7 @@
     const theme = resolved();
     document.documentElement.setAttribute('data-theme', theme);
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#090b10');
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#000000');
     if (button) {
       button.innerHTML = ICON[choice];
       button.setAttribute('data-theme-choice', choice);

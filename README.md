@@ -48,9 +48,11 @@ The public examples are not a hardware inventory or instrument timing specificat
 ## The look
 
 Surfaces are flat and dense. Depth comes from a hairline, a one-pixel edge highlight and a soft
-shadow, never from blur, so the contrast measured for both themes is what you get, and an
-exported figure looks like the page it came from. The header is the one glass gesture: on a
-desktop it stays put and blurs the content scrolling beneath it. Navigation is sentence case,
+shadow, never from blur, so an exported figure looks like the page it came from.
+The dark foundation shares The Intelligence Factory's black ground, raised surfaces,
+hairlines, ink and amber (#e6ba82). The desktop header stays opaque while scrolling.
+The interface accent stays amber in both drive modes; teal and blue identify labeled RF
+quantities. Light mode uses a darker amber for readability. Navigation is sentence case,
 readouts use tabular figures so digits line up as they change, buttons share one vocabulary
 with a small icon each, and the block diagrams share the schematic's box treatment.
 
