@@ -21,6 +21,7 @@ let checks=0;
 (async () => {
   await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}${prefix}`;
+  console.log(`Local test server: ${base}`);
   const browsers=(process.env.BROWSERS || 'chromium').split(',');
   try {
     for(const browserName of browsers) {
