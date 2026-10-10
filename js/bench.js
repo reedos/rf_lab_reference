@@ -4,7 +4,7 @@
   // Port identity colours come from the stylesheet so there is never a second copy.
   // Read on every use, because the theme can change under a page and the colours with it.
   const token = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-  const PORT = { get in() { return token('--port-in', '#f3b63a'); }, get out() { return token('--port-out', '#4fd6c8'); } };
+  const PORT = { get in() { return token('--port-in', '#e6ba82'); }, get out() { return token('--port-out', '#4fd6c8'); } };
   // Wrap a LaTeX fragment so a quantity keeps its colour inside rendered algebra.
   const tint = (side, latex) => '\\textcolor{' + PORT[side] + '}{' + latex + '}';
   // Same idea for markup outside an equation.
