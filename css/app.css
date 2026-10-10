@@ -1887,3 +1887,20 @@ noscript {
     transform: none;
   }
 }
+
+/* Reserve the space the script fills on the index (QA-1 CLS): #schematic, #colour-key and #dut-card start empty. */
+#dut-card { min-height: 48px; }
+#schematic { min-height: 372px; }
+#colour-key { min-height: 49px; }
+@media (max-width: 600px) {
+  #dut-card { min-height: 84px; }
+  #schematic { min-height: 392px; }
+  #colour-key { min-height: 172px; }
+}
+
+/* Phone tap-target floor (WCAG 2.2 AA 2.5.8, 24 px; QA-1). Looks unchanged: only the hit area grows. */
+@media (max-width: 600px) {
+  .skip { min-height: 24px; box-sizing: border-box; }
+  summary { min-height: 24px; padding-block: 2px; box-sizing: border-box; }
+  .segment-lead input[type="checkbox"] { width: 24px; height: 24px; }
+}
