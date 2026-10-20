@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const KATEX_VERSION = '0.18.7';
+  const KATEX_VERSION = '0.19.0';
   // Port identity colours come from the stylesheet so there is never a second copy.
   // Read on every use, because the theme can change under a page and the colours with it.
   const token = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
