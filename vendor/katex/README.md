@@ -1,4 +1,4 @@
-KaTeX 0.18.7, distributed under the included MIT license.
+KaTeX 0.19.0, distributed under the included MIT license.
 
 These files are copied without modification from the pinned npm package.
 The renderer, stylesheet, and fonts are served locally with the site.
@@ -10,5 +10,6 @@ npm ci
 npm run vendor:katex
 ```
 
-Update the KaTeX asset version in all five HTML pages at the same time.
+Update `KATEX_VERSION` in `js/bench.js` at the same time; it loads these files
+and is the `?v=` cache-buster for them.
 See [KaTeX documentation](https://katex.org/docs/options) for renderer options.
